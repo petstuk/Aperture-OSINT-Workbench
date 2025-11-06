@@ -41,6 +41,7 @@ Create your own multi-tool searches for one-click analysis:
 - IBM X-Force Exchange
 - MalwareBazaar
 - GreyNoise
+- Spur
 
 ### **🔍 Intelligent IoC Detection**
 Automatically detects and analyzes:
