@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage Diagnostics</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      color: #e4e7eb;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: rgba(16, 20, 38, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 24px;
+    }
+    
+    .section {
+      background: rgba(96, 165, 250, 0.05);
+      border: 1px solid rgba(96, 165, 250, 0.2);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .section h2 {
+      font-size: 18px;
+      color: #60a5fa;
+      margin-bottom: 16px;
+    }
+    
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(96, 165, 250, 0.1);
+    }
+    
+    .stat:last-child {
+      border-bottom: none;
+    }
+    
+    .stat-label {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+    
+    .stat-value {
+      color: #e4e7eb;
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+    
+    .warning {
+      background: rgba(251, 191, 36, 0.1);
+      border: 2px solid rgba(251, 191, 36, 0.3);
+      color: #fbbf24;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-weight: 500;
+    }
+    
+    .error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 2px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-weight: 500;
+    }
+    
+    .success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 2px solid rgba(16, 185, 129, 0.3);
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      margin-top: 16px;
+      font-weight: 500;
+    }
+    
+    button {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      margin-right: 12px;
+      margin-top: 16px;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(96, 165, 250, 0.4);
+    }
+    
+    pre {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔍 Storage Diagnostics</h1>
+    
+    <div class="section">
+      <h2>Storage Quota Information</h2>
+      <div id="quota-info">
+        <p style="color: #64748b;">Loading...</p>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>IOC History Statistics</h2>
+      <div id="history-stats">
+        <p style="color: #64748b;">Loading...</p>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Sample Data (Latest 5 Entries)</h2>
+      <div id="sample-data">
+        <p style="color: #64748b;">Loading...</p>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Actions</h2>
+      <button onclick="refreshData()">🔄 Refresh Data</button>
+      <button onclick="testWrite()">✍️ Test Write</button>
+      <button onclick="exportFull()">📥 Export Full Data</button>
+    </div>
+  </div>
+
+  <script>
+    const browserAPI = (() => {
+      if (typeof browser !== 'undefined') {
+        return browser;
+      } else if (typeof chrome !== 'undefined') {
+        return chrome;
+      }
+      return null;
+    })();
+
+    async function loadDiagnostics() {
+      if (!browserAPI) {
+        document.getElementById('quota-info').innerHTML = '<div class="error">Browser API not available</div>';
+        return;
+      }
+
+      try {
+        // Get storage quota
+        let quotaHtml = '';
+        
+        if (browserAPI.storage.sync.getBytesInUse) {
+          // Get bytes in use
+          if (browserAPI.storage.sync.getBytesInUse.length > 1) {
+            // Chrome callback
+            browserAPI.storage.sync.getBytesInUse(null, function(bytes) {
+              const quotaMax = 102400; // 100KB for sync
+              const percentage = ((bytes / quotaMax) * 100).toFixed(2);
+              
+              quotaHtml = `
+                <div class="stat">
+                  <span class="stat-label">Storage Type:</span>
+                  <span class="stat-value">chrome.storage.sync</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Bytes Used:</span>
+                  <span class="stat-value">${bytes.toLocaleString()} / ${quotaMax.toLocaleString()} bytes</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Percentage Used:</span>
+                  <span class="stat-value">${percentage}%</span>
+                </div>
+              `;
+              
+              if (percentage > 90) {
+                quotaHtml += '<div class="error">⚠️ CRITICAL: Storage is over 90% full! This is likely why new entries are not being saved.</div>';
+              } else if (percentage > 75) {
+                quotaHtml += '<div class="warning">⚠️ WARNING: Storage is over 75% full. Consider exporting and clearing old data.</div>';
+              } else {
+                quotaHtml += '<div class="success">✓ Storage has adequate space.</div>';
+              }
+              
+              document.getElementById('quota-info').innerHTML = quotaHtml;
+            });
+          } else {
+            // Firefox promise
+            const bytes = await browserAPI.storage.sync.getBytesInUse(null);
+            const quotaMax = 102400;
+            const percentage = ((bytes / quotaMax) * 100).toFixed(2);
+            
+            quotaHtml = `
+              <div class="stat">
+                <span class="stat-label">Storage Type:</span>
+                <span class="stat-value">browser.storage.sync</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Bytes Used:</span>
+                <span class="stat-value">${bytes.toLocaleString()} / ${quotaMax.toLocaleString()} bytes</span>
+              </div>
+              <div class="stat">
+                <span class="stat-label">Percentage Used:</span>
+                <span class="stat-value">${percentage}%</span>
+              </div>
+            `;
+            
+            if (percentage > 90) {
+              quotaHtml += '<div class="error">⚠️ CRITICAL: Storage is over 90% full! This is likely why new entries are not being saved.</div>';
+            } else if (percentage > 75) {
+              quotaHtml += '<div class="warning">⚠️ WARNING: Storage is over 75% full. Consider exporting and clearing old data.</div>';
+            } else {
+              quotaHtml += '<div class="success">✓ Storage has adequate space.</div>';
+            }
+            
+            document.getElementById('quota-info').innerHTML = quotaHtml;
+          }
+        } else {
+          document.getElementById('quota-info').innerHTML = '<div class="warning">getBytesInUse not available in this browser</div>';
+        }
+
+        // Get history statistics
+        let data;
+        if (browserAPI.storage.sync.get.length > 1) {
+          // Chrome callback
+          browserAPI.storage.sync.get('iocHistory', function(result) {
+            displayHistoryStats(result.iocHistory || []);
+          });
+        } else {
+          // Firefox promise
+          data = await browserAPI.storage.sync.get('iocHistory');
+          displayHistoryStats(data.iocHistory || []);
+        }
+
+      } catch (error) {
+        document.getElementById('quota-info').innerHTML = '<div class="error">Error: ' + error.message + '</div>';
+      }
+    }
+
+    function displayHistoryStats(history) {
+      const totalEntries = history.length;
+      const jsonSize = JSON.stringify(history).length;
+      const avgEntrySize = totalEntries > 0 ? (jsonSize / totalEntries).toFixed(0) : 0;
+      
+      // Get unique IOCs
+      const uniqueIOCs = new Set(history.map(item => item.ioc)).size;
+      
+      // Get type breakdown
+      const types = {};
+      history.forEach(item => {
+        types[item.type] = (types[item.type] || 0) + 1;
+      });
+      
+      let historyHtml = `
+        <div class="stat">
+          <span class="stat-label">Total Entries:</span>
+          <span class="stat-value">${totalEntries}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Unique IOCs:</span>
+          <span class="stat-value">${uniqueIOCs}</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Total Size (JSON):</span>
+          <span class="stat-value">${jsonSize.toLocaleString()} bytes</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Average Entry Size:</span>
+          <span class="stat-value">${avgEntrySize} bytes</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Type Breakdown:</span>
+          <span class="stat-value">${JSON.stringify(types)}</span>
+        </div>
+      `;
+      
+      if (totalEntries >= 100) {
+        historyHtml += '<div class="warning">⚠️ You have reached the 100 entry limit set in the code. Older entries are being removed.</div>';
+      }
+      
+      document.getElementById('history-stats').innerHTML = historyHtml;
+      
+      // Display sample data
+      const sample = history.slice(0, 5);
+      let sampleHtml = '<pre>' + JSON.stringify(sample, null, 2) + '</pre>';
+      document.getElementById('sample-data').innerHTML = sampleHtml;
+    }
+
+    function refreshData() {
+      loadDiagnostics();
+    }
+
+    function testWrite() {
+      if (!browserAPI) return;
+      
+      const testEntry = {
+        ioc: 'TEST-' + Date.now(),
+        tool: 'Test Tool',
+        toolsUsed: ['Test Tool'],
+        type: 'test',
+        timestamp: Date.now(),
+        date: new Date().toLocaleString(),
+        notes: 'Test entry to check if writes are working',
+        status: 'unknown'
+      };
+      
+      if (browserAPI.storage.sync.get.length > 1) {
+        // Chrome callback
+        browserAPI.storage.sync.get('iocHistory', function(data) {
+          const history = data.iocHistory || [];
+          history.unshift(testEntry);
+          
+          browserAPI.storage.sync.set({ 'iocHistory': history }, function() {
+            if (chrome.runtime.lastError) {
+              alert('Write FAILED: ' + chrome.runtime.lastError.message);
+            } else {
+              alert('Write successful! Refresh to see the new entry.');
+            }
+            loadDiagnostics();
+          });
+        });
+      } else {
+        // Firefox promise
+        browserAPI.storage.sync.get('iocHistory').then(data => {
+          const history = data.iocHistory || [];
+          history.unshift(testEntry);
+          return browserAPI.storage.sync.set({ 'iocHistory': history });
+        }).then(() => {
+          alert('Write successful! Refresh to see the new entry.');
+          loadDiagnostics();
+        }).catch(error => {
+          alert('Write FAILED: ' + error.message);
+        });
+      }
+    }
+
+    function exportFull() {
+      if (!browserAPI) return;
+      
+      if (browserAPI.storage.sync.get.length > 1) {
+        // Chrome callback
+        browserAPI.storage.sync.get('iocHistory', function(data) {
+          downloadJSON(data.iocHistory || []);
+        });
+      } else {
+        // Firefox promise
+        browserAPI.storage.sync.get('iocHistory').then(data => {
+          downloadJSON(data.iocHistory || []);
+        });
+      }
+    }
+
+    function downloadJSON(data) {
+      const dataStr = JSON.stringify(data, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `osint-full-export-${Date.now()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    // Load on page load
+    document.addEventListener('DOMContentLoaded', loadDiagnostics);
+  </script>
+</body>
+</html>
+
+

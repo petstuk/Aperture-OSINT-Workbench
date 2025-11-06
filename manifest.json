@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "SOC OSINT Search",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "Right-click search for IPs, domains, hashes and other indicators on popular OSINT services",
   
   "permissions": [
@@ -42,6 +42,7 @@
   
   "web_accessible_resources": [
     "archive.html",
-    "debug-storage.html"
+    "debug-storage.html",
+    "check-storage.html"
   ]
 }

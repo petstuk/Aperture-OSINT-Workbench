@@ -17,12 +17,18 @@ Create your own multi-tool searches for one-click analysis:
 - Opens all selected tools simultaneously
 - Perfect for SOC analysts with favorite tool combinations
 
-### **📊 Analysis History**
+### **📊 Enhanced Analysis Archive Dashboard**
 - **Recent Analysis** - Last 5 IoCs displayed in popup for quick access
-- **Full Archive** - Beautiful archive page with all historical searches
-- **Smart Filtering** - Filter by IoC type (IP, Domain, Hash, URL)
-- **Re-analyze Button** - Quickly re-run any previous search
-- **Statistics Dashboard** - Track total analyses, most used tools, and common IoC types
+- **Full Archive** - Beautiful triage dashboard with all historical searches
+- **Multi-Filter System** - Filter by IoC type (IP, Domain, Hash, URL) AND status
+- **Status Tagging** - Mark entries as Unknown, Benign, Suspicious, Malicious, or Under Review
+- **Notes & Annotations** - Add multi-line notes to any IoC with persistent storage
+- **Smart Search** - Search across IoCs and notes in real-time
+- **View Modes** - Toggle between expanded and compact views
+- **Service Icons** - Visual indicators showing which tools were used
+- **Re-analyze** - Quickly re-run searches with all original tools
+- **Export Functionality** - Download archives as JSON or CSV
+- **Statistics Dashboard** - Track total analyses, unique IoCs, malicious findings, and items under review
 
 ### **🛠️ Supported OSINT Services**
 - VirusTotal
@@ -98,12 +104,27 @@ Will be available on the Firefox Browser Add-ons Store
 6. **Click "Save"**
 7. Your custom combination now appears in the context menu with a ⚡ icon
 
-### View History
+### View & Manage History
 1. **Open the extension popup**
 2. **View recent analyses** in the "Recent Analysis" section
 3. **Click "View Full Archive"** to see all historical searches
-4. **Filter by IoC type** using the buttons at the top
-5. **Click "Re-analyze"** to quickly re-run any search
+4. **Filter by IoC type** using the Type filter buttons
+5. **Filter by Status** using the Status filter buttons
+6. **Search** using the search bar to find specific IoCs or notes
+7. **Click status badges** to change verdict (Unknown/Benign/Suspicious/Malicious/Review)
+8. **Add/Edit Notes** by clicking the note button on any entry
+9. **Toggle View** between expanded and compact modes
+10. **Click "Re-analyze"** to quickly re-run any search with all original tools
+11. **Export data** as JSON or CSV for reporting or backup
+
+### Check Storage Health
+1. **Navigate to** `chrome-extension://[YOUR-EXTENSION-ID]/check-storage.html` (Chrome)
+   - Or `moz-extension://[YOUR-EXTENSION-ID]/check-storage.html` (Firefox)
+2. **View storage quota usage** and percentage
+3. **Check entry counts** and average sizes
+4. **Test write operations** to verify storage is working
+5. **Export full data** for backup if needed
+6. The page will warn you if storage is over 75% full
 
 ## 🏗️ Technical Details
 
@@ -115,11 +136,15 @@ Will be available on the Firefox Browser Add-ons Store
 - **External Scripts** - All JavaScript is in separate files (CSP compliant)
 
 ### Storage
-- **browser.storage.sync** for cross-device synchronization
+- **browser.storage.sync** for cross-device synchronization (100KB quota limit)
+- **Automatic Storage Rotation** - When storage quota is reached, oldest entries are automatically removed
 - Stores:
   - Enabled services configuration
   - Custom combinations
-  - Analysis history (up to 100 entries)
+  - Analysis history (dynamically sized based on storage quota)
+  - IoC status verdicts (Unknown, Benign, Suspicious, Malicious, Review)
+  - User notes and annotations per IoC
+  - Tools used per analysis for accurate re-runs
 
 ### Browser API Compatibility
 - **Polyfill layer** handles Chrome/Firefox API differences
@@ -159,6 +184,11 @@ cd OSINTExtension
 4. Check browser console for debug logs
 
 ### Debug Tools
+- **check-storage.html** - Comprehensive storage diagnostics tool
+  - Shows real-time storage quota usage
+  - Displays entry counts and average sizes
+  - Tests write operations for quota issues
+  - Exports full data for backup
 - **debug-storage.html** - Tool for inspecting extension storage
 - Console logging throughout for troubleshooting
 - All API calls include error handling and logging
@@ -173,7 +203,26 @@ cd OSINTExtension
 
 ## 📝 Changelog
 
-### Latest Version
+### Latest Version (v2.2 - Smart Storage Management)
+- ✅ **Automatic Storage Rotation** - Intelligently removes oldest entries when quota limit is reached
+- ✅ **Smart Quota Detection** - Detects and handles Chrome storage quota errors gracefully
+- ✅ **Storage Diagnostics Tool** - New check-storage.html page for monitoring storage health
+- ✅ **Improved Error Handling** - Better logging and error recovery for storage operations
+- ✅ **No Hard Limits** - Removed arbitrary 100-entry limit; now dynamically adapts to storage
+
+### Previous Version (v2.1 - Archive Dashboard Enhancement)
+- ✅ **Status Tagging System** - 5-state verdict system (Unknown/Benign/Suspicious/Malicious/Review)
+- ✅ **Notes & Annotations** - Multi-line, timestamped notes per IoC
+- ✅ **Multi-Dimensional Filtering** - Filter by both Type AND Status simultaneously
+- ✅ **Real-Time Search** - Search across IoCs and notes instantly
+- ✅ **Service Icons** - Visual indicators for tools used in each analysis
+- ✅ **View Modes** - Compact and Expanded view options
+- ✅ **Export Functionality** - Download as JSON or CSV for reporting
+- ✅ **Enhanced Re-analyze** - Re-runs with exact subset of services originally used
+- ✅ **Enhanced Statistics** - Added Unique IoCs, Malicious count, Under Review count
+- ✅ **Data Migration** - Automatic backward-compatible upgrade of history format
+
+### Previous Versions
 - ✅ Unified Chrome/Firefox extension
 - ✅ Modern cyber-themed UI
 - ✅ Custom combinations feature

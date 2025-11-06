@@ -223,16 +223,19 @@ function detectIOCType(text) {
   return 'unknown';
 }
 
-// Add IoC to history
-async function addToHistory(ioc, tool, iocType) {
-  console.log('Adding to history:', ioc, tool, iocType);
+// Add IoC to history with automatic rotation when storage limit is reached
+async function addToHistory(ioc, tool, iocType, actualTools = null) {
+  console.log('Adding to history:', ioc, tool, iocType, 'actualTools:', actualTools);
   
   const historyEntry = {
     ioc: ioc,
     tool: tool,
+    toolsUsed: actualTools || (Array.isArray(tool) ? tool : [tool]),
     type: iocType,
     timestamp: Date.now(),
-    date: new Date().toLocaleString()
+    date: new Date().toLocaleString(),
+    notes: '',
+    status: 'unknown'
   };
   
   console.log('History entry created:', historyEntry);
@@ -241,38 +244,98 @@ async function addToHistory(ioc, tool, iocType) {
   if (browserAPI.storage.sync.get.length > 1) {
     // Chrome callback API
     browserAPI.storage.sync.get('iocHistory', (data) => {
-      console.log('Chrome API - Current history:', data);
+      console.log('Chrome API - Current history length:', (data.iocHistory || []).length);
       const history = data.iocHistory || [];
       
-      // Add to beginning, limit to 100 entries
+      // Add new entry to the beginning
       history.unshift(historyEntry);
-      if (history.length > 100) {
-        history.splice(100);
-      }
       
-      console.log('Chrome API - Saving updated history:', history);
-      browserAPI.storage.sync.set({ 'iocHistory': history }, () => {
-        console.log('Chrome API - History saved successfully');
-      });
+      // Try to save, and rotate out old entries if quota is exceeded
+      attemptSaveWithRotation(history, 0);
     });
   } else {
     // Firefox promise API
     try {
       const data = await browserAPI.storage.sync.get('iocHistory');
-      console.log('Firefox API - Current history:', data);
+      console.log('Firefox API - Current history length:', (data.iocHistory || []).length);
       const history = data.iocHistory || [];
       
-      // Add to beginning, limit to 100 entries
+      // Add new entry to the beginning
       history.unshift(historyEntry);
-      if (history.length > 100) {
-        history.splice(100);
-      }
       
-      console.log('Firefox API - Saving updated history:', history);
-      await browserAPI.storage.sync.set({ 'iocHistory': history });
-      console.log('Firefox API - History saved successfully');
+      // Try to save, and rotate out old entries if quota is exceeded
+      await attemptSaveWithRotationPromise(history);
     } catch (error) {
       console.error('Error saving to history:', error);
+    }
+  }
+}
+
+// Attempt to save history, removing oldest entries if quota exceeded (Chrome callback version)
+function attemptSaveWithRotation(history, attempt) {
+  console.log(`Attempt ${attempt + 1} - Trying to save ${history.length} entries`);
+  
+  browserAPI.storage.sync.set({ 'iocHistory': history }, () => {
+    if (chrome.runtime.lastError) {
+      const error = chrome.runtime.lastError.message;
+      console.warn('Save failed:', error);
+      
+      // Check if it's a quota error
+      if (error.includes('QUOTA_BYTES') || error.includes('quota') || error.includes('Quota')) {
+        console.log('Storage quota exceeded, removing oldest entries...');
+        
+        // Remove 10% of entries from the end (oldest entries)
+        const removeCount = Math.max(1, Math.floor(history.length * 0.1));
+        history.splice(-removeCount);
+        
+        console.log(`Removed ${removeCount} oldest entries, now have ${history.length} entries`);
+        
+        // Prevent infinite recursion - stop after 20 attempts
+        if (attempt < 20 && history.length > 0) {
+          attemptSaveWithRotation(history, attempt + 1);
+        } else {
+          console.error('Failed to save history after multiple attempts or history is empty');
+        }
+      } else {
+        console.error('Non-quota error occurred:', error);
+      }
+    } else {
+      console.log(`Chrome API - History saved successfully with ${history.length} entries`);
+    }
+  });
+}
+
+// Attempt to save history, removing oldest entries if quota exceeded (Firefox promise version)
+async function attemptSaveWithRotationPromise(history, attempt = 0) {
+  console.log(`Attempt ${attempt + 1} - Trying to save ${history.length} entries`);
+  
+  try {
+    await browserAPI.storage.sync.set({ 'iocHistory': history });
+    console.log(`Firefox API - History saved successfully with ${history.length} entries`);
+  } catch (error) {
+    console.warn('Save failed:', error.message);
+    
+    // Check if it's a quota error
+    if (error.message.includes('QUOTA_BYTES') || error.message.includes('quota') || 
+        error.message.includes('Quota') || error.message.includes('exceeded')) {
+      console.log('Storage quota exceeded, removing oldest entries...');
+      
+      // Remove 10% of entries from the end (oldest entries)
+      const removeCount = Math.max(1, Math.floor(history.length * 0.1));
+      history.splice(-removeCount);
+      
+      console.log(`Removed ${removeCount} oldest entries, now have ${history.length} entries`);
+      
+      // Prevent infinite recursion - stop after 20 attempts
+      if (attempt < 20 && history.length > 0) {
+        await attemptSaveWithRotationPromise(history, attempt + 1);
+      } else {
+        console.error('Failed to save history after multiple attempts or history is empty');
+        throw new Error('Unable to save history - storage quota persistently exceeded');
+      }
+    } else {
+      console.error('Non-quota error occurred:', error.message);
+      throw error;
     }
   }
 }
@@ -316,9 +379,9 @@ browserAPI.contextMenus.onClicked.addListener(async (info, tab) => {
       const url = serviceUrls[serviceName].replace("[QUERY]", encodeURIComponent(selectedText));
       browserAPI.tabs.create({ url: url });
       
-      // Add to history
+      // Add to history - for single service, tool and toolsUsed are the same
       const iocType = detectIOCType(selectedText);
-      addToHistory(selectedText, serviceName, iocType);
+      addToHistory(selectedText, serviceName, iocType, [serviceName]);
     }
   }
 });
@@ -334,9 +397,9 @@ function runCombination(combination, selectedText) {
     }
   });
   
-  // Add to history (using the combination name as the tool)
+  // Add to history with enhanced data - using the same rotation logic
   const iocType = detectIOCType(selectedText);
-  addToHistory(selectedText, combination.name, iocType);
+  addToHistory(selectedText, combination.name, iocType, combination.tools);
 }
 
 // Listen for messages from popup (e.g., to update combinations)
