@@ -1,9 +1,9 @@
 #!/bin/bash
-# Package script for Aperture v3.0.1 (Firefox AMO / Chrome Web Store)
+# Package script for Aperture v3.1.0 (Firefox AMO / Chrome Web Store)
 
 set -euo pipefail
 
-VERSION="3.0.1"
+VERSION="3.1.0"
 OUTPUT_FILE="aperture-osint-v${VERSION}.zip"
 
 echo "Aperture — OSINT Workbench packaging"
@@ -44,6 +44,8 @@ zip -r "$OUTPUT_FILE" \
   README.md \
   LICENSE \
   test-history.html \
+  test-ioc-utils.html \
+  test-ioc-utils.js \
   -x "*.git*" \
   -x "*.sh" \
   -x "*RELEASE_NOTES*" \
@@ -66,4 +68,4 @@ echo ""
 echo "Package created:"
 ls -lh "$OUTPUT_FILE"
 echo ""
-echo "Next: upload to AMO / Chrome Web Store with RELEASE_NOTES_v3.0.1.md"
+echo "Next: upload to AMO / Chrome Web Store with RELEASE_NOTES_v3.1.0.md"

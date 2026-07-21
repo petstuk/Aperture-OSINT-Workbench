@@ -120,7 +120,11 @@
       span.className = 'soc-ioc soc-ioc-' + match.type;
       span.dataset.ioc = match.value;
       span.dataset.type = match.type;
-      span.textContent = match.value;
+      // Keep page-visible (often defanged) text; actions use refanged dataset.ioc
+      span.textContent =
+        match.display != null
+          ? match.display
+          : text.slice(match.start, match.end);
       span.addEventListener('click', onIocClick);
       span.addEventListener('mouseenter', onIocMouseEnter);
       span.addEventListener('mouseleave', onIocMouseLeave);

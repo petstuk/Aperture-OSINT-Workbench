@@ -1,0 +1,133 @@
+(function () {
+  const lines = [];
+  let passed = 0;
+  let failed = 0;
+
+  function assert(name, cond, detail) {
+    if (cond) {
+      passed++;
+      lines.push('PASS  ' + name);
+    } else {
+      failed++;
+      lines.push('FAIL  ' + name + (detail ? ' — ' + detail : ''));
+    }
+  }
+
+  function typesOf(text) {
+    return IOCUtils.parse(text).map((x) => x.type + ':' + x.value);
+  }
+
+  function hasTypeValue(text, type, value) {
+    return IOCUtils.parse(text).some(
+      (x) => x.type === type && x.value.toLowerCase() === value.toLowerCase()
+    );
+  }
+
+  function noTypeValue(text, type, value) {
+    return !hasTypeValue(text, type, value);
+  }
+
+  // --- refang ---
+  assert('refang [.]', IOCUtils.refang('evil[.]com') === 'evil.com');
+  assert('refang (.)', IOCUtils.refang('evil(.)com') === 'evil.com');
+  assert('refang [dot]', IOCUtils.refang('evil[dot]com') === 'evil.com');
+  assert('refang hxxps', IOCUtils.refang('hxxps://a[.]b/') === 'https://a.b/');
+  assert(
+    'refang email [at][dot]',
+    IOCUtils.refang('user[at]evil[dot]com') === 'user@evil.com'
+  );
+  assert(
+    'refang dead (\\.) branch gone — (.) works',
+    IOCUtils.refang('a(.)b') === 'a.b'
+  );
+
+  // --- file / version false positives ---
+  assert('reject file.html', IOCUtils.detectIOCType('index.html') === 'unknown');
+  assert('reject file.js', IOCUtils.detectIOCType('app.js') === 'unknown');
+  assert('reject agent.bin', IOCUtils.detectIOCType('agent.bin') === 'unknown');
+  assert('reject payload.dll', IOCUtils.detectIOCType('payload.dll') === 'unknown');
+  assert('reject v2.3.0', IOCUtils.detectIOCType('v2.3.0') === 'unknown');
+  assert('reject 1.2.3 version', IOCUtils.detectIOCType('1.2.3') === 'unknown');
+  assert(
+    'parse ignores filenames',
+    noTypeValue('see index.html and app.js and v2.3.0', 'domain', 'index.html') &&
+      noTypeValue('see index.html and app.js', 'domain', 'app.js')
+  );
+
+  // --- real domains ---
+  assert('accept evil.com', IOCUtils.detectIOCType('evil.com') === 'domain');
+  assert('accept foo.co.uk', IOCUtils.detectIOCType('foo.co.uk') === 'domain');
+  assert('reject co.uk alone', IOCUtils.detectIOCType('co.uk') === 'unknown');
+
+  // --- hashes ---
+  const md5 = '5d41402abc4b2a76b9719d911017c592';
+  const longHex = md5 + md5 + 'abcd'; // 68 hex — not exact
+  assert('accept md5', IOCUtils.detectIOCType(md5) === 'hash');
+  assert(
+    'reject hex run longer than 64',
+    !IOCUtils.parse(longHex).some((x) => x.type === 'hash' && x.value === longHex.slice(0, 64))
+  );
+  assert(
+    'reject colon fingerprint fragments as hash',
+    IOCUtils.parse('AA:BB:CC:DD:EE:FF:11:22:33:44:55:66:77:88:99:00').filter(
+      (x) => x.type === 'hash'
+    ).length === 0
+  );
+
+  // --- URL punct ---
+  assert(
+    'strip trailing ). from URL',
+    hasTypeValue('See https://evil.test/a).', 'url', 'https://evil.test/a')
+  );
+
+  // --- defanged on-page offsets ---
+  const page = 'Indicator 1.1.1[.]1 and hxxp://bad[.]example[.]com/path in advisory.';
+  const matches = IOCUtils.findIOCMatches(page);
+  const ip = matches.find((m) => m.type === 'ip');
+  const url = matches.find((m) => m.type === 'url');
+  assert('defanged IP found', !!(ip && ip.value === '1.1.1.1'));
+  assert(
+    'defanged IP display keeps [.]',
+    !!(ip && ip.display === '1.1.1[.]1' && page.slice(ip.start, ip.end) === '1.1.1[.]1')
+  );
+  assert(
+    'defanged URL found',
+    !!(url && url.value === 'http://bad.example.com/path')
+  );
+  assert(
+    'defanged URL display keeps hxxp/[.]',
+    !!(url && /hxxp:\/\/bad\[\.\]example\[\.\]com\/path/.test(url.display))
+  );
+
+  assert(
+    'defanged email',
+    hasTypeValue('Contact admin[at]phish[dot]example', 'email', 'admin@phish.example')
+  );
+
+  // --- IPv6 still works ---
+  assert(
+    'ipv6',
+    IOCUtils.detectIOCType('2001:4860:4860::8888') === 'ip'
+  );
+
+  const summary = document.getElementById('summary');
+  const out = document.getElementById('out');
+  if (summary) {
+    summary.className = failed ? 'fail' : 'pass';
+    summary.textContent = failed
+      ? failed + ' failed, ' + passed + ' passed'
+      : 'All ' + passed + ' passed';
+  }
+  if (out) out.textContent = lines.join('\n');
+
+  if (typeof console !== 'undefined') {
+    console.log(lines.join('\n'));
+    console.log(failed ? 'FAILED: ' + failed : 'OK: ' + passed);
+  }
+
+  // Node / headless exit hint
+  if (typeof globalThis !== 'undefined') {
+    globalThis.__IOC_TEST_FAILED__ = failed;
+    globalThis.__IOC_TEST_PASSED__ = passed;
+  }
+})();

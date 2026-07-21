@@ -23,7 +23,7 @@ Formerly **SOC OSINT Search**.
 
 ### Chrome / Chromium
 1. `chrome://extensions` → Developer mode → Load unpacked → select this folder
-2. Package for store upload: `./package-for-firefox.sh` → `aperture-osint-v3.0.1.zip`
+2. Package for store upload: `./package-for-firefox.sh` → `aperture-osint-v3.1.0.zip`
 
 ## Privacy
 
@@ -45,6 +45,12 @@ Plain HTML/CSS/JS — **no build step**, no bundler, no minifier. Reviewers can 
 ./package-for-firefox.sh
 ```
 
+IoC detection tests (open in a browser):
+
+```text
+test-ioc-utils.html
+```
+
 | Surface | Files |
 |---|---|
 | Popup | `popup.html`, `popup.js` |
@@ -54,7 +60,7 @@ Plain HTML/CSS/JS — **no build step**, no bundler, no minifier. Reviewers can 
 | Shared UI | `aperture.css`, `palette.js`, `fonts/` |
 
 Design reference (not shipped in the zip): [`design/README.md`](design/README.md)  
-Release notes: [`RELEASE_NOTES_v3.0.1.md`](RELEASE_NOTES_v3.0.1.md) · [`v3.0.0`](RELEASE_NOTES_v3.0.0.md)
+Release notes: [`RELEASE_NOTES_v3.1.0.md`](RELEASE_NOTES_v3.1.0.md) · [`v3.0.1`](RELEASE_NOTES_v3.0.1.md) · [`v3.0.0`](RELEASE_NOTES_v3.0.0.md)
 
 ## Upgrade from 2.x
 

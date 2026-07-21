@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aperture — OSINT Workbench",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, and right-click search across VirusTotal, Shodan, AbuseIPDB, and more. Formerly SOC OSINT Search. No API keys.",
   "permissions": [
     "contextMenus",
