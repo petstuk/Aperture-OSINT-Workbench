@@ -1,32 +1,31 @@
 {
-  "manifest_version": 2,
-  "name": "SOC OSINT Search",
-  "version": "2.3.0",
-  "description": "Right-click search for IPs, domains, hashes and other indicators on popular OSINT services",
-  
+  "manifest_version": 3,
+  "name": "Aperture — OSINT Workbench",
+  "version": "3.0.0",
+  "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, and right-click search across VirusTotal, Shodan, AbuseIPDB, and more. Formerly SOC OSINT Search. No API keys.",
   "permissions": [
-    "contextMenus", 
-    "storage", 
-    "tabs", 
-    "activeTab",
+    "contextMenus",
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
     "<all_urls>"
   ],
-  
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html",
+    "default_title": "Aperture",
     "default_icon": {
-      "16": "icon512.png",
-      "32": "icon512.png", 
-      "48": "icon512.png",
-      "128": "icon512.png"
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
     }
   },
-  
   "background": {
-    "scripts": ["ioc-utils.js", "background.js"],
-    "persistent": false
+    "service_worker": "background.js",
+    "scripts": ["ioc-utils.js", "background.js"]
   },
-
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -35,23 +34,36 @@
       "run_at": "document_idle"
     }
   ],
-  
   "icons": {
-    "16": "icon512.png",
-    "32": "icon512.png",
-    "48": "icon512.png",
-    "128": "icon512.png"
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
   },
-  
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
-      "id": "soc-osint-search@example.com"
+      "id": "soc-osint-search@example.com",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
     }
   },
-  
   "web_accessible_resources": [
-    "archive.html",
-    "debug-storage.html",
-    "check-storage.html"
+    {
+      "resources": [
+        "dashboard.html",
+        "archive.html",
+        "fonts/*",
+        "aperture.css",
+        "ioc-utils.js",
+        "palette.js",
+        "content.css"
+      ],
+      "matches": ["<all_urls>"]
+    }
   ]
 }

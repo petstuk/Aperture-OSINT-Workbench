@@ -1,29 +1,12 @@
-# storage.local Migration Plan (Phase 3B) — post AMO v2.3.0
+# storage.local Migration — completed in v3.0.0
 
-## Problem
-`iocHistory` lives in `browser.storage.sync` (~100KB). Heavy use triggers rotation and data loss of old entries.
+History and cases live in `browser.storage.local`.  
+Settings (`enabledServices`, `overlayEnabled`, `playbooks`) stay in `browser.storage.sync`.
 
-## Goal
-- Move **archive history only** to `browser.storage.local` (~5MB+ / larger on Firefox)
-- Keep in **sync**: `enabledServices`, `customCombinations`, `overlayEnabled`
-- One-time migration on `runtime.onInstalled` / startup
+On install/update, `background.js` `migrateStorage()`:
+1. Copies `sync.iocHistory` → `local.iocHistory` when local is empty, then removes sync history
+2. Migrates `customCombinations` → `playbooks` when playbooks missing
+3. Seeds default playbooks on fresh install
+4. Initializes `local.cases` to `[]`
 
-## Implementation sketch
-1. On startup: if `storage.sync.iocHistory` exists and `storage.local.iocHistory` empty → copy then remove sync history
-2. Update all read/write sites:
-   - `background.js` (`addToHistory`, rotation helpers, `getArchiveEntry`)
-   - `popup.js` (recent history)
-   - `archive.js` (full archive CRUD)
-   - `check-storage.html` / `debug-storage.html` / tests
-3. Prefer local quota for rotation; keep rotation as safety net
-4. Bump to v2.4.0; release notes + migration testing (upgrade from 2.3.0 with large archive)
-
-## Test matrix
-- [ ] Fresh install: history writes to local
-- [ ] Upgrade with sync history: migrated once, not duplicated
-- [ ] Settings still sync across devices
-- [ ] Overlay / combinations unchanged
-- [ ] Export/import still works
-
-## Status
-Deferred until after v2.3.0 AMO approval. Do not mix into the v2.3.0 content-script review.
+See `RELEASE_NOTES_v3.0.0.md`.

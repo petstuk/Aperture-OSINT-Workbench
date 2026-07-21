@@ -1,0 +1,436 @@
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('fonts/ibm-plex-sans-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
+}
+
+:root {
+  --bg: #0b0e14;
+  --bg-browser: #08090c;
+  --top-bar: #0d1017;
+  --sidebar: #0c0f15;
+  --surface: #0f131a;
+  --surface-2: #12161f;
+  --surface-3: #171c26;
+  --inset: #0b0e14;
+  --border: #1e242f;
+  --border-2: #232a36;
+  --border-3: #2f3745;
+  --divider: #1a2029;
+  --divider-faint: #14191f;
+  --text-hi: #e6e9ef;
+  --text: #d4d8e0;
+  --text-2: #c3cad6;
+  --text-muted: #8b93a3;
+  --text-dim: #5a6273;
+  --text-faint: #4b5364;
+  --accent: #61afef;
+  --accent-hover: #4f96d6;
+  --accent-ink: #07101a;
+  --benign: #98c379;
+  --suspicious: #d9a15b;
+  --malicious: #e06c75;
+  --review: #c678dd;
+  --ip: #56b6c2;
+  --domain: #61afef;
+  --hash: #c678dd;
+  --email: #d9a15b;
+  --cve: #e06c75;
+  --btc: #98c379;
+  --asn: #8b93a3;
+  --radius-sm: 5px;
+  --radius: 6px;
+  --radius-panel: 8px;
+  --radius-float: 10px;
+  --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --shadow-palette: 0 30px 80px rgba(0, 0, 0, 0.7);
+  --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body.aperture {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: #8cc6f5;
+}
+
+::selection {
+  background: rgba(97, 175, 239, 0.28);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-2);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-3);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.ap-mono {
+  font-family: var(--font-mono);
+}
+
+.ap-logo {
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ap-logo-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px var(--accent);
+}
+
+.ap-wordmark {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.ap-wordmark-title {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--text-hi);
+}
+
+.ap-wordmark-sub {
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.ap-pill {
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: inline-block;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.ap-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: var(--radius);
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: 0.15s;
+  border: 1px solid transparent;
+}
+
+.ap-btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: none;
+  font-weight: 700;
+}
+.ap-btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.ap-btn-secondary {
+  background: var(--surface-2);
+  border-color: var(--border-2);
+  color: var(--text-2);
+}
+.ap-btn-secondary:hover {
+  border-color: var(--border-3);
+  background: var(--surface-3);
+}
+
+.ap-btn-sm {
+  height: 30px;
+  padding: 0 11px;
+  font-size: 11px;
+}
+
+.ap-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.ap-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ap-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-float);
+  z-index: 2000;
+  font-size: 12.5px;
+  color: var(--text);
+  animation: fadeUp 0.16s ease;
+}
+.ap-toast.show {
+  display: flex;
+}
+.ap-toast-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--benign);
+  box-shadow: 0 0 8px var(--benign);
+}
+
+/* Command palette */
+.ap-palette-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 10, 0.72);
+  backdrop-filter: blur(3px);
+  display: none;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 12vh;
+  z-index: 1000;
+  animation: fadeIn 0.12s ease;
+}
+.ap-palette-scrim.open {
+  display: flex;
+}
+.ap-palette {
+  width: 600px;
+  max-width: 92vw;
+  background: var(--top-bar);
+  border: 1px solid var(--border-3);
+  border-radius: 12px;
+  box-shadow: var(--shadow-palette);
+  overflow: hidden;
+  animation: fadeUp 0.16s ease;
+}
+.ap-palette-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--divider);
+}
+.ap-palette-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-hi);
+  font-size: 15px;
+}
+.ap-palette-body {
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 8px;
+}
+.ap-palette-group-label {
+  padding: 8px 10px 4px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.ap-palette-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 10px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: 0.1s;
+  text-align: left;
+  color: inherit;
+}
+.ap-palette-item:hover,
+.ap-palette-item.active {
+  background: var(--surface-3);
+}
+.ap-palette-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border-2);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--accent);
+}
+.ap-palette-label {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+}
+.ap-palette-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+.ap-palette-empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.ap-palette-foot {
+  display: flex;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--divider);
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+.ap-keycap {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.ap-empty {
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+}
+.ap-empty-glyph {
+  font-size: 28px;
+  margin-bottom: 10px;
+  opacity: 0.7;
+}

@@ -1,779 +1,264 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SOC OSINT Search</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aperture</title>
+  <link rel="stylesheet" href="aperture.css">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    body.aperture {
       width: 380px;
       max-height: 600px;
-      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-      color: #e4e7eb;
-      padding: 0;
-      overflow-y: auto;
       overflow-x: hidden;
+      overflow-y: auto;
+      background: var(--bg-browser);
     }
-    
-    .container {
-      padding: 20px;
-      min-height: 100%;
+    .popup-card {
+      margin: 10px;
+      background: var(--top-bar);
+      border: 1px solid var(--border-3);
+      border-radius: var(--radius-float);
+      box-shadow: var(--shadow-float);
+      overflow: hidden;
+      animation: fadeUp 0.16s ease;
     }
-    
-    h1 {
-      font-size: 16px;
-      font-weight: 600;
-      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 16px;
+    .popup-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .popup-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .popup-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .detect-field {
       display: flex;
       align-items: center;
       gap: 8px;
+      height: 36px;
+      padding: 0 12px;
+      background: var(--inset);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
     }
-    
-    h1 img {
-      width: 24px;
-      height: 24px;
-      filter: drop-shadow(0 2px 4px rgba(96, 165, 250, 0.3));
+    .detect-field input {
+      flex: 1;
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-hi);
+      font-size: 12.5px;
+      font-family: var(--font-mono);
     }
-    
-    h3 {
-      font-size: 13px;
-      color: #94a3b8;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      font-weight: 600;
+    .detect-field input::placeholder {
+      color: var(--text-faint);
+      font-family: var(--font-ui);
     }
-    
-    /* History Section */
-    #history-section {
-      margin-bottom: 20px;
-      padding: 16px;
-      background: rgba(96, 165, 250, 0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(96, 165, 250, 0.15);
+    .detected {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 12px;
+      display: none;
     }
-    
-    #history-container {
-      max-height: 180px;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-    
-    .history-item {
+    .detected.show { display: block; }
+    .detected-top {
       display: flex;
+      align-items: flex-start;
       justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
+      gap: 8px;
       margin-bottom: 8px;
-      background: rgba(16, 20, 38, 0.6);
-      border-radius: 8px;
-      border: 1px solid rgba(96, 165, 250, 0.1);
-      transition: all 0.2s ease;
     }
-    
-    .history-item:hover {
-      background: rgba(96, 165, 250, 0.1);
-      border-color: rgba(96, 165, 250, 0.3);
-      transform: translateX(2px);
+    .detected-value {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-2);
+      word-break: break-all;
     }
-    
-    .history-ioc {
-      font-family: 'JetBrains Mono', monospace;
+    .detected-enrich {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      margin-bottom: 10px;
+    }
+    .quick-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .quick-tool {
+      height: 28px;
+      padding: 0 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 11px;
       font-weight: 600;
-      color: #60a5fa;
-      font-size: 12px;
-      max-width: 140px;
+      font-family: var(--font-mono);
+      transition: 0.12s;
+    }
+    .quick-tool:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .section-label {
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .row-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: none;
+      border: none;
+      border-radius: var(--radius);
+      color: var(--text-2);
+      font-size: 12.5px;
+      text-align: left;
+      transition: 0.12s;
+    }
+    .row-btn:hover { background: var(--surface-2); }
+    .row-meta {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-dim);
+    }
+    .recent-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--divider-faint);
+    }
+    .recent-row:last-child { border-bottom: none; }
+    .recent-value {
+      flex: 1;
+      min-width: 0;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text-2);
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    
-    .history-meta {
-      font-size: 10px;
-      color: #64748b;
-      margin-top: 2px;
-    }
-    
-    .history-type {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 9px;
-      text-transform: uppercase;
-      font-weight: 600;
-      letter-spacing: 0.3px;
-    }
-    
-    .history-rerun {
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-      color: white;
-      border: none;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-    
-    .history-rerun:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-    
-    #view-archive {
-      width: 100%;
-      margin-top: 12px;
-      padding: 8px 16px;
-      background: rgba(96, 165, 250, 0.1);
-      border: 1px solid rgba(96, 165, 250, 0.3);
-      color: #60a5fa;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    #view-archive:hover {
-      background: rgba(96, 165, 250, 0.2);
-      border-color: rgba(96, 165, 250, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    /* Active Services Section */
-    #overlay-section {
-      margin-bottom: 20px;
-      padding: 16px;
-      background: rgba(34, 197, 94, 0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(34, 197, 94, 0.15);
-    }
-
-    .overlay-toggle-row {
+    .popup-foot {
+      padding: 10px 14px 14px;
+      border-top: 1px solid var(--divider);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .overlay-toggle-label {
-      flex: 1;
-    }
-
-    .overlay-toggle-label strong {
-      display: block;
-      font-size: 13px;
-      color: #e4e7eb;
-      margin-bottom: 4px;
-    }
-
-    .overlay-toggle-label span {
-      font-size: 11px;
-      color: #64748b;
-      line-height: 1.4;
-    }
-
-    .overlay-toggle-row .switch {
-      position: relative;
-      display: inline-block;
-      width: 34px !important;
-      height: 18px !important;
-      flex-shrink: 0;
-    }
-
-    .overlay-toggle-row .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .overlay-toggle-row .switch .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      width: 34px !important;
-      height: 18px !important;
-      background: rgba(71, 85, 105, 0.5);
-      transition: .3s;
-      border-radius: 18px;
-      border: 1px solid rgba(96, 165, 250, 0.2);
-    }
-
-    .overlay-toggle-row .switch .slider:before {
-      position: absolute;
-      content: "";
-      height: 14px;
-      width: 14px;
-      left: 2px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #94a3b8;
-      transition: .3s;
-      border-radius: 50%;
-    }
-
-    .overlay-toggle-row .switch input:checked + .slider {
-      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-      border-color: transparent;
-    }
-
-    .overlay-toggle-row .switch input:checked + .slider:before {
-      transform: translateY(-50%) translateX(16px);
-      background: white;
-    }
-
-    #enabled-services-section {
-      padding: 16px;
-      background: rgba(96, 165, 250, 0.05);
-      border-radius: 12px;
-      border: 1px solid rgba(96, 165, 250, 0.15);
-    }
-    
-    #enabled-services-container {
-      margin-bottom: 12px;
-    }
-    
-    .enabled-service-badge {
-      display: inline-block;
-      padding: 6px 12px;
-      margin: 4px;
-      background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(167, 139, 250, 0.2) 100%);
-      border: 1px solid rgba(96, 165, 250, 0.3);
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 500;
-      color: #e4e7eb;
-      transition: all 0.2s ease;
-    }
-    
-    .enabled-service-badge:hover {
-      background: linear-gradient(135deg, rgba(96, 165, 250, 0.3) 0%, rgba(167, 139, 250, 0.3) 100%);
-      border-color: rgba(96, 165, 250, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    #manage-services-btn {
-      width: 100%;
-      padding: 10px 16px;
-      background: rgba(96, 165, 250, 0.1);
-      border: 1px solid rgba(96, 165, 250, 0.3);
-      color: #60a5fa;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    #manage-services-btn:hover {
-      background: rgba(96, 165, 250, 0.2);
-      border-color: rgba(96, 165, 250, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    /* Services Management Modal */
-    #all-services-container {
-      max-height: 300px;
-      overflow-y: auto;
-      padding: 0 20px;
-    }
-    
-    .service-toggle {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      padding: 10px 16px;
-      margin-bottom: 6px;
-      background: rgba(16, 20, 38, 0.6);
-      border-radius: 8px;
-      border: 1px solid rgba(96, 165, 250, 0.1);
-      transition: all 0.2s ease;
-      cursor: pointer;
-      gap: 20px;
-    }
-    
-    .service-toggle:hover {
-      background: rgba(96, 165, 250, 0.08);
-      border-color: rgba(96, 165, 250, 0.2);
-    }
-    
-    .service-toggle label {
-      font-size: 13px;
-      color: #e4e7eb;
-      font-weight: 500;
-      cursor: pointer;
-      margin: 0;
-      padding: 0;
-    }
-    
-    /* Toggle Switch */
-    .service-toggle .switch {
-      position: relative;
-      display: inline-block;
-      width: 34px !important;
-      height: 18px !important;
-      flex-shrink: 0;
-    }
-    
-    .service-toggle .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
-    .service-toggle .switch .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      width: 34px !important;
-      height: 18px !important;
-      background: rgba(71, 85, 105, 0.5);
-      transition: .3s;
-      border-radius: 18px;
-      border: 1px solid rgba(96, 165, 250, 0.2);
-    }
-    
-    .service-toggle .switch .slider:before {
-      position: absolute;
-      content: "";
-      height: 14px;
-      width: 14px;
-      left: 2px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: #94a3b8;
-      transition: .3s;
-      border-radius: 50%;
-    }
-    
-    .service-toggle .switch input:checked + .slider {
-      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-      border-color: transparent;
-    }
-    
-    .service-toggle .switch input:checked + .slider:before {
-      transform: translateY(-50%) translateX(16px);
-      background: white;
-    }
-    
-    
-    /* Custom Combinations Section */
-    #combinations-section {
-      margin-top: 20px;
-      padding: 16px;
-      background: rgba(167, 139, 250, 0.08);
-      border-radius: 12px;
-      border: 1px solid rgba(167, 139, 250, 0.2);
-    }
-    
-    #combinations-list {
-      margin-bottom: 12px;
-    }
-    
-    .combination-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 12px;
-      margin-bottom: 8px;
-      background: rgba(16, 20, 38, 0.6);
-      border-radius: 8px;
-      border: 1px solid rgba(167, 139, 250, 0.2);
-    }
-    
-    .combination-item:hover {
-      background: rgba(167, 139, 250, 0.1);
-      border-color: rgba(167, 139, 250, 0.3);
-    }
-    
-    .combination-name {
-      font-size: 13px;
-      color: #e4e7eb;
-      font-weight: 600;
-    }
-    
-    .combination-tools {
-      font-size: 10px;
-      color: #94a3b8;
-      margin-top: 2px;
-    }
-    
-    .combination-delete {
-      background: rgba(239, 68, 68, 0.2);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .combination-delete:hover {
-      background: rgba(239, 68, 68, 0.3);
-      transform: translateY(-1px);
-    }
-    
-    #add-combination-btn {
-      width: 100%;
-      padding: 10px 16px;
-      background: rgba(167, 139, 250, 0.15);
-      border: 1px solid rgba(167, 139, 250, 0.3);
-      color: #c4b5fd;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    #add-combination-btn:hover {
-      background: rgba(167, 139, 250, 0.25);
-      border-color: rgba(167, 139, 250, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    /* Modal */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(4px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    .modal-content {
-      background: linear-gradient(135deg, #1a1f3a 0%, #0a0e27 100%);
-      padding: 24px;
-      border-radius: 12px;
-      width: 340px;
-      max-height: 500px;
-      overflow-y: auto;
-      border: 1px solid rgba(167, 139, 250, 0.3);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-    }
-    
-    .form-group {
-      margin-bottom: 16px;
-    }
-    
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      color: #94a3b8;
-      margin-bottom: 8px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .form-group input {
-      width: 100%;
-      padding: 10px 12px;
-      background: rgba(16, 20, 38, 0.8);
-      border: 1px solid rgba(167, 139, 250, 0.3);
-      border-radius: 8px;
-      color: #e4e7eb;
-      font-size: 13px;
-      font-family: 'Inter', sans-serif;
-      transition: all 0.2s ease;
-    }
-    
-    .form-group input:focus {
-      outline: none;
-      border-color: rgba(167, 139, 250, 0.6);
-      box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.1);
-    }
-    
-    #combo-tools-container {
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    
-    .combo-tool-item {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      margin-bottom: 4px;
-      background: rgba(16, 20, 38, 0.6);
-      border-radius: 6px;
-      border: 1px solid rgba(167, 139, 250, 0.15);
-      transition: all 0.2s ease;
-    }
-    
-    .combo-tool-item:hover {
-      background: rgba(167, 139, 250, 0.08);
-      border-color: rgba(167, 139, 250, 0.3);
-    }
-    
-    .combo-tool-item input[type="checkbox"] {
-      margin-right: 10px;
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #a78bfa;
-    }
-    
-    .combo-tool-item label {
-      font-size: 12px;
-      color: #e4e7eb;
-      cursor: pointer;
-      margin: 0;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-    
-    .modal-buttons {
-      display: flex;
+      flex-direction: column;
       gap: 8px;
-      margin-top: 20px;
     }
-    
-    .btn-primary,
-    .btn-secondary,
-    .btn-danger,
-    #reset-services {
-      flex: 1;
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
+    .settings-panel {
+      display: none;
+      padding: 0 14px 14px;
     }
-    
-    .btn-primary,
-    #save-services {
-      background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
-      color: white;
+    .settings-panel.open { display: block; }
+    .svc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 12px;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--divider-faint);
+    }
+    .toggle {
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--border-2);
       border: none;
+      position: relative;
+      transition: 0.15s;
     }
-    
-    .btn-primary:hover,
-    #save-services:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(167, 139, 250, 0.4);
+    .toggle.on { background: var(--accent); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      top: 3px;
+      left: 3px;
+      transition: 0.15s;
     }
-    
-    .btn-secondary,
-    #cancel-services {
-      background: rgba(71, 85, 105, 0.3);
-      color: #94a3b8;
-      border: 1px solid rgba(71, 85, 105, 0.5);
-    }
-    
-    .btn-secondary:hover,
-    #cancel-services:hover {
-      background: rgba(71, 85, 105, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    .btn-danger {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      border: none;
-    }
-    
-    .btn-danger:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
-    }
-    
-    #reset-services {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-    }
-    
-    #reset-services:hover {
-      background: rgba(239, 68, 68, 0.2);
-      border-color: rgba(239, 68, 68, 0.5);
-      transform: translateY(-1px);
-    }
-    
-    .confirm-modal {
-      width: 300px;
-      text-align: center;
-    }
-    
-    .confirm-modal h3 {
-      font-size: 16px;
-      color: #e4e7eb;
-      margin-bottom: 8px;
-    }
-    
-    /* Note Section */
-    .note {
-      margin-top: 16px;
-      padding: 12px;
-      background: rgba(167, 139, 250, 0.08);
-      border-left: 3px solid #a78bfa;
-      border-radius: 6px;
-      font-size: 11px;
-      color: #94a3b8;
-      line-height: 1.5;
-    }
-    
-    .note strong {
-      color: #e4e7eb;
-      display: block;
-      margin-bottom: 4px;
-    }
-    
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: rgba(16, 20, 38, 0.4);
-      border-radius: 3px;
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: rgba(96, 165, 250, 0.3);
-      border-radius: 3px;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: rgba(96, 165, 250, 0.5);
-    }
+    .toggle.on::after { left: 19px; }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h1>
-      <img src="icon512.png" alt="OSINT">
-      SOC OSINT Search
-    </h1>
-    
-    <div id="history-section">
-      <h3>Recent Analysis</h3>
-      <div id="history-container">
-        <!-- Recent history will be populated here -->
-      </div>
-      <button id="view-archive">View Full Archive</button>
-    </div>
-    
-    <div id="overlay-section">
-      <h3>Page Highlights</h3>
-      <div class="overlay-toggle-row">
-        <div class="overlay-toggle-label">
-          <strong>IoC Hover Overlays</strong>
-          <span>Highlight indicators on web pages and search via hover tooltip</span>
+<body class="aperture">
+  <div class="popup-card">
+    <div class="popup-head">
+      <div class="popup-brand">
+        <div class="ap-logo"><div class="ap-logo-dot"></div></div>
+        <div class="ap-wordmark">
+          <span class="ap-wordmark-title">APERTURE</span>
+          <span class="ap-wordmark-sub">osint workbench</span>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="overlay-enabled">
-          <span class="slider"></span>
-        </label>
+      </div>
+      <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-palette" title="Command palette">⌘K</button>
+    </div>
+
+    <div class="popup-body">
+      <div class="detect-field">
+        <span style="color:var(--text-dim)">⌕</span>
+        <input id="detect-input" placeholder="Paste or select an indicator…" spellcheck="false" />
+      </div>
+
+      <div class="detected" id="detected-block">
+        <div class="detected-top">
+          <div class="detected-value" id="detected-value"></div>
+          <span class="ap-pill" id="detected-type"></span>
+        </div>
+        <div class="detected-enrich" id="detected-enrich"></div>
+        <div class="quick-tools" id="quick-tools"></div>
+      </div>
+
+      <div>
+        <div class="section-label">Run a playbook</div>
+        <div id="playbook-list"></div>
+      </div>
+
+      <div>
+        <div class="section-label">Recent</div>
+        <div id="recent-list"></div>
       </div>
     </div>
 
-    <div id="enabled-services-section">
-      <h3>Active Tools</h3>
-      <div id="enabled-services-container">
-        <!-- Enabled services will be shown here -->
+    <div class="settings-panel" id="settings-panel">
+      <div class="section-label">Page highlights</div>
+      <div class="svc-row">
+        <span>On-page IoC detect</span>
+        <button type="button" class="toggle" id="overlay-toggle" aria-label="Toggle overlays"></button>
       </div>
-      <button id="manage-services-btn">⚙️ Manage Services</button>
+      <div class="section-label" style="margin-top:12px">Services</div>
+      <div id="services-list"></div>
     </div>
-    
-    <div id="combinations-section">
-      <h3>Custom Combinations</h3>
-      <div id="combinations-list">
-        <!-- Custom combinations will be populated here -->
-      </div>
-      <button id="add-combination-btn">+ New Combination</button>
-    </div>
-    
-    <div id="combination-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <h3>Create Custom Combination</h3>
-        <div class="form-group">
-          <label>Combination Name</label>
-          <input type="text" id="combo-name" placeholder="e.g., IP Investigator">
-        </div>
-        <div class="form-group">
-          <label>Select Tools (check at least 2)</label>
-          <div id="combo-tools-container">
-            <!-- Tool checkboxes will be populated here -->
-          </div>
-        </div>
-        <div class="modal-buttons">
-          <button id="save-combination" class="btn-primary">Save</button>
-          <button id="cancel-combination" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
-    
-    <div id="confirm-modal" class="modal" style="display: none;">
-      <div class="modal-content confirm-modal">
-        <h3>Delete this combination?</h3>
-        <p style="color: #94a3b8; font-size: 13px; margin: 12px 0 20px 0;">This action cannot be undone.</p>
-        <div class="modal-buttons">
-          <button id="confirm-delete" class="btn-danger">Delete</button>
-          <button id="cancel-delete" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
-    
-    <div id="manage-services-modal" class="modal" style="display: none;">
-      <div class="modal-content">
-        <h3>Manage OSINT Services</h3>
-        <p style="color: #94a3b8; font-size: 12px; margin-bottom: 16px;">Enable or disable services to customize your workflow</p>
-        <div id="all-services-container">
-          <!-- All services will be populated here -->
-        </div>
-        <div class="modal-buttons">
-          <button id="save-services" class="btn-primary">Save Changes</button>
-          <button id="reset-services" class="btn-secondary">Reset to Defaults</button>
-          <button id="cancel-services" class="btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
-    
-    <div class="note">
-      <strong>Usage:</strong> Select text on any webpage, right-click, and choose "SOC OSINT Search" to analyze with your enabled tools.
+
+    <div class="popup-foot">
+      <button type="button" class="ap-btn ap-btn-primary" id="btn-workbench" style="width:100%">Open full workbench ↗</button>
+      <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-settings" style="width:100%">Settings</button>
     </div>
   </div>
 
+  <script src="ioc-utils.js"></script>
+  <script src="palette.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

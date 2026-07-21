@@ -10,9 +10,11 @@
   let overlayEnabled = false;
   let highlightCount = 0;
   let observer = null;
-  let tooltipEl = null;
-  let hideTooltipTimer = null;
+  let pivotEl = null;
+  let toastEl = null;
+  let hidePivotTimer = null;
   let activeIocSpan = null;
+  let overlayLoadGen = 0;
 
   function sendMessage(message) {
     return new Promise((resolve, reject) => {
@@ -33,13 +35,53 @@
     });
   }
 
+  function hexA(h, a) {
+    const n = parseInt(h.slice(1), 16);
+    return (
+      'rgba(' +
+      ((n >> 16) & 255) +
+      ',' +
+      ((n >> 8) & 255) +
+      ',' +
+      (n & 255) +
+      ',' +
+      a +
+      ')'
+    );
+  }
+
+  function pill(color) {
+    return (
+      'color:' +
+      color +
+      ';background:' +
+      hexA(color, 0.12) +
+      ';border-color:' +
+      hexA(color, 0.28)
+    );
+  }
+
+  function showToast(msg) {
+    if (!toastEl) {
+      toastEl = document.createElement('div');
+      toastEl.className = 'ap-pivot-toast';
+      document.documentElement.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastEl._t);
+    toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  }
+
   function shouldSkipNode(node) {
     let el = node.parentElement;
     while (el) {
       if (SKIP_TAGS.has(el.tagName)) return true;
       if (el.isContentEditable) return true;
       if (el.classList && el.classList.contains('soc-ioc')) return true;
-      if (el.classList && el.classList.contains('soc-ioc-tooltip')) return true;
+      if (el.classList && (el.classList.contains('ap-pivot') || el.classList.contains('ap-pivot-toast'))) {
+        return true;
+      }
       el = el.parentElement;
     }
     return false;
@@ -79,6 +121,7 @@
       span.dataset.ioc = match.value;
       span.dataset.type = match.type;
       span.textContent = match.value;
+      span.addEventListener('click', onIocClick);
       span.addEventListener('mouseenter', onIocMouseEnter);
       span.addEventListener('mouseleave', onIocMouseLeave);
       fragment.appendChild(span);
@@ -129,7 +172,11 @@
       const roots = [];
       for (const mutation of mutations) {
         mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE && !node.classList?.contains('soc-ioc-tooltip')) {
+          if (
+            node.nodeType === Node.ELEMENT_NODE &&
+            !node.classList?.contains('ap-pivot') &&
+            !node.classList?.contains('ap-pivot-toast')
+          ) {
             roots.push(node);
           } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
             roots.push(node.parentElement);
@@ -155,81 +202,74 @@
     }
   }
 
-  function ensureTooltip() {
-    if (!tooltipEl) {
-      tooltipEl = document.createElement('div');
-      tooltipEl.className = 'soc-ioc-tooltip';
-      tooltipEl.style.display = 'none';
-      tooltipEl.addEventListener('mouseenter', () => clearTimeout(hideTooltipTimer));
-      tooltipEl.addEventListener('mouseleave', scheduleHideTooltip);
-      document.documentElement.appendChild(tooltipEl);
+  function ensurePivot() {
+    if (!pivotEl) {
+      pivotEl = document.createElement('div');
+      pivotEl.className = 'ap-pivot';
+      pivotEl.addEventListener('mouseenter', () => clearTimeout(hidePivotTimer));
+      pivotEl.addEventListener('mouseleave', scheduleHidePivot);
+      document.documentElement.appendChild(pivotEl);
     }
-    return tooltipEl;
+    return pivotEl;
   }
 
-  function scheduleHideTooltip() {
-    clearTimeout(hideTooltipTimer);
-    hideTooltipTimer = setTimeout(hideTooltip, 200);
+  function scheduleHidePivot() {
+    clearTimeout(hidePivotTimer);
+    hidePivotTimer = setTimeout(hidePivot, 280);
   }
 
-  function hideTooltip() {
-    clearTimeout(hideTooltipTimer);
-    if (tooltipEl) {
-      tooltipEl.style.display = 'none';
-      tooltipEl.innerHTML = '';
+  function hidePivot() {
+    clearTimeout(hidePivotTimer);
+    if (pivotEl) {
+      pivotEl.classList.remove('open');
+      pivotEl.innerHTML = '';
     }
     activeIocSpan = null;
   }
 
-  function positionTooltip(span) {
+  function positionPivot(span) {
     const rect = span.getBoundingClientRect();
-    const tip = ensureTooltip();
-    tip.style.display = 'block';
-    tip.style.visibility = 'hidden';
+    const tip = ensurePivot();
+    tip.classList.add('open');
 
     const tipRect = tip.getBoundingClientRect();
-    let top = rect.bottom + 6;
-    let left = rect.left;
+    let top = rect.bottom + 8;
+    let left = Math.min(rect.left, window.innerWidth - tipRect.width - 12);
 
-    if (left + tipRect.width > window.innerWidth - 8) {
-      left = window.innerWidth - tipRect.width - 8;
+    if (top + tipRect.height > window.innerHeight - 12) {
+      top = Math.max(12, rect.top - tipRect.height - 8);
     }
-    if (top + tipRect.height > window.innerHeight - 8) {
-      top = rect.top - tipRect.height - 6;
-    }
-    if (left < 8) left = 8;
-    if (top < 8) top = 8;
+    if (left < 12) left = 12;
 
     tip.style.top = top + 'px';
     tip.style.left = left + 'px';
-    tip.style.visibility = 'visible';
   }
 
-  function createActionButton(label, className, onClick) {
-    const btn = document.createElement('button');
-    btn.className = 'soc-ioc-tooltip-btn' + (className ? ' ' + className : '');
-    btn.textContent = label;
-    btn.type = 'button';
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      onClick();
-    });
-    return btn;
+  function enrichFacts(type, value) {
+    const line = IOCUtils.enrich(type, value);
+    const facts = [['enrichment', line]];
+    if (type === 'ip' && value.includes('.')) {
+      facts.push(['reverse', value.split('.').reverse().join('.') + '.in-addr.arpa']);
+    }
+    if (type === 'hash') {
+      facts.push(['length', String(value.length) + ' hex']);
+    }
+    if (type === 'domain') {
+      facts.push(['tld', '.' + value.split('.').pop()]);
+    }
+    return facts;
   }
 
-  async function onIocMouseEnter(event) {
-    const span = event.currentTarget;
+  async function openPivot(span) {
     activeIocSpan = span;
-    clearTimeout(hideTooltipTimer);
+    clearTimeout(hidePivotTimer);
 
     const ioc = span.dataset.ioc;
     const type = span.dataset.type;
-
-    const tip = ensureTooltip();
-    tip.innerHTML = '<div style="color:#94a3b8;font-size:11px;">Loading…</div>';
-    tip.style.display = 'block';
-    positionTooltip(span);
+    const tip = ensurePivot();
+    tip.innerHTML = '<div style="padding:14px;color:#5a6273;font-size:11px;">Loading…</div>';
+    tip.classList.add('open');
+    positionPivot(span);
 
     try {
       const [config, archive] = await Promise.all([
@@ -239,76 +279,178 @@
 
       if (activeIocSpan !== span) return;
 
+      const typeColor = (IOCUtils.TYPE_COLORS && IOCUtils.TYPE_COLORS[type]) || '#8b93a3';
+      const playbooks = (config && (config.playbooks || config.customCombinations)) || [];
+      const play = IOCUtils.playbookForType(type, playbooks);
+      const tools = IOCUtils.toolsFor(type);
+      const enabled = (config && config.enabledServices) || {};
+      const filteredTools = tools.filter((t) => enabled[t.name] !== false);
+      const facts = enrichFacts(type, ioc);
+      const verdicts = [
+        ['benign', 'B'],
+        ['suspicious', 'S'],
+        ['malicious', 'M'],
+        ['review', 'R']
+      ];
+
       tip.innerHTML = '';
 
-      const header = document.createElement('div');
-      header.className = 'soc-ioc-tooltip-header';
+      const head = document.createElement('div');
+      head.className = 'ap-pivot-head';
+      const valWrap = document.createElement('div');
+      valWrap.style.flex = '1';
+      valWrap.style.minWidth = '0';
+      const val = document.createElement('div');
+      val.className = 'ap-pivot-value';
+      val.textContent = ioc;
+      const typePill = document.createElement('span');
+      typePill.className = 'ap-pivot-pill';
+      typePill.style.cssText = pill(typeColor);
+      typePill.textContent = IOCUtils.typeLabel(type);
+      valWrap.appendChild(val);
+      valWrap.appendChild(typePill);
+      head.appendChild(valWrap);
+      const closeBtn = document.createElement('button');
+      closeBtn.type = 'button';
+      closeBtn.className = 'ap-pivot-close';
+      closeBtn.textContent = '×';
+      closeBtn.addEventListener('click', hidePivot);
+      head.appendChild(closeBtn);
+      tip.appendChild(head);
 
-      const valueEl = document.createElement('span');
-      valueEl.className = 'soc-ioc-tooltip-value';
-      valueEl.textContent = ioc;
-      header.appendChild(valueEl);
-
-      const typeEl = document.createElement('span');
-      typeEl.className = 'soc-ioc-tooltip-type';
-      typeEl.textContent = type;
-      header.appendChild(typeEl);
-      tip.appendChild(header);
-
+      const enrichSec = document.createElement('div');
+      enrichSec.className = 'ap-pivot-section';
+      enrichSec.innerHTML =
+        '<div class="ap-pivot-label">Local enrichment · no network</div><div class="ap-pivot-facts"></div>';
+      const factsEl = enrichSec.querySelector('.ap-pivot-facts');
+      facts.forEach(([k, v]) => {
+        const row = document.createElement('div');
+        row.className = 'ap-pivot-fact';
+        row.innerHTML =
+          '<span class="ap-pivot-fact-k"></span><span class="ap-pivot-fact-v"></span>';
+        row.querySelector('.ap-pivot-fact-k').textContent = k;
+        row.querySelector('.ap-pivot-fact-v').textContent = v;
+        factsEl.appendChild(row);
+      });
       if (archive && archive.found) {
-        const archiveEl = document.createElement('span');
-        archiveEl.className = 'soc-ioc-tooltip-archive';
-        const statusLabel = archive.status || 'unknown';
-        archiveEl.textContent = 'In archive: ' + statusLabel + (archive.date ? ' · ' + archive.date : '');
-        tip.appendChild(archiveEl);
+        const row = document.createElement('div');
+        row.className = 'ap-pivot-fact';
+        row.innerHTML =
+          '<span class="ap-pivot-fact-k">archive</span><span class="ap-pivot-fact-v"></span>';
+        row.querySelector('.ap-pivot-fact-v').textContent =
+          (archive.verdict || archive.status || 'unknown') +
+          (archive.date ? ' · ' + archive.date : '');
+        factsEl.appendChild(row);
       }
+      tip.appendChild(enrichSec);
 
-      const actions = document.createElement('div');
-      actions.className = 'soc-ioc-tooltip-actions';
+      const verdSec = document.createElement('div');
+      verdSec.className = 'ap-pivot-section';
+      verdSec.innerHTML = '<div class="ap-pivot-label">Set verdict</div><div class="ap-pivot-verdicts"></div>';
+      const verdGrid = verdSec.querySelector('.ap-pivot-verdicts');
+      verdicts.forEach(([key, short]) => {
+        const color = IOCUtils.VERDICT_COLORS[key];
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ap-pivot-verdict';
+        btn.textContent = short;
+        btn.title = key;
+        btn.style.color = color;
+        btn.style.borderColor = hexA(color, 0.35);
+        btn.addEventListener('click', async () => {
+          await sendMessage({ action: 'setVerdict', ioc, verdict: key });
+          showToast('Verdict set: ' + key);
+        });
+        verdGrid.appendChild(btn);
+      });
+      tip.appendChild(verdSec);
 
-      actions.appendChild(createActionButton('Copy', 'soc-ioc-tooltip-btn-copy', () => {
-        navigator.clipboard.writeText(ioc).catch(() => {});
-      }));
-
-      const enabledServices = (config && config.enabledServices) || {};
-      Object.entries(enabledServices).forEach(([service, enabled]) => {
-        if (!enabled) return;
-        actions.appendChild(createActionButton(service, '', () => {
-          sendMessage({ action: 'searchService', ioc, service }).catch(() => {});
-        }));
+      const openSec = document.createElement('div');
+      openSec.className = 'ap-pivot-section';
+      openSec.innerHTML = '<div class="ap-pivot-label">Open in</div><div class="ap-pivot-tools"></div><div class="ap-pivot-actions"></div>';
+      const toolsEl = openSec.querySelector('.ap-pivot-tools');
+      filteredTools.forEach((t) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ap-pivot-tool';
+        btn.textContent = t.code;
+        btn.title = t.name;
+        btn.addEventListener('click', async () => {
+          const res = await sendMessage({ action: 'searchService', ioc, service: t.name });
+          if (res && res.success) showToast('Opened ' + t.name);
+          else showToast((res && res.error) || 'Failed');
+        });
+        toolsEl.appendChild(btn);
       });
 
-      tip.appendChild(actions);
-
-      const combos = (config && config.customCombinations) || [];
-      if (combos.length) {
-        const comboLabel = document.createElement('span');
-        comboLabel.className = 'soc-ioc-tooltip-label';
-        comboLabel.textContent = 'Combinations';
-        tip.appendChild(comboLabel);
-
-        const comboActions = document.createElement('div');
-        comboActions.className = 'soc-ioc-tooltip-actions';
-        combos.forEach((combo, index) => {
-          comboActions.appendChild(
-            createActionButton('⚡ ' + combo.name, 'soc-ioc-tooltip-btn-combo', () => {
-              sendMessage({ action: 'runCombinationFromOverlay', ioc, comboIndex: index }).catch(() => {});
-            })
-          );
+      const actions = openSec.querySelector('.ap-pivot-actions');
+      const playBtn = document.createElement('button');
+      playBtn.type = 'button';
+      playBtn.className = 'ap-pivot-play';
+      playBtn.textContent = '▷ ' + (play ? play.name : 'Playbook');
+      playBtn.addEventListener('click', async () => {
+        if (!play) return;
+        const res = await sendMessage({
+          action: 'runPlaybook',
+          ioc,
+          playbookId: play.id
         });
-        tip.appendChild(comboActions);
-      }
+        if (res && res.success) {
+          hidePivot();
+          showToast('Ran ' + play.name + ' — opened ' + (res.opened || 0) + ' tabs');
+        }
+      });
+      const caseBtn = document.createElement('button');
+      caseBtn.type = 'button';
+      caseBtn.className = 'ap-pivot-case';
+      caseBtn.textContent = '+ Case';
+      caseBtn.addEventListener('click', async () => {
+        const res = await sendMessage({
+          action: 'addToCase',
+          ioc,
+          create: true,
+          caseName: 'Quick case'
+        });
+        if (res && res.success) {
+          hidePivot();
+          showToast('Added ' + ioc + ' to ' + res.case.id);
+        }
+      });
+      actions.appendChild(playBtn);
+      actions.appendChild(caseBtn);
+      tip.appendChild(openSec);
 
-      positionTooltip(span);
+      positionPivot(span);
     } catch (error) {
       if (activeIocSpan !== span) return;
-      tip.innerHTML = '<div style="color:#f87171;font-size:11px;">Could not load actions</div>';
-      positionTooltip(span);
+      tip.innerHTML =
+        '<div style="padding:14px;color:#e06c75;font-size:11px;">Could not load actions</div>';
+      positionPivot(span);
     }
   }
 
+  function onIocClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    openPivot(event.currentTarget);
+  }
+
+  function onIocMouseEnter(event) {
+    // Keep hover affordance; click opens pivot (design)
+    clearTimeout(hidePivotTimer);
+  }
+
   function onIocMouseLeave() {
-    scheduleHideTooltip();
+    scheduleHidePivot();
+  }
+
+  function applyOverlayEnabled(enabled) {
+    overlayEnabled = !!enabled;
+    if (overlayEnabled) {
+      enableOverlays();
+    } else {
+      disableOverlays();
+    }
   }
 
   function enableOverlays() {
@@ -319,39 +461,39 @@
 
   function disableOverlays() {
     stopObserver();
-    hideTooltip();
+    hidePivot();
     removeHighlights();
   }
 
   function loadOverlaySetting() {
+    const gen = ++overlayLoadGen;
     const apply = (enabled) => {
-      overlayEnabled = !!enabled;
-      if (overlayEnabled) {
-        enableOverlays();
-      } else {
-        disableOverlays();
-      }
+      // Ignore stale async storage results after a newer onChanged or load
+      if (gen !== overlayLoadGen) return;
+      applyOverlayEnabled(enabled);
     };
 
     if (browserAPI.storage.sync.get.length > 1) {
       browserAPI.storage.sync.get('overlayEnabled', (data) => {
-        apply(data.overlayEnabled);
+        apply(data && data.overlayEnabled);
       });
     } else {
-      browserAPI.storage.sync.get('overlayEnabled').then((data) => {
-        apply(data.overlayEnabled);
-      }).catch(() => apply(false));
+      browserAPI.storage.sync
+        .get('overlayEnabled')
+        .then((data) => apply(data.overlayEnabled))
+        .catch(() => apply(false));
     }
   }
 
   browserAPI.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync' || !changes.overlayEnabled) return;
-    overlayEnabled = !!changes.overlayEnabled.newValue;
-    if (overlayEnabled) {
-      enableOverlays();
-    } else {
-      disableOverlays();
-    }
+    // Bump generation so in-flight get cannot overwrite this toggle
+    overlayLoadGen++;
+    applyOverlayEnabled(changes.overlayEnabled.newValue);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hidePivot();
   });
 
   if (document.readyState === 'loading') {

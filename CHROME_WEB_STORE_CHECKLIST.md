@@ -1,42 +1,36 @@
-# Chrome Web Store Prep (Phase 3A) — post AMO v2.3.0
-
-Use after Firefox v2.3.0 is accepted. Extension already loads unpacked in Chrome.
+# Chrome Web Store Prep — Aperture v3.0.0
 
 ## Account
-- [ ] Chrome Web Store developer account (~$5 one-time)
+- [ ] Chrome Web Store developer account
 - [ ] Verify publisher email
 
 ## Package
-Chrome can use the same zip as Firefox for MV2, or:
 ```bash
 ./package-for-firefox.sh
-# Upload osint-search-v2.3.0.zip (or rebuild excluding Firefox-only notes)
+# Upload aperture-osint-v3.0.0.zip
 ```
-- [ ] Confirm `manifest.json` has no Chrome-breaking Firefox-only keys issues
-  - `applications.gecko` is ignored by Chrome; OK for dual package
-- [ ] Test Load unpacked in Chrome (`chrome://extensions`)
-- [ ] Overlay toggle + right-click + archive on Chrome
+- [ ] Load unpacked in Chrome (`chrome://extensions`) — Manifest V3
+- [ ] Popup, dashboard, overlay, context menu smoke test
 
-## Store listing (adapt from AMO)
-**Name:** SOC OSINT Search  
-**Short description:** Right-click and page-highlight IoC search across popular OSINT tools.  
-**Detailed description:** Reuse AMO listing; emphasize privacy (no telemetry, opt-in overlays).
+## Store listing (SEO / discoverability)
+**Name:** Aperture — OSINT Workbench  
+**Short:** Local OSINT workbench for SOC analysts — IoC pivot, playbooks, cases. No API keys. Formerly SOC OSINT Search.  
+
+Include in detailed description (naturally): OSINT, IoC, SOC, threat intelligence, VirusTotal, browser extension, IP/domain/hash lookup.
 
 ## Screenshots to capture
-- [ ] Popup: Recent Analysis + Page Highlights toggle ON
-- [ ] Hover tooltip on a webpage with sample IoCs
-- [ ] Archive dashboard with filters
-- [ ] Manage Services modal
+- [ ] Popup launcher with detected indicator + playbooks
+- [ ] Dashboard triage overview
+- [ ] Bulk extract results
+- [ ] Playbooks grid
+- [ ] On-page pivot card on `test-history.html`
 
 ## Privacy
-- [ ] Privacy policy URL (GitHub README section is fine if hosted)
-- [ ] Single purpose: OSINT lookup for security professionals
-- [ ] Justify `<all_urls>`: context menu + optional page highlights
+- [ ] Privacy policy URL (README Privacy section is fine if hosted)
+- [ ] Single purpose: OSINT lookup / workbench for security professionals
+- [ ] Justify host permissions: context menu + optional page highlights
 
 ## Submit
-- [ ] Upload package
+- [ ] Upload package + screenshots
 - [ ] Complete questionnaire
 - [ ] Submit for review
-
-## Not in this prep
-Manifest V3 migration (Phase 3C) — defer until Chrome forces MV2 sunset for this listing.

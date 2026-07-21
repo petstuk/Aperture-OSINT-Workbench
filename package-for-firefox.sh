@@ -1,80 +1,69 @@
 #!/bin/bash
+# Package script for Aperture v3.0.0 (Firefox AMO / Chrome Web Store)
 
-# Package script for Firefox Add-ons submission
-# Version 2.3.0
+set -euo pipefail
 
-echo "🔧 SOC OSINT Search - Firefox Add-ons Packaging Script"
-echo "======================================================="
+VERSION="3.0.0"
+OUTPUT_FILE="aperture-osint-v${VERSION}.zip"
+
+echo "Aperture — OSINT Workbench packaging"
+echo "===================================="
 echo ""
 
-# Set version
-VERSION="2.3.0"
-OUTPUT_FILE="osint-search-v${VERSION}.zip"
-
-# Check if zip command exists
-if ! command -v zip &> /dev/null; then
-    echo "❌ Error: 'zip' command not found. Please install zip utility."
-    exit 1
+if ! command -v zip >/dev/null 2>&1; then
+  echo "Error: zip command not found"
+  exit 1
 fi
 
-# Remove old package if it exists
 if [ -f "$OUTPUT_FILE" ]; then
-    echo "🗑️  Removing old package: $OUTPUT_FILE"
-    rm "$OUTPUT_FILE"
+  rm "$OUTPUT_FILE"
 fi
 
-echo "📦 Creating package: $OUTPUT_FILE"
-echo ""
+echo "Creating $OUTPUT_FILE"
 
-# Create the zip file with all necessary files
 zip -r "$OUTPUT_FILE" \
   manifest.json \
   ioc-utils.js \
   background.js \
   content.js \
   content.css \
+  aperture.css \
+  palette.js \
   popup.html \
   popup.js \
+  dashboard.html \
+  dashboard.js \
   archive.html \
-  archive.js \
-  check-storage.html \
-  debug-storage.html \
+  archive-redirect.js \
+  fonts \
+  icon16.png \
+  icon32.png \
+  icon48.png \
+  icon128.png \
   icon512.png \
   README.md \
+  LICENSE \
   test-history.html \
-  test-storage.html \
-  test-unified.html \
   -x "*.git*" \
   -x "*.sh" \
   -x "*RELEASE_NOTES*" \
-  -x "*SUBMISSION_CHECKLIST*" \
+  -x "*SUBMISSION*" \
+  -x "*CHROME_WEB*" \
+  -x "*STORAGE_*" \
+  -x "*TESTING*" \
+  -x "design/*" \
   -x "node_modules/*" \
   -x ".DS_Store" \
-  -x "*.swp" \
-  -x "*.bak"
+  -x "osint-search-*.zip" \
+  -x "aperture-osint-*.zip" \
+  -x "archive.js" \
+  -x "check-storage.html" \
+  -x "debug-storage.html" \
+  -x "test-storage.html" \
+  -x "test-unified.html"
 
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "✅ Package created successfully!"
-    echo ""
-    echo "📊 Package details:"
-    ls -lh "$OUTPUT_FILE"
-    echo ""
-    echo "📋 Contents:"
-    unzip -l "$OUTPUT_FILE"
-    echo ""
-    echo "🚀 Next steps:"
-    echo "   1. Go to: https://addons.mozilla.org/developers/addon/soc-osint-extension/versions/submit/"
-    echo "   2. Upload: $OUTPUT_FILE"
-    echo "   3. Fill in release notes from: RELEASE_NOTES_v2.3.0.md"
-    echo "   4. Submit for review"
-    echo ""
-    echo "📝 Don't forget to check: SUBMISSION_CHECKLIST.md"
-else
-    echo ""
-    echo "❌ Error creating package"
-    exit 1
-fi
-
-
-
+echo ""
+echo "Package created:"
+ls -lh "$OUTPUT_FILE"
+echo ""
+echo "Next: upload to AMO / Chrome Web Store with RELEASE_NOTES_v3.0.0.md"

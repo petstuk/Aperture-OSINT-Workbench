@@ -1,5 +1,23 @@
+# Build / package artifacts
 *.zip
+*.xpi
+*.crx
+*.pem
+
+# OS / editor
 .DS_Store
+Thumbs.db
 *.swp
 *.bak
+*~
+.idea/
+.vscode/
+.cursor/
+
+# Dependencies (not used; keep ignored if added later)
 node_modules/
+
+# Local test / debug leftovers
+debug-*.log
+.env
+.env.*

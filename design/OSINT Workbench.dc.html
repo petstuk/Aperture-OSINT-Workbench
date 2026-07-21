@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e14;font-family:'IBM Plex Sans',-apple-system,sans-serif;color:#d4d8e0;-webkit-font-smoothing:antialiased}
+a{color:#61afef;text-decoration:none}
+a:hover{color:#8cc6f5}
+::selection{background:rgba(97,175,239,.28)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#232a36;border-radius:5px}
+::-webkit-scrollbar-thumb:hover{background:#2f3745}
+::-webkit-scrollbar-track{background:transparent}
+input,textarea,button{font-family:inherit}
+input::placeholder,textarea::placeholder{color:#4b5364}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes blink{50%{opacity:.35}}
+</style>
+</helmet>
+
+<div style="width:100vw;height:100vh;display:flex;flex-direction:column;overflow:hidden;background:#0b0e14">
+
+  <!-- TOP BAR -->
+  <div style="height:52px;flex-shrink:0;display:flex;align-items:center;gap:20px;padding:0 18px;border-bottom:1px solid #1a2029;background:#0d1017">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:26px;height:26px;border:1.5px solid #61afef;border-radius:6px;display:flex;align-items:center;justify-content:center;position:relative">
+        <div style="width:9px;height:9px;border-radius:50%;background:#61afef;box-shadow:0 0 10px #61afef"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;line-height:1.05">
+        <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;letter-spacing:.18em;color:#e6e9ef">APERTURE</span>
+        <span style="font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:#5a6273">osint workbench</span>
+      </div>
+    </div>
+
+    <button onClick="{{ openPalette }}" style-hover="border-color:#2f3745;background:#12161f" style="flex:1;max-width:520px;display:flex;align-items:center;gap:10px;height:32px;padding:0 12px;background:#0f131a;border:1px solid #232a36;border-radius:6px;cursor:pointer;transition:.15s;color:#5a6273;font-size:12.5px">
+      <span style="font-size:13px">⌕</span>
+      <span style="flex:1;text-align:left">Search tools, IoCs, playbooks, cases…</span>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6273;border:1px solid #232a36;border-radius:4px;padding:2px 6px">⌘K</span>
+    </button>
+
+    <div style="display:flex;background:#0f131a;border:1px solid #232a36;border-radius:7px;padding:3px">
+      <button onClick="{{ goDash }}" style="height:26px;padding:0 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s;{{ segDash }}">Dashboard</button>
+      <button onClick="{{ goPopup }}" style="height:26px;padding:0 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s;{{ segPopup }}">Popup</button>
+      <button onClick="{{ goOnpage }}" style="height:26px;padding:0 12px;border:none;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;transition:.15s;{{ segOnpage }}">On-page</button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;padding-left:4px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#8b93a3"><span style="width:7px;height:7px;border-radius:50%;background:#98c379;box-shadow:0 0 8px #98c379"></span>Local · no keys</div>
+      <div style="width:28px;height:28px;border-radius:50%;background:#171c26;border:1px solid #2f3745;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#8b93a3">AN</div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div style="flex:1;display:flex;overflow:hidden;position:relative">
+
+    <!-- SIDEBAR (dashboard only) -->
+    <sc-if value="{{ isDash }}" hint-placeholder-val="{{ true }}">
+    <div style="width:216px;flex-shrink:0;border-right:1px solid #1a2029;background:#0c0f15;padding:16px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:20px">
+      <div>
+        <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#4b5364;font-weight:600;padding:0 8px 8px">Workspace</div>
+        <sc-for list="{{ navMain }}" as="n" hint-placeholder-count="3">
+          <button onClick="{{ n.onClick }}" style-hover="color:#d4d8e0" style="width:100%;display:flex;align-items:center;gap:11px;height:34px;padding:0 8px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;border-radius:6px;transition:.12s;{{ n.style }}">
+            <span style="font-size:13px;width:16px;text-align:center;opacity:.85">{{ n.icon }}</span>{{ n.label }}
+          </button>
+        </sc-for>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:0 8px 8px">
+          <span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#4b5364;font-weight:600">Cases</span>
+          <span style="font-size:10px;color:#5a6273;font-family:'IBM Plex Mono',monospace">{{ caseCount }}</span>
+        </div>
+        <sc-for list="{{ navCases }}" as="c" hint-placeholder-count="3">
+          <button onClick="{{ c.onClick }}" style-hover="background:#12161f" style="width:100%;display:flex;align-items:center;gap:9px;padding:7px 8px;border:none;background:none;cursor:pointer;border-radius:6px;transition:.12s;text-align:left;{{ c.wrap }}">
+            <span style="width:6px;height:6px;border-radius:50%;flex-shrink:0;{{ c.dot }}"></span>
+            <span style="flex:1;min-width:0">
+              <span style="display:block;font-size:12.5px;color:#c3cad6;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.name }}</span>
+              <span style="display:block;font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6273">{{ c.meta }}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+      <div style="margin-top:auto">
+        <div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#4b5364;font-weight:600;padding:0 8px 8px">Surfaces</div>
+        <button onClick="{{ goPopup }}" style-hover="color:#d4d8e0" style="width:100%;display:flex;align-items:center;gap:11px;height:32px;padding:0 8px;border:none;background:none;cursor:pointer;font-size:13px;color:#8b93a3;border-radius:6px;transition:.12s"><span style="width:16px;text-align:center;opacity:.85">◱</span>Popup launcher</button>
+        <button onClick="{{ goOnpage }}" style-hover="color:#d4d8e0" style="width:100%;display:flex;align-items:center;gap:11px;height:32px;padding:0 8px;border:none;background:none;cursor:pointer;font-size:13px;color:#8b93a3;border-radius:6px;transition:.12s"><span style="width:16px;text-align:center;opacity:.85">❖</span>On-page detect</button>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- MAIN SCROLL AREA -->
+    <div style="flex:1;overflow-y:auto;position:relative">
+
+      <!-- OVERVIEW -->
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:28px 32px;max-width:1280px;animation:fadeIn .2s ease">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px">
+          <div>
+            <h1 style="font-size:21px;font-weight:600;letter-spacing:-.01em;color:#e6e9ef">Triage overview</h1>
+            <p style="font-size:13px;color:#8b93a3;margin-top:3px">Everything detected across your sessions — grouped, enriched locally, ready to pivot.</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ goExtract }}" style-hover="border-color:#2f3745;background:#171c26" style="height:34px;padding:0 14px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#c3cad6;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">⧉ Bulk extract</button>
+            <button onClick="{{ newCase }}" style-hover="background:#4f96d6" style="height:34px;padding:0 14px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s">+ New case</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px">
+          <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+            <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;padding:16px 18px">
+              <div style="font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5a6273;font-weight:600;margin-bottom:10px">{{ s.label }}</div>
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:28px;font-weight:600;{{ s.color }}">{{ s.value }}</span>
+                <span style="font-size:11px;color:#5a6273">{{ s.sub }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">
+          <!-- Triage inbox -->
+          <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #1a2029">
+              <span style="font-size:13px;font-weight:600;color:#e6e9ef">Detection inbox</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#5a6273">{{ triageCount }} indicators</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 92px 32px;gap:10px;padding:9px 18px;border-bottom:1px solid #1a2029;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#4b5364;font-weight:600">
+              <span>Indicator</span><span>Verdict</span><span></span>
+            </div>
+            <sc-for list="{{ triage }}" as="t" hint-placeholder-count="6">
+              <div style-hover="background:#12161f" style="display:grid;grid-template-columns:1fr 92px 32px;gap:10px;align-items:center;padding:11px 18px;border-bottom:1px solid #14191f;transition:.12s;cursor:default">
+                <div style="min-width:0;display:flex;align-items:center;gap:9px">
+                  <span style="width:7px;height:7px;border-radius:50%;flex-shrink:0;{{ t.typeDot }}"></span>
+                  <div style="min-width:0">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c3cad6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.value }}</div>
+                    <div style="font-size:10.5px;color:#5a6273;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ t.typeLabel }} · {{ t.enrich }} · {{ t.time }}</div>
+                  </div>
+                </div>
+                <span style="{{ t.verdictStyle }}">{{ t.verdict }}</span>
+                <button onClick="{{ t.pivot }}" title="Pivot" style-hover="background:#1e242f;color:#61afef" style="width:28px;height:28px;border:1px solid #232a36;background:#12161f;border-radius:5px;color:#8b93a3;cursor:pointer;font-size:12px;transition:.12s">⤢</button>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- Cases column -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden">
+              <div style="padding:14px 16px;border-bottom:1px solid #1a2029;font-size:13px;font-weight:600;color:#e6e9ef">Open cases</div>
+              <sc-for list="{{ cases }}" as="c" hint-placeholder-count="3">
+                <button onClick="{{ c.onClick }}" style-hover="background:#12161f" style="width:100%;text-align:left;display:block;padding:13px 16px;border:none;border-bottom:1px solid #14191f;background:none;cursor:pointer;transition:.12s">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+                    <span style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5a6273">{{ c.id }}</span>
+                    <span style="{{ c.verdictStyle }}">{{ c.verdict }}</span>
+                  </div>
+                  <div style="font-size:13px;color:#d4d8e0;font-weight:500">{{ c.name }}</div>
+                  <div style="font-size:11px;color:#5a6273;margin-top:4px">{{ c.iocs }} indicators · updated {{ c.updated }}</div>
+                </button>
+              </sc-for>
+            </div>
+            <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;padding:16px">
+              <div style="font-size:12px;font-weight:600;color:#c3cad6;margin-bottom:10px">Quick playbooks</div>
+              <sc-for list="{{ quickPlays }}" as="p" hint-placeholder-count="3">
+                <button onClick="{{ p.run }}" style-hover="border-color:#2f3745;background:#12161f" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:9px 11px;margin-bottom:7px;background:#0c0f15;border:1px solid #1e242f;border-radius:6px;cursor:pointer;transition:.12s">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c3cad6;font-weight:500"><span style="color:#61afef">▷</span>{{ p.name }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6273">{{ p.count }} tools</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- BULK EXTRACT -->
+      <sc-if value="{{ isExtract }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:28px 32px;max-width:1180px;animation:fadeIn .2s ease">
+        <h1 style="font-size:21px;font-weight:600;color:#e6e9ef">Bulk extract</h1>
+        <p style="font-size:13px;color:#8b93a3;margin-top:3px;margin-bottom:22px">Paste a log line, email header, or alert. Aperture refangs and classifies every indicator locally — no upload, no keys.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+          <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid #1a2029">
+              <span style="font-size:11px;font-weight:600;color:#8b93a3;letter-spacing:.04em">RAW INPUT</span>
+              <span style="font-size:10.5px;color:#5a6273;font-family:'IBM Plex Mono',monospace">refang · dedupe · classify</span>
+            </div>
+            <textarea oninput="{{ setRaw }}" style="width:100%;height:320px;padding:16px;background:#0b0e14;border:none;color:#c3cad6;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.7;resize:none;outline:none">{{ raw }}</textarea>
+            <div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #1a2029">
+              <button onClick="{{ runExtract }}" style-hover="background:#4f96d6" style="flex:1;height:36px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s">Extract indicators</button>
+              <button onClick="{{ clearExtract }}" style-hover="border-color:#2f3745" style="height:36px;padding:0 14px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#8b93a3;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">Clear</button>
+            </div>
+          </div>
+
+          <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden;min-height:200px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 14px;border-bottom:1px solid #1a2029">
+              <span style="font-size:11px;font-weight:600;color:#8b93a3;letter-spacing:.04em">EXTRACTED</span>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#61afef">{{ extractCountLabel }}</span>
+            </div>
+            <sc-if value="{{ hasExtract }}" hint-placeholder-val="{{ true }}">
+              <div style="max-height:300px;overflow-y:auto">
+                <sc-for list="{{ extractRows }}" as="r" hint-placeholder-count="5">
+                  <div style-hover="background:#12161f" style="display:flex;align-items:center;gap:11px;padding:10px 14px;border-bottom:1px solid #14191f;transition:.12s">
+                    <input type="checkbox" checked="{{ r.checked }}" onChange="{{ r.toggle }}" style="width:15px;height:15px;accent-color:#61afef;cursor:pointer;flex-shrink:0">
+                    <div style="flex:1;min-width:0">
+                      <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c3cad6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.value }}</div>
+                      <div style="font-size:10.5px;color:#5a6273;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.enrich }}</div>
+                    </div>
+                    <span style="{{ r.typeStyle }}">{{ r.typeLabel }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:8px;padding:12px 14px;border-top:1px solid #1a2029;align-items:center">
+                <button onClick="{{ selectAll }}" style-hover="color:#c3cad6" style="background:none;border:none;color:#8b93a3;font-size:11.5px;font-weight:600;cursor:pointer">{{ selectAllLabel }}</button>
+                <div style="flex:1"></div>
+                <button onClick="{{ addSelToCase }}" style-hover="border-color:#2f3745" style="height:32px;padding:0 12px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#c3cad6;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s">Add {{ selCount }} to case</button>
+                <button onClick="{{ openSel }}" style-hover="background:#4f96d6" style="height:32px;padding:0 12px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:11.5px;font-weight:700;cursor:pointer;transition:.15s">Run playbook on {{ selCount }}</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ noExtract }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:56px 24px;text-align:center;color:#4b5364">
+                <div style="font-size:30px;margin-bottom:12px;opacity:.5">⧉</div>
+                <div style="font-size:13px">Paste text and hit <span style="color:#8b93a3">Extract indicators</span></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- CASE DETAIL -->
+      <sc-if value="{{ isCase }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:24px 32px;max-width:1240px;animation:fadeIn .2s ease">
+        <button onClick="{{ goOverview }}" style-hover="color:#c3cad6" style="background:none;border:none;color:#8b93a3;font-size:12px;cursor:pointer;margin-bottom:14px">← Back to overview</button>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px">
+          <div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#5a6273">{{ cur.id }}</span>
+              <span style="{{ cur.verdictStyle }}">{{ cur.verdict }}</span>
+            </div>
+            <h1 style="font-size:22px;font-weight:600;color:#e6e9ef">{{ cur.name }}</h1>
+            <p style="font-size:12.5px;color:#8b93a3;margin-top:4px">{{ cur.iocs }} indicators · opened {{ cur.opened }} · owner {{ cur.owner }}</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ runCasePlay }}" style-hover="border-color:#2f3745;background:#171c26" style="height:34px;padding:0 14px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#c3cad6;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">▷ Run playbook</button>
+            <button onClick="{{ exportReport }}" style-hover="background:#4f96d6" style="height:34px;padding:0 14px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s">Export report</button>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start">
+          <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden">
+            <div style="padding:13px 18px;border-bottom:1px solid #1a2029;font-size:13px;font-weight:600;color:#e6e9ef">Indicators</div>
+            <sc-for list="{{ caseIocs }}" as="i" hint-placeholder-count="5">
+              <div style-hover="background:#12161f" style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #14191f;transition:.12s">
+                <span style="{{ i.typeStyle }}">{{ i.typeLabel }}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c3cad6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.value }}</div>
+                  <div style="font-size:10.5px;color:#5a6273;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ i.enrich }}</div>
+                </div>
+                <span style="{{ i.verdictStyle }}">{{ i.verdict }}</span>
+                <div style="display:flex;gap:5px">
+                  <sc-for list="{{ i.tools }}" as="tl" hint-placeholder-count="3">
+                    <span title="{{ tl.name }}" style="width:24px;height:22px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;color:#8b93a3;background:#12161f;border:1px solid #232a36;border-radius:4px">{{ tl.code }}</span>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+            <div style="padding:14px 18px">
+              <div style="font-size:11px;font-weight:600;color:#8b93a3;letter-spacing:.04em;margin-bottom:8px">CASE NOTES</div>
+              <div style="background:#0b0e14;border:1px solid #1e242f;border-radius:6px;padding:12px;font-size:12.5px;color:#c3cad6;line-height:1.6">Beacon interval ≈ 60s to <span style="font-family:'IBM Plex Mono',monospace;color:#61afef">45.83.24.19</span>. Dropper matches MalwareBazaar family <span style="color:#e06c75">Latrodectus</span>. Lookalike sender domain registered 3 days prior — likely same actor. Recommend block at egress + email quarantine.</div>
+            </div>
+          </div>
+
+          <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;overflow:hidden">
+            <div style="padding:13px 18px;border-bottom:1px solid #1a2029;font-size:13px;font-weight:600;color:#e6e9ef">Timeline</div>
+            <div style="padding:8px 18px 18px">
+              <sc-for list="{{ timeline }}" as="e" hint-placeholder-count="5">
+                <div style="display:flex;gap:12px;padding-top:14px">
+                  <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+                    <span style="width:9px;height:9px;border-radius:50%;margin-top:3px;{{ e.dot }}"></span>
+                    <span style="flex:1;width:1px;background:#1e242f;margin-top:4px"></span>
+                  </div>
+                  <div style="padding-bottom:4px">
+                    <div style="font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:#5a6273">{{ e.time }}</div>
+                    <div style="font-size:12.5px;color:#c3cad6;margin-top:2px;line-height:1.5">{{ e.text }}</div>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- PLAYBOOKS -->
+      <sc-if value="{{ isPlaybooks }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:28px 32px;max-width:1180px;animation:fadeIn .2s ease">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px">
+          <div>
+            <h1 style="font-size:21px;font-weight:600;color:#e6e9ef">Playbooks</h1>
+            <p style="font-size:13px;color:#8b93a3;margin-top:3px">Ordered tool workflows that fire on the right indicator type. One click opens every step. Export a playbook as a shareable code for your team.</p>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button onClick="{{ importPlay }}" style-hover="border-color:#2f3745;background:#171c26" style="height:34px;padding:0 14px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#c3cad6;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">↓ Import code</button>
+            <button onClick="{{ newPlay }}" style-hover="background:#4f96d6" style="height:34px;padding:0 14px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:12.5px;font-weight:700;cursor:pointer;transition:.15s">+ New playbook</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+          <sc-for list="{{ playbooks }}" as="p" hint-placeholder-count="4">
+            <div style="background:#0f131a;border:1px solid #1e242f;border-radius:8px;padding:18px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:10px">
+                  <span style="color:#61afef;font-size:14px">▷</span>
+                  <span style="font-size:14px;font-weight:600;color:#e6e9ef">{{ p.name }}</span>
+                </div>
+                <span style="{{ p.trigStyle }}">on {{ p.trigger }}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+                <sc-for list="{{ p.steps }}" as="st" hint-placeholder-count="4">
+                  <span style="display:flex;align-items:center;gap:6px">
+                    <span style="display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;background:#12161f;border:1px solid #232a36;border-radius:5px;font-size:11.5px;color:#c3cad6"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:#61afef;font-weight:600">{{ st.code }}</span>{{ st.name }}</span>
+                    <span style="color:#3a4250;font-size:11px">{{ st.arrow }}</span>
+                  </span>
+                </sc-for>
+              </div>
+              <div style="font-size:11.5px;color:#8b93a3;background:#0b0e14;border-left:2px solid #2f3745;padding:8px 10px;border-radius:0 4px 4px 0;margin-bottom:14px">Prompt: {{ p.prompt }}</div>
+              <div style="display:flex;gap:8px">
+                <button onClick="{{ p.run }}" style-hover="background:#4f96d6" style="flex:1;height:32px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:12px;font-weight:700;cursor:pointer;transition:.15s">Run · opens {{ p.count }} tabs</button>
+                <button onClick="{{ p.share }}" title="Copy share code" style-hover="border-color:#2f3745" style="height:32px;padding:0 12px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#8b93a3;font-size:12px;font-weight:600;cursor:pointer;transition:.15s">⇄</button>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- POPUP SURFACE -->
+      <sc-if value="{{ isPopup }}" hint-placeholder-val="{{ false }}">
+      <div style="min-height:100%;background:#08090c;display:flex;flex-direction:column;animation:fadeIn .2s ease">
+        <div style="height:44px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 14px;background:#141821;border-bottom:1px solid #1a2029">
+          <div style="display:flex;gap:7px"><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span></div>
+          <div style="flex:1;max-width:520px;height:28px;background:#0b0e14;border:1px solid #232a36;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#5a6273;font-family:'IBM Plex Mono',monospace">app.company.io/incident/4471</div>
+          <div style="width:28px;height:28px;border:1px solid #2f3745;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#61afef;font-size:13px">◱</div>
+        </div>
+        <div style="flex:1;position:relative;display:flex;justify-content:flex-end;padding:14px 40px">
+          <!-- popup card -->
+          <div style="width:380px;background:#0d1017;border:1px solid #2f3745;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;animation:fadeUp .25s ease">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #1a2029">
+              <div style="display:flex;align-items:center;gap:9px">
+                <div style="width:22px;height:22px;border:1.5px solid #61afef;border-radius:5px;display:flex;align-items:center;justify-content:center"><span style="width:7px;height:7px;border-radius:50%;background:#61afef"></span></div>
+                <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;letter-spacing:.14em;color:#e6e9ef">APERTURE</span>
+              </div>
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#5a6273;border:1px solid #232a36;border-radius:4px;padding:2px 6px">⌘K</span>
+            </div>
+            <div style="padding:14px 16px;border-bottom:1px solid #1a2029">
+              <div style="display:flex;align-items:center;gap:8px;height:34px;padding:0 11px;background:#0b0e14;border:1px solid #232a36;border-radius:6px;color:#5a6273;font-size:12px">⌕ Paste or select an indicator…</div>
+              <div style="margin-top:10px;background:#0b0e14;border:1px solid #1e242f;border-radius:7px;padding:11px 12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#c3cad6">45.83.24.19</span>
+                  <span style="padding:2px 8px;border-radius:4px;font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#56b6c2;background:rgba(86,182,194,.12);border:1px solid rgba(86,182,194,.28)">IPv4</span>
+                </div>
+                <div style="font-size:10.5px;color:#5a6273;margin-bottom:10px">Public · reverse 19.24.83.45.in-addr.arpa · detected on page</div>
+                <div style="display:flex;gap:5px">
+                  <button onClick="{{ popupTool }}" style-hover="border-color:#61afef;color:#61afef" style="flex:1;height:28px;background:#12161f;border:1px solid #232a36;border-radius:5px;color:#8b93a3;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.12s">AbuseIPDB</button>
+                  <button onClick="{{ popupTool }}" style-hover="border-color:#61afef;color:#61afef" style="flex:1;height:28px;background:#12161f;border:1px solid #232a36;border-radius:5px;color:#8b93a3;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.12s">GreyNoise</button>
+                  <button onClick="{{ popupTool }}" style-hover="border-color:#61afef;color:#61afef" style="flex:1;height:28px;background:#12161f;border:1px solid #232a36;border-radius:5px;color:#8b93a3;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.12s">Shodan</button>
+                  <button onClick="{{ popupTool }}" style-hover="border-color:#61afef;color:#61afef" style="flex:1;height:28px;background:#12161f;border:1px solid #232a36;border-radius:5px;color:#8b93a3;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.12s">VT</button>
+                </div>
+              </div>
+            </div>
+            <div style="padding:13px 16px;border-bottom:1px solid #1a2029">
+              <div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600;margin-bottom:9px">Run a playbook</div>
+              <sc-for list="{{ popupPlays }}" as="p" hint-placeholder-count="3">
+                <button onClick="{{ p.run }}" style-hover="border-color:#2f3745;background:#12161f" style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin-bottom:6px;background:#0b0e14;border:1px solid #1e242f;border-radius:6px;cursor:pointer;transition:.12s">
+                  <span style="display:flex;align-items:center;gap:8px;font-size:12px;color:#c3cad6;font-weight:500"><span style="color:#61afef">▷</span>{{ p.name }}</span>
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6273">{{ p.count }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="padding:13px 16px">
+              <div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600;margin-bottom:9px">Recent</div>
+              <sc-for list="{{ popupRecent }}" as="r" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+                  <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:#8b93a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:210px">{{ r.value }}</span>
+                  <span style="{{ r.verdictStyle }}">{{ r.verdict }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <button onClick="{{ goOverview }}" style-hover="background:#12161f;color:#61afef" style="width:100%;padding:11px;background:#0b0e14;border:none;border-top:1px solid #1a2029;color:#8b93a3;font-size:11.5px;font-weight:600;cursor:pointer;transition:.12s;letter-spacing:.04em">Open full workbench ↗</button>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- ON-PAGE DETECTION -->
+      <sc-if value="{{ isOnpage }}" hint-placeholder-val="{{ false }}">
+      <div style="min-height:100%;background:#08090c;display:flex;flex-direction:column;animation:fadeIn .2s ease">
+        <div style="height:44px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 14px;background:#141821;border-bottom:1px solid #1a2029">
+          <div style="display:flex;gap:7px"><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span><span style="width:11px;height:11px;border-radius:50%;background:#2f3745"></span></div>
+          <div style="flex:1;max-width:560px;height:28px;background:#0b0e14;border:1px solid #232a36;border-radius:6px;display:flex;align-items:center;padding:0 12px;font-size:12px;color:#5a6273;font-family:'IBM Plex Mono',monospace">threatpost.example/advisory/latrodectus-campaign</div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#61afef"><span style="width:7px;height:7px;border-radius:50%;background:#61afef;box-shadow:0 0 8px #61afef"></span>7 detected</div>
+        </div>
+        <div style="flex:1;padding:32px;display:flex;justify-content:center;position:relative">
+          <div style="max-width:680px;background:#0f131a;border:1px solid #1e242f;border-radius:10px;padding:36px 40px">
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#5a6273;font-weight:600;margin-bottom:10px">Threat Advisory · Jul 2026</div>
+            <h2 style="font-size:22px;font-weight:600;color:#e6e9ef;line-height:1.3;margin-bottom:18px">Latrodectus loader resurfaces in invoice-themed phishing wave</h2>
+            <p style="font-size:14px;line-height:1.85;color:#a8b0be;margin-bottom:14px">Beginning this week, analysts observed a new cluster of activity delivering the Latrodectus loader. Victims received invoice lures spoofing a billing address at <span onClick="{{ tokEmail }}" style-hover="background:rgba(217,161,91,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#d9a15b;background:rgba(217,161,91,.14);border-bottom:1px dashed rgba(217,161,91,.5);border-radius:2px;padding:1px 3px;cursor:pointer">billing@microsoft-secure-login[.]com</span>.</p>
+            <p style="font-size:14px;line-height:1.85;color:#a8b0be;margin-bottom:14px">On execution, the host beacons to <span onClick="{{ tokIp }}" style-hover="background:rgba(86,182,194,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#56b6c2;background:rgba(86,182,194,.14);border-bottom:1px dashed rgba(86,182,194,.5);border-radius:2px;padding:1px 3px;cursor:pointer">45.83.24.19</span> over <span onClick="{{ tokDomain }}" style-hover="background:rgba(97,175,239,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#61afef;background:rgba(97,175,239,.14);border-bottom:1px dashed rgba(97,175,239,.5);border-radius:2px;padding:1px 3px;cursor:pointer">hxxps://cdn-update-check[.]ru</span>, retrieving a second-stage payload.</p>
+            <p style="font-size:14px;line-height:1.85;color:#a8b0be;margin-bottom:14px">The dropper (SHA-256 <span onClick="{{ tokHash }}" style-hover="background:rgba(198,120,221,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#c678dd;background:rgba(198,120,221,.14);border-bottom:1px dashed rgba(198,120,221,.5);border-radius:2px;padding:1px 3px;cursor:pointer;word-break:break-all">9f2b4c1e7a0d…c9f04e17</span>) exploits <span onClick="{{ tokCve }}" style-hover="background:rgba(224,108,117,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e06c75;background:rgba(224,108,117,.14);border-bottom:1px dashed rgba(224,108,117,.5);border-radius:2px;padding:1px 3px;cursor:pointer">CVE-2024-3400</span> for privilege escalation.</p>
+            <p style="font-size:14px;line-height:1.85;color:#a8b0be">Ransom notes direct victims to a wallet at <span onClick="{{ tokBtc }}" style-hover="background:rgba(152,195,121,.28)" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#98c379;background:rgba(152,195,121,.14);border-bottom:1px dashed rgba(152,195,121,.5);border-radius:2px;padding:1px 3px;cursor:pointer;word-break:break-all">bc1qar0srrr7xfkv…zwf5mdq</span>.</p>
+            <div style="margin-top:20px;font-size:12px;color:#5a6273;font-style:italic">Click any highlighted indicator to open the Aperture pivot card.</div>
+          </div>
+
+          <!-- pivot card -->
+          <sc-if value="{{ hasPivot }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;top:36px;right:36px;width:300px;background:#0d1017;border:1px solid #2f3745;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;animation:fadeUp .18s ease">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:14px 15px;border-bottom:1px solid #1a2029">
+              <div style="min-width:0;flex:1">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:#e6e9ef;word-break:break-all;line-height:1.4">{{ pivot.value }}</div>
+                <span style="margin-top:6px;{{ pivot.typeStyle }}">{{ pivot.typeLabel }}</span>
+              </div>
+              <button onClick="{{ closePivot }}" style-hover="color:#c3cad6" style="background:none;border:none;color:#5a6273;font-size:16px;cursor:pointer;line-height:1;margin-left:8px">×</button>
+            </div>
+            <div style="padding:12px 15px;border-bottom:1px solid #1a2029">
+              <div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600;margin-bottom:8px">Local enrichment · no network</div>
+              <sc-for list="{{ pivot.facts }}" as="f" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:11.5px">
+                  <span style="color:#5a6273">{{ f.k }}</span>
+                  <span style="color:#c3cad6;font-family:'IBM Plex Mono',monospace;text-align:right">{{ f.v }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="padding:12px 15px;border-bottom:1px solid #1a2029">
+              <div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600;margin-bottom:8px">Set verdict</div>
+              <div style="display:flex;gap:5px">
+                <sc-for list="{{ pivot.verdicts }}" as="v" hint-placeholder-count="4">
+                  <button onClick="{{ v.set }}" title="{{ v.label }}" style="flex:1;height:26px;border-radius:5px;cursor:pointer;font-size:9.5px;font-weight:700;text-transform:uppercase;transition:.12s;{{ v.style }}">{{ v.short }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:12px 15px">
+              <div style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600;margin-bottom:8px">Open in</div>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+                <sc-for list="{{ pivot.tools }}" as="tl" hint-placeholder-count="4">
+                  <button onClick="{{ tl.run }}" style-hover="border-color:#61afef;color:#61afef" style="height:26px;padding:0 9px;background:#12161f;border:1px solid #232a36;border-radius:5px;color:#8b93a3;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;cursor:pointer;transition:.12s">{{ tl.name }}</button>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button onClick="{{ pivot.runPlay }}" style-hover="background:#4f96d6" style="flex:1;height:30px;background:#61afef;border:none;border-radius:6px;color:#07101a;font-size:11px;font-weight:700;cursor:pointer;transition:.15s">▷ {{ pivot.play }}</button>
+                <button onClick="{{ pivot.addCase }}" style-hover="border-color:#2f3745" style="height:30px;padding:0 11px;background:#12161f;border:1px solid #232a36;border-radius:6px;color:#c3cad6;font-size:11px;font-weight:600;cursor:pointer;transition:.15s">+ Case</button>
+              </div>
+            </div>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- COMMAND PALETTE -->
+  <sc-if value="{{ paletteOpen }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closePalette }}" style="position:fixed;inset:0;background:rgba(5,7,10,.72);backdrop-filter:blur(3px);display:flex;justify-content:center;align-items:flex-start;padding-top:12vh;z-index:1000;animation:fadeIn .12s ease">
+    <div onClick="{{ stop }}" style="width:600px;max-width:92vw;background:#0d1017;border:1px solid #2f3745;border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,.7);overflow:hidden;animation:fadeUp .16s ease">
+      <div style="display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid #1a2029">
+        <span style="font-size:16px;color:#5a6273">⌕</span>
+        <input value="{{ q }}" oninput="{{ setQ }}" autofocus placeholder="Run a tool, playbook, or jump to a case…" style="flex:1;background:none;border:none;outline:none;color:#e6e9ef;font-size:15px">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#5a6273;border:1px solid #232a36;border-radius:4px;padding:2px 6px">esc</span>
+      </div>
+      <div style="max-height:52vh;overflow-y:auto;padding:8px">
+        <sc-for list="{{ paletteGroups }}" as="g" hint-placeholder-count="3">
+          <sc-if value="{{ g.show }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:8px 10px 4px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#4b5364;font-weight:600">{{ g.label }}</div>
+          <sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+            <button onClick="{{ it.onClick }}" style-hover="background:#171c26" style="width:100%;display:flex;align-items:center;gap:12px;padding:9px 10px;background:none;border:none;border-radius:6px;cursor:pointer;transition:.1s;text-align:left">
+              <span style="width:24px;height:24px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#12161f;border:1px solid #232a36;border-radius:5px;font-size:11px;color:#61afef">{{ it.icon }}</span>
+              <span style="flex:1;font-size:13px;color:#d4d8e0">{{ it.label }}</span>
+              <span style="font-size:11px;color:#5a6273;font-family:'IBM Plex Mono',monospace">{{ it.meta }}</span>
+            </button>
+          </sc-for>
+          </sc-if>
+        </sc-for>
+        <sc-if value="{{ paletteEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:32px;text-align:center;color:#4b5364;font-size:13px">No matches for “{{ q }}”</div>
+        </sc-if>
+      </div>
+      <div style="display:flex;gap:16px;padding:10px 18px;border-top:1px solid #1a2029;font-size:10.5px;color:#5a6273">
+        <span><span style="font-family:'IBM Plex Mono',monospace;color:#8b93a3">↑↓</span> navigate</span>
+        <span><span style="font-family:'IBM Plex Mono',monospace;color:#8b93a3">↵</span> open</span>
+        <span><span style="font-family:'IBM Plex Mono',monospace;color:#8b93a3">esc</span> dismiss</span>
+        <span style="margin-left:auto;color:#4b5364">Everything runs locally — opens tools in new tabs</span>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- TOAST -->
+  <sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+  <div style="position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:1200;display:flex;align-items:center;gap:10px;padding:11px 16px;background:#12161f;border:1px solid #2f3745;border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.5);animation:fadeUp .18s ease">
+    <span style="width:7px;height:7px;border-radius:50%;background:#98c379;box-shadow:0 0 8px #98c379"></span>
+    <span style="font-size:12.5px;color:#d4d8e0">{{ toast }}</span>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;}}">
+class Component extends DCLogic {
+  constructor(p){
+    super(p);
+    this.SAMPLE = "Subject: [ALERT] Beacon from workstation FIN-0423\n\nHost contacted 45.83.24.19 over hxxps://cdn-update-check[.]ru/win/agent.bin\nSecondary C2 observed at 193[.]149[.]190[.]12 (AS204601)\nDropper SHA256: 9f2b4c1e7a0d5f83b6c2e91da47f0c3b8e15d29a4b7c6f01e3a8d5b2c9f04e17\nPhishing sender: billing@microsoft-secure-login[.]com\nExploited: CVE-2024-3400\nRansom wallet: bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq";
+    this.state = { screen:'overview', paletteOpen:false, q:'', raw:this.SAMPLE, extracted:null, sel:{}, pivot:null, toast:'' };
+    this.typeColors = { ip:'#56b6c2', domain:'#61afef', url:'#61afef', hash:'#c678dd', email:'#d9a15b', cve:'#e06c75', btc:'#98c379', asn:'#8b93a3', unknown:'#8b93a3' };
+    this.verdictColors = { benign:'#98c379', suspicious:'#d9a15b', malicious:'#e06c75', review:'#c678dd', new:'#8b93a3', unknown:'#8b93a3' };
+  }
+  componentDidMount(){
+    this._key = (e)=>{
+      const k = (e.key||'').toLowerCase();
+      if((e.metaKey||e.ctrlKey) && k==='k'){ e.preventDefault(); this.setState(s=>({paletteOpen:!s.paletteOpen, q:''})); }
+      else if(e.key==='Escape'){ this.setState({paletteOpen:false, pivot:null}); }
+    };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount(){ window.removeEventListener('keydown', this._key); if(this._t) clearTimeout(this._t); }
+
+  hexA(h,a){ const n=parseInt(h.slice(1),16); return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`; }
+  pill(color,extra){ return `padding:3px 9px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;display:inline-block;white-space:nowrap;color:${color};background:${this.hexA(color,.12)};border:1px solid ${this.hexA(color,.28)};${extra||''}`; }
+  typeStyle(t){ return this.pill(this.typeColors[t]||'#8b93a3'); }
+  verdictStyle(v){ return this.pill(this.verdictColors[v]||'#8b93a3'); }
+  dotStyle(color){ return `background:${color};box-shadow:0 0 6px ${this.hexA(color,.7)}`; }
+
+  go(screen){ this.setState({screen, paletteOpen:false, pivot:null}); }
+  toast(m){ this.setState({toast:m}); if(this._t) clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:''}),2400); }
+
+  typeLabel(t){ return {ip:'IPv4',domain:'Domain',url:'URL',hash:'Hash',email:'Email',cve:'CVE',btc:'Wallet',asn:'ASN'}[t]||'Other'; }
+  toolsFor(t){
+    const m={ ip:[['AB','AbuseIPDB'],['GN','GreyNoise'],['SH','Shodan'],['VT','VirusTotal']],
+      domain:[['VT','VirusTotal'],['US','URLScan'],['OTX','AlienVault'],['CE','Censys']],
+      url:[['US','URLScan'],['VT','VirusTotal'],['SP','Spur']],
+      hash:[['VT','VirusTotal'],['MB','MalwareBazaar'],['OTX','AlienVault']],
+      email:[['VT','VirusTotal'],['OTX','AlienVault']],
+      cve:[['XF','X-Force'],['VT','VirusTotal']],
+      btc:[['VT','VirusTotal']], asn:[['SH','Shodan'],['CE','Censys']] };
+    return (m[t]||[['VT','VirusTotal']]).map(x=>({code:x[0],name:x[1]}));
+  }
+  enrich(t,v){
+    if(t==='ip'){ const p=v.split('.'); const first=+p[0]; const priv=(first===10)||(first===172&&+p[1]>=16&&+p[1]<=31)||(first===192&&+p[1]===168); return priv?'Private (RFC1918) · not routable':('Public IPv4 · rev '+p.slice().reverse().join('.')+'.in-addr.arpa'); }
+    if(t==='hash'){ return v.length===64?'SHA-256 (64 hex)':v.length===40?'SHA-1 (40 hex)':'MD5 (32 hex)'; }
+    if(t==='url'){ return 'host '+v.replace(/^https?:\/\//,'').split('/')[0]; }
+    if(t==='email'){ return 'domain '+v.split('@')[1]; }
+    if(t==='cve'){ return 'CVE · year '+v.split('-')[1]; }
+    if(t==='btc'){ return v.slice(0,3)==='bc1'?'Bitcoin bech32 address':'Bitcoin P2PKH address'; }
+    if(t==='asn'){ return 'Autonomous System number'; }
+    if(t==='domain'){ const tld=v.split('.').pop(); return v.indexOf('xn--')>=0?('punycode ⚠ · TLD .'+tld):('TLD .'+tld+' · '+(v.split('.').length-1)+' labels'); }
+    return 'unclassified token';
+  }
+
+  refang(s){ return s.replace(/\[\.\]/g,'.').replace(/\(\.\)/g,'.').replace(/\[:\]/g,':').replace(/hxxp/gi,'http').replace(/\[at\]/gi,'@').replace(/\[@\]/g,'@'); }
+  parse(){
+    const r = this.refang(this.state.raw||'');
+    const out=[]; const seen=new Set();
+    const add=(value,type)=>{ const key=type+':'+value.toLowerCase(); if(seen.has(key))return; seen.add(key); out.push({value,type}); };
+    (r.match(/\b[a-f0-9]{32,64}\b/gi)||[]).forEach(h=>{ if([32,40,64].indexOf(h.length)>=0) add(h,'hash'); });
+    const urls=r.match(/\bhttps?:\/\/[^\s"'<>)]+/gi)||[]; urls.forEach(u=>add(u.replace(/[.,)]+$/,''),'url'));
+    const emails=r.match(/\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi)||[]; emails.forEach(e=>add(e,'email'));
+    (r.match(/\bCVE-\d{4}-\d{4,7}\b/gi)||[]).forEach(c=>add(c.toUpperCase(),'cve'));
+    (r.match(/\b(?:bc1[a-z0-9]{20,50}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b/g)||[]).forEach(b=>add(b,'btc'));
+    (r.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g)||[]).forEach(ip=>add(ip,'ip'));
+    (r.match(/\bAS\d{3,6}\b/g)||[]).forEach(a=>add(a.toUpperCase(),'asn'));
+    let dstr=r; urls.concat(emails).forEach(x=>{ dstr=dstr.split(x).join(' '); });
+    (dstr.match(/\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/gi)||[]).forEach(d=>{ if(!/^\d/.test(d)) add(d,'domain'); });
+    return out.map((o,idx)=>({ id:'x'+idx, value:o.value, type:o.type, typeLabel:this.typeLabel(o.type),
+      typeStyle:this.typeStyle(o.type), enrich:this.enrich(o.type,o.value) }));
+  }
+
+  // ---- pivot data for on-page tokens ----
+  pivotData(t,v){
+    const facts = { ip:[['type','Public IPv4'],['reverse','19.24.83.45'],['ASN hint','AS204601']],
+      domain:[['TLD','.ru'],['labels','3'],['punycode','no']],
+      hash:[['algo','SHA-256'],['length','64 hex'],['entropy','high']],
+      email:[['domain','microsoft-secure-login.com'],['lookalike','microsoft.com'],['registered','3d ago']],
+      cve:[['year','2024'],['KEV','listed'],['cvss','10.0']],
+      btc:[['format','bech32'],['prefix','bc1q'],['length','42']] }[t] || [['type','indicator']];
+    const verdicts = [['benign','B','Benign'],['suspicious','S','Suspicious'],['malicious','M','Malicious'],['review','R','Review']]
+      .map(x=>({ key:x[0], short:x[1], label:x[2], style:this.pill(this.verdictColors[x[0]],'border:1px solid '+this.hexA(this.verdictColors[x[0]],.35)), set:()=>this.toast('Verdict set: '+x[2]+' — synced to archive') }));
+    const play = { ip:'IP Triage', domain:'Domain Recon', url:'Phish URL', hash:'Hash Verdict', email:'Domain Recon', cve:'CVE Lookup', btc:'Wallet Trace' }[t] || 'IP Triage';
+    return { value:v, type:t, typeLabel:this.typeLabel(t), typeStyle:this.typeStyle(t),
+      facts:facts.map(f=>({k:f[0],v:f[1]})), verdicts,
+      tools:this.toolsFor(t).map(tl=>({ name:tl.name, run:()=>this.toast('Opened '+tl.name+' for '+v) })),
+      play, runPlay:()=>{ this.setState({pivot:null}); this.toast('Ran '+play+' — opened '+this.toolsFor(t).length+' tabs'); },
+      addCase:()=>{ this.setState({pivot:null}); this.toast('Added '+v+' to CASE-2041'); } };
+  }
+
+  renderVals(){
+    const S=this.state;
+    const dashSet=['overview','extract','case','playbooks'];
+    const isDash=dashSet.indexOf(S.screen)>=0;
+    const seg=(on)=> on?'background:#1e242f;color:#e6e9ef':'background:transparent;color:#8b93a3';
+
+    // nav
+    const navStyle=(a)=> a?'background:#171c26;color:#e6e9ef':'background:transparent;color:#8b93a3';
+    const navMain=[['overview','Overview','▤'],['extract','Bulk extract','⧉'],['playbooks','Playbooks','▷']]
+      .map(n=>({ id:n[0], label:n[1], icon:n[2], style:navStyle(S.screen===n[0]), onClick:()=>this.go(n[0]) }));
+
+    const caseDefs=[ ['CASE-2041','FIN-0423 beacon','malicious',7,'2m ago'],
+      ['CASE-2039','Invoice phish wave','suspicious',12,'3h ago'],
+      ['CASE-2036','Recon scans /24','review',4,'1d ago'] ];
+    const navCases=caseDefs.map(c=>({ id:c[0], name:c[1], meta:c[0]+' · '+c[3],
+      dot:this.dotStyle(this.verdictColors[c[2]]),
+      wrap: S.screen==='case'&&this.state.caseId===c[0] ? 'background:#12161f' : '',
+      onClick:()=>this.setState({screen:'case', caseId:c[0], paletteOpen:false}) }));
+    const cases=caseDefs.map(c=>({ id:c[0], name:c[1], verdict:c[2], verdictStyle:this.verdictStyle(c[2]),
+      iocs:c[3], updated:c[4], onClick:()=>this.setState({screen:'case', caseId:c[0]}) }));
+
+    const stats=[ {label:'Open cases',value:'3',sub:'active',color:'color:#e6e9ef'},
+      {label:'Indicators today',value:'28',sub:'+9 vs avg',color:'color:#61afef'},
+      {label:'Malicious',value:'6',sub:'confirmed',color:'color:#e06c75'},
+      {label:'Under review',value:'4',sub:'awaiting',color:'color:#c678dd'} ];
+
+    const triDefs=[ ['45.83.24.19','ip','malicious','2m'], ['cdn-update-check.ru','domain','suspicious','5m'],
+      ['9f2b4c1e7a0d5f83b6c2e91da47f0c3b8e15d29a4b7c6f01e3a8d5b2c9f04e17','hash','malicious','12m'],
+      ['billing@microsoft-secure-login.com','email','suspicious','20m'],
+      ['193.149.190.12','ip','review','32m'], ['CVE-2024-3400','cve','malicious','1h'] ];
+    const triage=triDefs.map((t,i)=>({ value:t[0], typeLabel:this.typeLabel(t[1]), typeStyle:this.typeStyle(t[1]),
+      typeDot:this.dotStyle(this.typeColors[t[1]]||'#8b93a3'),
+      verdict:t[2], verdictStyle:this.verdictStyle(t[2]), enrich:this.enrich(t[1],t[0]), time:t[3],
+      pivot:()=>{ this.setState({screen:'onpage', pivot:this.pivotData(t[1],t[0])}); } }));
+
+    const quickPlays=[ {name:'IP Triage',count:4}, {name:'Domain Recon',count:4}, {name:'Hash Verdict',count:3} ]
+      .map(p=>({ name:p.name, count:p.count, run:()=>this.toast('Ran '+p.name+' — opened '+p.count+' tabs') }));
+
+    // extract
+    const rows=S.extracted||[];
+    const extractRows=rows.map(r=>({ ...r, checked:!!S.sel[r.id], toggle:()=>this.setState(s=>({sel:{...s.sel,[r.id]:!s.sel[r.id]}})) }));
+    const selCount=rows.filter(r=>S.sel[r.id]).length;
+    const allSel=rows.length>0 && selCount===rows.length;
+
+    // case detail
+    const curDef=caseDefs.find(c=>c[0]===S.caseId)||caseDefs[0];
+    const cur={ id:curDef[0], name:curDef[1], verdict:curDef[2], verdictStyle:this.verdictStyle(curDef[2]),
+      iocs:curDef[3], opened:'today 09:41', owner:'a.novak' };
+    const caseIocDefs=[ ['45.83.24.19','ip','malicious'], ['cdn-update-check.ru','domain','suspicious'],
+      ['9f2b4c1e7a0d…c9f04e17','hash','malicious'], ['billing@microsoft-secure-login.com','email','suspicious'],
+      ['CVE-2024-3400','cve','malicious'], ['193.149.190.12','ip','review'], ['bc1qar0srrr7xfkv…zwf5mdq','btc','review'] ];
+    const caseIocs=caseIocDefs.map(c=>({ value:c[0], typeLabel:this.typeLabel(c[1]), typeStyle:this.typeStyle(c[1]),
+      verdict:c[2], verdictStyle:this.verdictStyle(c[2]), enrich:this.enrich(c[1],c[0]),
+      tools:this.toolsFor(c[1]).slice(0,3) }));
+    const timeline=[ ['09:41','malicious','Indicator 45.83.24.19 added — GreyNoise classifies as malicious scanner'],
+      ['09:42','new','Playbook “IP Triage” run — 4 tools opened'],
+      ['09:44','review','Note added: beacon interval ≈ 60s'],
+      ['09:47','malicious','SHA-256 dropper added — MalwareBazaar family match (Latrodectus)'],
+      ['09:52','suspicious','Domain cdn-update-check.ru flagged: lookalike, registered 3d ago'],
+      ['10:03','review','Wallet bc1qar0…mdq linked from ransom note'] ]
+      .map(e=>({ time:e[0], text:e[2], dot:this.dotStyle(this.verdictColors[e[1]]) }));
+
+    // playbooks
+    const pbDefs=[
+      ['IP Triage','ip',[['AB','AbuseIPDB'],['GN','GreyNoise'],['SH','Shodan'],['VT','VirusTotal']],'Record ASN and GreyNoise noise verdict'],
+      ['Domain Recon','domain',[['US','URLScan'],['VT','VirusTotal'],['OTX','AlienVault'],['CE','Censys']],'Note registrar and first-seen date'],
+      ['Hash Verdict','hash',[['VT','VirusTotal'],['MB','MalwareBazaar'],['OTX','AlienVault']],'Capture malware family + first submission'],
+      ['Phish URL','url',[['US','URLScan'],['VT','VirusTotal'],['SP','Spur']],'Screenshot landing page and note redirect chain'] ];
+    const playbooks=pbDefs.map(p=>({ name:p[0], trigger:this.typeLabel(p[1]), trigStyle:this.pill(this.typeColors[p[1]]),
+      prompt:p[3], count:p[2].length,
+      steps:p[2].map((s,i)=>({ code:s[0], name:s[1], arrow: i<p[2].length-1?'→':'' })),
+      run:()=>this.toast('Ran '+p[0]+' — opened '+p[2].length+' tabs'),
+      share:()=>this.toast('Share code copied: APX-'+p[0].replace(/\s/g,'').slice(0,4).toUpperCase()+'-7F2A') }));
+
+    // popup
+    const popupPlays=[ {name:'IP Triage',count:4}, {name:'Domain Recon',count:4} ]
+      .map(p=>({ name:p.name, count:p.count, run:()=>this.toast('Ran '+p.name+' — opened '+p.count+' tabs') }));
+    const popupRecent=[ ['45.83.24.19','malicious'], ['cdn-update-check.ru','suspicious'], ['CVE-2024-3400','malicious'] ]
+      .map(r=>({ value:r[0], verdict:r[1], verdictStyle:this.verdictStyle(r[1]) }));
+
+    // palette
+    const q=(S.q||'').toLowerCase();
+    const svc=[['VT','VirusTotal'],['AB','AbuseIPDB'],['US','URLScan'],['SH','Shodan'],['CE','Censys'],['OTX','AlienVault OTX'],['TC','ThreatCrowd'],['XF','IBM X-Force'],['MB','MalwareBazaar'],['GN','GreyNoise'],['SP','Spur']];
+    const gTools=svc.map(s=>({ icon:s[0], label:'Search '+s[1], meta:'tool', kw:s[1].toLowerCase(), onClick:()=>{ this.setState({paletteOpen:false}); this.toast('Opened '+s[1]+' in new tab'); } }));
+    const gPlays=pbDefs.map(p=>({ icon:'▷', label:p[0], meta:p[2].length+' tabs', kw:p[0].toLowerCase(), onClick:()=>{ this.setState({paletteOpen:false}); this.toast('Ran '+p[0]+' — opened '+p[2].length+' tabs'); } }));
+    const gNav=[['Overview','overview'],['Bulk extract','extract'],['Playbooks','playbooks'],['Popup launcher','popup'],['On-page detection','onpage']]
+      .map(n=>({ icon:'→', label:'Go to '+n[0], meta:'nav', kw:n[0].toLowerCase(), onClick:()=>this.go(n[1]) }));
+    const gRecent=triDefs.slice(0,4).map(t=>({ icon:'◇', label:t[0].length>34?t[0].slice(0,34)+'…':t[0], meta:this.typeLabel(t[1]), kw:t[0].toLowerCase(), onClick:()=>{ this.setState({screen:'onpage', paletteOpen:false, pivot:this.pivotData(t[1],t[0])}); } }));
+    const filt=(arr)=> q?arr.filter(i=>i.label.toLowerCase().indexOf(q)>=0||i.kw.indexOf(q)>=0):arr;
+    const groupsRaw=[ ['Run OSINT tool',filt(gTools)], ['Playbooks',filt(gPlays)], ['Navigate',filt(gNav)], ['Recent indicators',filt(gRecent)] ];
+    const paletteGroups=groupsRaw.map(g=>({ label:g[0], items:g[1], show:g[1].length>0 }));
+    const paletteEmpty = paletteGroups.every(g=>!g.show);
+
+    return {
+      isDash, isOverview:S.screen==='overview', isExtract:S.screen==='extract', isCase:S.screen==='case',
+      isPlaybooks:S.screen==='playbooks', isPopup:S.screen==='popup', isOnpage:S.screen==='onpage',
+      paletteOpen:S.paletteOpen, hasToast:!!S.toast, toast:S.toast,
+      segDash:seg(isDash), segPopup:seg(S.screen==='popup'), segOnpage:seg(S.screen==='onpage'),
+      openPalette:()=>this.setState(s=>({paletteOpen:!s.paletteOpen,q:''})),
+      closePalette:()=>this.setState({paletteOpen:false}), stop:(e)=>e.stopPropagation(),
+      goDash:()=>this.go('overview'), goPopup:()=>this.go('popup'), goOnpage:()=>this.go('onpage'),
+      goOverview:()=>this.go('overview'), goExtract:()=>this.go('extract'),
+      newCase:()=>this.toast('New case created — CASE-2042'),
+      caseCount:caseDefs.length, navMain, navCases, cases, stats, triage, triageCount:triage.length, quickPlays,
+      // extract
+      raw:S.raw, setRaw:(e)=>this.setState({raw:e.target.value}),
+      runExtract:()=>{ const r=this.parse(); const sel={}; r.forEach(x=>sel[x.id]=true); this.setState({extracted:r, sel}); this.toast('Extracted '+r.length+' indicators'); },
+      clearExtract:()=>this.setState({extracted:null, sel:{}}),
+      hasExtract:!!S.extracted, noExtract:!S.extracted, extractRows,
+      extractCountLabel: S.extracted? rows.length+' found' : '—',
+      selCount, selectAllLabel: allSel?'Deselect all':'Select all',
+      selectAll:()=>{ const sel={}; if(!allSel) rows.forEach(r=>sel[r.id]=true); this.setState({sel}); },
+      addSelToCase:()=>this.toast('Added '+selCount+' indicators to CASE-2041'),
+      openSel:()=>this.toast('Ran playbook on '+selCount+' indicators — opened tabs'),
+      // case
+      cur, caseIocs, timeline,
+      runCasePlay:()=>this.toast('Ran playbook across case indicators'),
+      exportReport:()=>this.toast('Report exported — findings.md'),
+      // playbooks
+      playbooks, importPlay:()=>this.toast('Paste a share code to import a playbook'), newPlay:()=>this.toast('New playbook — pick a trigger and add tools'),
+      // popup
+      popupPlays, popupRecent, popupTool:()=>this.toast('Opened tool in new tab'),
+      // onpage
+      tokEmail:()=>this.setState({pivot:this.pivotData('email','billing@microsoft-secure-login.com')}),
+      tokIp:()=>this.setState({pivot:this.pivotData('ip','45.83.24.19')}),
+      tokDomain:()=>this.setState({pivot:this.pivotData('domain','cdn-update-check.ru')}),
+      tokHash:()=>this.setState({pivot:this.pivotData('hash','9f2b4c1e7a0d5f83b6c2e91da47f0c3b8e15d29a4b7c6f01e3a8d5b2c9f04e17')}),
+      tokCve:()=>this.setState({pivot:this.pivotData('cve','CVE-2024-3400')}),
+      tokBtc:()=>this.setState({pivot:this.pivotData('btc','bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq')}),
+      hasPivot:!!S.pivot, pivot:S.pivot||{value:'',facts:[],verdicts:[],tools:[]}, closePivot:()=>this.setState({pivot:null}),
+      // palette
+      q:S.q, setQ:(e)=>this.setState({q:e.target.value}), paletteGroups, paletteEmpty
+    };
+  }
+}
+</script>
+</body>
+</html>
