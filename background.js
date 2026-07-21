@@ -23,7 +23,8 @@ const defaultServices = {
   'IBM X-Force Exchange': true,
   MalwareBazaar: true,
   GreyNoise: true,
-  Spur: true
+  Spur: true,
+  'Have I Been Pwned': true
 };
 
 const serviceUrls = {
@@ -37,7 +38,8 @@ const serviceUrls = {
   'IBM X-Force Exchange': 'https://exchange.xforce.ibmcloud.com/search/[QUERY]',
   MalwareBazaar: 'https://bazaar.abuse.ch/browse.php?search=[QUERY]',
   GreyNoise: 'https://viz.greynoise.io/query/?gnql=[QUERY]',
-  Spur: 'https://app.spur.us/search?q=[QUERY]'
+  Spur: 'https://app.spur.us/search?q=[QUERY]',
+  'Have I Been Pwned': 'https://haveibeenpwned.com/account/[QUERY]'
 };
 
 function storageGet(area, keys) {

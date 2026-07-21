@@ -1,11 +1,11 @@
-# AMO / Store Submission Checklist — Aperture v3.0.0
+# AMO / Store Submission Checklist — Aperture v3.0.1
 
 ## Pre-submit
-- [ ] Version `3.0.0` in `manifest.json`
+- [ ] Version `3.0.1` in `manifest.json`
 - [ ] `./package-for-firefox.sh` builds clean zip
 - [ ] No remote code / no minified obfuscated bundles
 - [ ] Fonts bundled locally under `fonts/`
-- [ ] Release notes attached (`RELEASE_NOTES_v3.0.0.md`)
+- [ ] Release notes attached (`RELEASE_NOTES_v3.0.1.md`)
 
 ## Functional
 - [ ] Context menu “Aperture OSINT”

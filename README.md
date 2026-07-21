@@ -23,7 +23,7 @@ Formerly **SOC OSINT Search**.
 
 ### Chrome / Chromium
 1. `chrome://extensions` → Developer mode → Load unpacked → select this folder
-2. Package for store upload: `./package-for-firefox.sh` → `aperture-osint-v3.0.0.zip`
+2. Package for store upload: `./package-for-firefox.sh` → `aperture-osint-v3.0.1.zip`
 
 ## Privacy
 
@@ -35,7 +35,7 @@ Formerly **SOC OSINT Search**.
 
 ## Supported services
 
-VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur
+VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur, Have I Been Pwned
 
 ## Development
 
@@ -54,7 +54,7 @@ Plain HTML/CSS/JS — **no build step**, no bundler, no minifier. Reviewers can 
 | Shared UI | `aperture.css`, `palette.js`, `fonts/` |
 
 Design reference (not shipped in the zip): [`design/README.md`](design/README.md)  
-Release notes: [`RELEASE_NOTES_v3.0.0.md`](RELEASE_NOTES_v3.0.0.md)
+Release notes: [`RELEASE_NOTES_v3.0.1.md`](RELEASE_NOTES_v3.0.1.md) · [`v3.0.0`](RELEASE_NOTES_v3.0.0.md)
 
 ## Upgrade from 2.x
 

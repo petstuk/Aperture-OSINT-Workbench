@@ -37,7 +37,9 @@
     VirusTotal: 'VirusTotal',
     Censys: 'Censys',
     Spur: 'Spur',
-    MalwareBazaar: 'MalwareBazaar'
+    MalwareBazaar: 'MalwareBazaar',
+    'Have I Been Pwned': 'Have I Been Pwned',
+    HIBP: 'Have I Been Pwned'
   };
 
   function typeLabel(t) {
@@ -84,6 +86,7 @@
         ['OTX', 'AlienVault OTX']
       ],
       email: [
+        ['HIBP', 'Have I Been Pwned'],
         ['VT', 'VirusTotal'],
         ['OTX', 'AlienVault OTX']
       ],
@@ -345,6 +348,13 @@
         trigger: 'url',
         tools: ['URLScan', 'VirusTotal', 'Spur'],
         prompt: 'Record redirect chain and brand impersonation.'
+      },
+      {
+        id: 'pb-email-breach',
+        name: 'Email Breach Check',
+        trigger: 'email',
+        tools: ['Have I Been Pwned', 'VirusTotal', 'AlienVault OTX'],
+        prompt: 'Note breach names, dates, and whether the address is still active.'
       }
     ];
   }
