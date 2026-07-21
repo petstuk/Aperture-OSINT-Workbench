@@ -158,6 +158,88 @@
     }
     
     /* Active Services Section */
+    #overlay-section {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: rgba(34, 197, 94, 0.05);
+      border-radius: 12px;
+      border: 1px solid rgba(34, 197, 94, 0.15);
+    }
+
+    .overlay-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .overlay-toggle-label {
+      flex: 1;
+    }
+
+    .overlay-toggle-label strong {
+      display: block;
+      font-size: 13px;
+      color: #e4e7eb;
+      margin-bottom: 4px;
+    }
+
+    .overlay-toggle-label span {
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .overlay-toggle-row .switch {
+      position: relative;
+      display: inline-block;
+      width: 34px !important;
+      height: 18px !important;
+      flex-shrink: 0;
+    }
+
+    .overlay-toggle-row .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .overlay-toggle-row .switch .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      width: 34px !important;
+      height: 18px !important;
+      background: rgba(71, 85, 105, 0.5);
+      transition: .3s;
+      border-radius: 18px;
+      border: 1px solid rgba(96, 165, 250, 0.2);
+    }
+
+    .overlay-toggle-row .switch .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 2px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: #94a3b8;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    .overlay-toggle-row .switch input:checked + .slider {
+      background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+      border-color: transparent;
+    }
+
+    .overlay-toggle-row .switch input:checked + .slider:before {
+      transform: translateY(-50%) translateX(16px);
+      background: white;
+    }
+
     #enabled-services-section {
       padding: 16px;
       background: rgba(96, 165, 250, 0.05);
@@ -611,6 +693,20 @@
       <button id="view-archive">View Full Archive</button>
     </div>
     
+    <div id="overlay-section">
+      <h3>Page Highlights</h3>
+      <div class="overlay-toggle-row">
+        <div class="overlay-toggle-label">
+          <strong>IoC Hover Overlays</strong>
+          <span>Highlight indicators on web pages and search via hover tooltip</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="overlay-enabled">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
     <div id="enabled-services-section">
       <h3>Active Tools</h3>
       <div id="enabled-services-container">

@@ -41,7 +41,7 @@
     </div>
     
     <div class="test-section">
-        <h3>Testing Instructions</h3>
+        <h3>Testing Instructions (right-click)</h3>
         <ol>
             <li>Right-click on any IoC above</li>
             <li>Select "SOC OSINT Search" from the context menu</li>
@@ -49,6 +49,18 @@
             <li>Open the extension popup to see recent history</li>
             <li>Click "View Archive" to see the full history page</li>
             <li>Test the filtering by IoC type</li>
+        </ol>
+    </div>
+
+    <div class="test-section">
+        <h3>Testing Instructions (v2.3.0 hover overlays)</h3>
+        <ol>
+            <li>Open the extension popup and enable <strong>IoC Hover Overlays</strong></li>
+            <li>Reload this page — IoCs above should show dashed underlines</li>
+            <li>Hover an IoC — tooltip should show type, Copy, and services</li>
+            <li>Click a service — new tab opens and archive updates</li>
+            <li>Disable overlays in the popup — underlines should disappear</li>
+            <li>Confirm no highlights appear inside code/form fields on other pages</li>
         </ol>
     </div>
 </body>

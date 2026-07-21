@@ -582,6 +582,41 @@ if (typeof browser === 'undefined') {
       });
     }
   }
+
+  function loadOverlaySetting() {
+    const checkbox = document.getElementById('overlay-enabled');
+    if (!checkbox) return;
+
+    const apply = (enabled) => {
+      checkbox.checked = !!enabled;
+    };
+
+    if (browser.storage.sync.get.length > 1) {
+      browser.storage.sync.get('overlayEnabled', function(data) {
+        apply(data.overlayEnabled);
+      });
+    } else {
+      browser.storage.sync.get('overlayEnabled').then(function(data) {
+        apply(data.overlayEnabled);
+      }).catch(error => {
+        console.error("Error loading overlay setting:", error);
+      });
+    }
+  }
+
+  function saveOverlaySetting(enabled) {
+    if (browser.storage.sync.set.length > 1) {
+      browser.storage.sync.set({ 'overlayEnabled': enabled }, function() {
+        console.log('Overlay setting saved:', enabled);
+      });
+    } else {
+      browser.storage.sync.set({ 'overlayEnabled': enabled }).then(() => {
+        console.log('Overlay setting saved:', enabled);
+      }).catch(error => {
+        console.error("Error saving overlay setting:", error);
+      });
+    }
+  }
   
   document.addEventListener('DOMContentLoaded', function() {
     
@@ -619,6 +654,14 @@ if (typeof browser === 'undefined') {
     loadEnabledServices();
     loadHistory();
     loadCombinations();
+    loadOverlaySetting();
+
+    const overlayCheckbox = document.getElementById('overlay-enabled');
+    if (overlayCheckbox) {
+      overlayCheckbox.addEventListener('change', function() {
+        saveOverlaySetting(this.checked);
+      });
+    }
     
     // Manage Services modal buttons
     const manageServicesBtn = document.getElementById('manage-services-btn');

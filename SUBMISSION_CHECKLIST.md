@@ -1,207 +1,142 @@
-# Firefox Add-ons Submission Checklist - v2.2.0
+# Firefox Add-ons Submission Checklist - v2.3.0
 
 ## Pre-Submission Checklist
 
-### ✅ Code Quality
-- [x] No console errors in Firefox
-- [x] No linter errors
-- [x] All event listeners properly attached
+### Code Quality
+- [x] JS syntax checks pass (`ioc-utils.js`, `content.js`, `background.js`, `popup.js`)
+- [x] Manifest JSON valid; version 2.3.0
+- [x] IoC unit checks pass (IPv4/IPv6/domain/hash/URL + findIOCMatches)
 - [x] Browser API compatibility layer working
-- [x] Error handling in place for all storage operations
+- [x] Overlay default off; no new permissions
+- [ ] Manual Firefox pass (see TESTING_GUIDE.md)
 
-### ✅ Files to Include in ZIP
+### Files to Include in ZIP
 ```
 Required Files:
-├── manifest.json (v2.2.0)
+├── manifest.json (v2.3.0)
+├── ioc-utils.js (NEW)
 ├── background.js
+├── content.js (NEW)
+├── content.css (NEW)
 ├── popup.html
 ├── popup.js
 ├── archive.html
 ├── archive.js
-├── check-storage.html (NEW)
+├── check-storage.html
 ├── debug-storage.html
 ├── icon512.png
 ├── README.md
-└── test-*.html files (optional, for reviewer testing)
+└── test-*.html (optional, for reviewer testing)
 ```
 
-### ✅ Manifest Review
-- [x] Version updated to 2.2.0
-- [x] All permissions justified and documented
-- [x] Web accessible resources includes check-storage.html
+### Manifest Review
+- [x] Version updated to 2.3.0
+- [x] content_scripts registered (`ioc-utils.js`, `content.js`, `content.css`)
+- [x] background scripts include `ioc-utils.js`
+- [x] No new permissions vs v2.2.0
 - [x] Firefox-specific `applications.gecko.id` present
 
-### ✅ Testing Performed
+### Testing Performed
+- [x] Automated IoC / wiring checks
 - [ ] Fresh install on Firefox (clean profile)
-- [ ] Upgrade from v2.1.1 (test migration)
-- [ ] Right-click context menu works
-- [ ] Archive saves new entries
-- [ ] Storage rotation triggers when quota exceeded
-- [ ] check-storage.html loads and shows data
-- [ ] Export functions work (JSON/CSV)
-- [ ] All filters and search work
+- [ ] Upgrade from v2.2.0 (settings preserved; overlay default off)
+- [ ] Overlay off → no page highlights
+- [ ] Overlay on → highlights on test-history.html
+- [ ] Hover tooltip: type, Copy, services, combinations
+- [ ] Tooltip search opens tab + saves archive
+- [ ] Overlay off removes highlights
+- [ ] Right-click context menu still works
+- [ ] Archive filters / export still work
 
-### ✅ Documentation
-- [x] README.md updated with new features
-- [x] RELEASE_NOTES_v2.2.0.md created
+### Documentation
+- [x] README.md updated with Page Highlights
+- [x] RELEASE_NOTES_v2.3.0.md created
+- [x] TESTING_GUIDE.md updated for v2.3.0
 - [x] CHANGELOG in README.md updated
-- [x] Usage instructions for check-storage.html added
 
 ## Submission Form Details
 
 ### Basic Information
 **Add-on Name:** SOC OSINT Search  
-**Version:** 2.2.0  
+**Version:** 2.3.0  
 **Summary of Changes:**
 ```
-Critical bug fix: Implemented automatic storage rotation to prevent 
-archive from stopping when storage quota is reached. Added storage 
-diagnostics tool and improved error handling.
+Opt-in page IoC highlights: when enabled, indicators on web pages are
+underlined and a hover tooltip offers Copy plus one-click OSINT search
+(same services as the context menu). Default off. No new permissions.
+No API keys or telemetry.
 ```
 
 ### Detailed Description for Reviewers
 ```
-This update addresses a critical issue where the extension would stop 
-saving new IOC entries when Chrome's storage quota (100KB) was reached.
+This update adds optional content-script IoC highlighting.
 
-Key Changes:
-1. Removed hard-coded entry limit
-2. Implemented automatic rotation of oldest entries when quota exceeded
-3. Added comprehensive storage diagnostics tool (check-storage.html)
-4. Enhanced error handling with proper quota error detection
+Key points for review:
+1. Feature is OFF by default (storage key overlayEnabled).
+2. User enables it via "IoC Hover Overlays" in the popup.
+3. Content script only scans local DOM text (IPs, domains, hashes, URLs).
+4. It does NOT call external APIs or collect telemetry.
+5. Tooltip actions message the background script, which opens the same
+   OSINT URLs already used by the right-click context menu and writes
+   to the existing local archive (browser.storage.sync).
+6. No new permissions. Existing <all_urls> is reused for page access.
+7. Performance: skips form/code regions; max 500 highlights; debounced
+   MutationObserver.
 
-No new permissions required. All changes are internal improvements to 
-storage management. Backwards compatible with all existing data.
-
-Testing Notes:
-- Storage rotation can be observed in browser console
-- New diagnostic page accessible at: moz-extension://[ID]/check-storage.html
-- Tested with datasets approaching 100KB limit
+Testing:
+- Load temporary add-on, open moz-extension://[ID]/test-history.html
+- Enable overlay in popup, hover sample IoCs, click a service
+- Disable overlay and confirm highlights are removed
 ```
 
 ### Source Code Notes (if required)
 ```
-All source code is included in the submission. No build process required.
-No minification or obfuscation used. All JavaScript is in separate files 
-with clear function names and comments.
+All source code is included. No build process, minification, or obfuscation.
 
-Key Files Changed:
-- background.js: Lines 226-341 (storage rotation logic)
-- check-storage.html: New diagnostic tool (lines 1-421)
-- manifest.json: Version bump and web_accessible_resources update
+Key files:
+- ioc-utils.js: shared detection helpers
+- content.js / content.css: page highlights + tooltip
+- background.js: overlay message handlers
+- popup.html / popup.js: enable/disable toggle
+- manifest.json: version 2.3.0 + content_scripts
 ```
-
-## Post-Submission Testing Plan
-
-### Week 1 Monitoring
-**Daily Checks:**
-- [ ] Review Firefox AMO reviews/ratings
-- [ ] Check for any reported issues
-- [ ] Monitor personal usage - verify archive updates
-- [ ] Check console logs for any unexpected errors
-
-**What to Look For:**
-1. **Success Indicators:**
-   - Archive continues to update indefinitely
-   - Console shows "History saved successfully" messages
-   - No storage quota errors
-   - check-storage.html shows healthy storage percentage
-
-2. **Warning Signs:**
-   - Errors in console related to storage
-   - Archive stops updating again
-   - Entries disappearing unexpectedly
-   - check-storage.html shows errors
-
-### Storage Usage Tracking
-Create a simple log to track over the week:
-
-```
-Date       | Entries | Storage % | Notes
------------|---------|-----------|------------------
-Day 1      |   XX    |   XX%     | Initial state
-Day 3      |   XX    |   XX%     | After normal use
-Day 5      |   XX    |   XX%     | Check trends
-Day 7      |   XX    |   XX%     | Final assessment
-```
-
-### If Issues Arise
-1. **Export your data** using check-storage.html
-2. **Capture console logs** showing the error
-3. **Note the circumstances** (how many entries, what was happening)
-4. **Create GitHub issue** with details
-5. **Prepare hotfix** if critical
 
 ## Packaging Instructions
 
-### Create Distribution ZIP
 ```bash
-# Navigate to extension directory
 cd /home/peterstollery/Documents/cursor/osint-extension
-
-# Create a clean zip with only necessary files
-zip -r osint-search-v2.2.0.zip \
-  manifest.json \
-  background.js \
-  popup.html \
-  popup.js \
-  archive.html \
-  archive.js \
-  check-storage.html \
-  debug-storage.html \
-  icon512.png \
-  README.md \
-  test-history.html \
-  test-storage.html \
-  test-unified.html \
-  -x "*.git*" -x "node_modules/*" -x ".DS_Store"
+./package-for-firefox.sh
 ```
 
-Or use Firefox's built-in packaging:
-```bash
-web-ext build --source-dir=/home/peterstollery/Documents/cursor/osint-extension
-```
+Upload `osint-search-v2.3.0.zip` to:
+https://addons.mozilla.org/developers/addon/soc-osint-extension/versions/submit/
 
-## Rollback Plan (Just in Case)
+Use release notes from `RELEASE_NOTES_v2.3.0.md`.
 
-If critical issues are discovered:
+## Post-Submission Monitoring
 
-1. **Immediate:**
-   - Keep v2.1.1 source code backed up
-   - Have previous version ZIP ready for quick revert
+**Week 1:**
+- [ ] Watch AMO review queue / reviewer questions (content scripts often get extra scrutiny)
+- [ ] Confirm opt-in language is clear if asked
+- [ ] Smoke-test after public release: toggle on/off, right-click, archive
 
-2. **Communication:**
-   - Update AMO listing with known issues
-   - Respond to user reviews quickly
-   - Prepare hotfix or revert plan
-
-3. **Data Safety:**
-   - Users should export their data regularly
-   - check-storage.html provides this functionality
-   - Document recovery process if needed
+**Rollback:** Keep `osint-search-v2.2.0.zip` / previous AMO version available for revert if needed.
 
 ## Success Criteria
-
-After 1 week of testing, mark successful if:
-- [ ] Archive continues updating without manual intervention
-- [ ] No critical bugs reported
-- [ ] Storage usage remains stable or properly rotates
-- [ ] check-storage.html shows healthy metrics
-- [ ] Console logs show proper rotation when needed
-- [ ] No user complaints about lost data
-- [ ] Firefox AMO rating maintains or improves
+- [ ] AMO accepts v2.3.0
+- [ ] No critical reports about unwanted page modification (default off)
+- [ ] Right-click + archive remain stable
+- [ ] Overlay works when explicitly enabled
 
 ---
 
-**Ready for Submission:** YES ✅
+**Ready for Submission:** YES (after manual Firefox checklist)  
 
 **Confidence Level:** HIGH  
-**Risk Level:** LOW (conservative fix with safety limits)
+**Risk Level:** LOW–MEDIUM (content scripts increase review attention; mitigated by default-off + no new permissions)
 
 **Next Steps:**
-1. Create ZIP file
-2. Submit to Firefox Add-ons
-3. Begin 7-day testing period
-4. Monitor and document results
-
-
+1. Complete manual Firefox checklist in TESTING_GUIDE.md
+2. Create ZIP via `./package-for-firefox.sh`
+3. Submit to Firefox Add-ons
+4. Monitor review; then choose Phase 3 (Chrome Web Store vs storage.local)

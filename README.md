@@ -6,6 +6,7 @@ A modern, unified browser extension that allows security professionals to quickl
 
 ### **Core Functionality**
 - **Right-click Context Menu Integration** - Select any IoC and search across multiple OSINT tools
+- **Page IoC Highlights** - Optional hover overlays that detect and highlight indicators on any webpage
 - **Unified Extension** - Single codebase that works on both Chrome and Firefox
 - **Modern Cyber UI** - Dark-themed interface with gradient accents and smooth animations
 - **Cross-Browser Compatible** - Works seamlessly on both Chrome/Chromium and Firefox
@@ -60,8 +61,8 @@ Automatically detects and analyzes:
 3. Click "Load Temporary Add-on"
 4. Navigate to the extension directory and select `manifest.json`
 
-#### Method 2: Official Add-on Store (Coming Soon)
-Will be available on the Firefox Browser Add-ons Store
+#### Method 2: Official Add-on Store
+Available on the [Firefox Browser Add-ons Store](https://addons.mozilla.org/en-US/firefox/addon/soc-osint-extension/)
 
 ### Chrome
 
@@ -88,6 +89,13 @@ Will be available on the Firefox Browser Add-ons Store
 - **Glassmorphism design** with backdrop blur
 
 ## 💡 Usage
+
+### Page IoC Highlights
+1. **Open the extension popup**
+2. **Enable "IoC Hover Overlays"** under Page Highlights
+3. **Browse any webpage** — indicators are automatically underlined
+4. **Hover an indicator** to see type, archive status, and quick-search buttons
+5. **Click a service** to open it in a new tab (same as right-click search)
 
 ### Basic Search
 1. **Select text** on any webpage (IP address, domain, hash, URL)
@@ -204,7 +212,12 @@ cd OSINTExtension
 
 ## 📝 Changelog
 
-### Latest Version (v2.2 - Smart Storage Management)
+### Latest Version (v2.3 - Page IoC Highlights)
+- ✅ **IoC Hover Overlays** - Auto-detect and highlight indicators on web pages
+- ✅ **Hover Tooltip** - Quick search, copy, and archive status without right-clicking
+- ✅ **Toggle Control** - Enable/disable page highlights from the popup
+
+### Previous Version (v2.2 - Smart Storage Management)
 - ✅ **Automatic Storage Rotation** - Intelligently removes oldest entries when quota limit is reached
 - ✅ **Smart Quota Detection** - Detects and handles Chrome storage quota errors gracefully
 - ✅ **Storage Diagnostics Tool** - New check-storage.html page for monitoring storage health

@@ -198,29 +198,32 @@ function createMenuItems(customCombinations) {
   console.log("Context menus created successfully");
 }
 
-// IoC type detection
 function detectIOCType(text) {
-  // IP Address (IPv4)
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  if (ipv4Regex.test(text)) return 'ip';
-  
-  // IP Address (IPv6)
-  const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
-  if (ipv6Regex.test(text)) return 'ip';
-  
-  // Hash (MD5, SHA1, SHA256)
-  const hashRegex = /^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$/;
-  if (hashRegex.test(text)) return 'hash';
-  
-  // URL
-  const urlRegex = /^https?:\/\/.+/;
-  if (urlRegex.test(text)) return 'url';
-  
-  // Domain
-  const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9]?\.([a-zA-Z]{2,}\.?)+$/;
-  if (domainRegex.test(text)) return 'domain';
-  
-  return 'unknown';
+  return IOCUtils.detectIOCType(text);
+}
+
+function getStorageData(keys) {
+  return new Promise((resolve, reject) => {
+    if (browserAPI.storage.sync.get.length > 1) {
+      browserAPI.storage.sync.get(keys, (data) => {
+        if (browserAPI.runtime.lastError) {
+          reject(new Error(browserAPI.runtime.lastError.message));
+          return;
+        }
+        resolve(data);
+      });
+    } else {
+      browserAPI.storage.sync.get(keys).then(resolve).catch(reject);
+    }
+  });
+}
+
+function searchService(ioc, serviceName) {
+  if (!serviceUrls[serviceName]) return;
+  const url = serviceUrls[serviceName].replace('[QUERY]', encodeURIComponent(ioc));
+  browserAPI.tabs.create({ url });
+  const iocType = detectIOCType(ioc);
+  addToHistory(ioc, serviceName, iocType, [serviceName]);
 }
 
 // Add IoC to history with automatic rotation when storage limit is reached
@@ -402,10 +405,75 @@ function runCombination(combination, selectedText) {
   addToHistory(selectedText, combination.name, iocType, combination.tools);
 }
 
-// Listen for messages from popup (e.g., to update combinations)
+// Listen for messages from popup and content script
 browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'updateCombinations') {
     console.log("Received request to update combinations");
     createContextMenus();
+    return;
+  }
+
+  if (message.action === 'getOverlayConfig') {
+    getStorageData(['overlayEnabled', 'enabledServices', 'customCombinations'])
+      .then((data) => {
+        sendResponse({
+          overlayEnabled: !!data.overlayEnabled,
+          enabledServices: data.enabledServices || enabledServices,
+          customCombinations: data.customCombinations || []
+        });
+      })
+      .catch((error) => {
+        console.error('Error loading overlay config:', error);
+        sendResponse({ overlayEnabled: false, enabledServices: {}, customCombinations: [] });
+      });
+    return true;
+  }
+
+  if (message.action === 'getArchiveEntry') {
+    getStorageData('iocHistory')
+      .then((data) => {
+        const history = data.iocHistory || [];
+        const entry = history.find((item) => item.ioc === message.ioc);
+        if (entry) {
+          sendResponse({
+            found: true,
+            status: entry.status || 'unknown',
+            date: entry.date,
+            tool: entry.tool
+          });
+        } else {
+          sendResponse({ found: false });
+        }
+      })
+      .catch((error) => {
+        console.error('Error loading archive entry:', error);
+        sendResponse({ found: false });
+      });
+    return true;
+  }
+
+  if (message.action === 'searchService') {
+    searchService(message.ioc, message.service);
+    sendResponse({ success: true });
+    return;
+  }
+
+  if (message.action === 'runCombinationFromOverlay') {
+    getStorageData('customCombinations')
+      .then((data) => {
+        const combinations = data.customCombinations || [];
+        const combo = combinations[message.comboIndex];
+        if (combo) {
+          runCombination(combo, message.ioc);
+          sendResponse({ success: true });
+        } else {
+          sendResponse({ success: false, error: 'Combination not found' });
+        }
+      })
+      .catch((error) => {
+        console.error('Error running combination from overlay:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true;
   }
 });

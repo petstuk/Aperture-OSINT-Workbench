@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Package script for Firefox Add-ons submission
-# Version 2.2.0
+# Version 2.3.0
 
 echo "🔧 SOC OSINT Search - Firefox Add-ons Packaging Script"
 echo "======================================================="
 echo ""
 
 # Set version
-VERSION="2.2.0"
+VERSION="2.3.0"
 OUTPUT_FILE="osint-search-v${VERSION}.zip"
 
 # Check if zip command exists
@@ -29,7 +29,10 @@ echo ""
 # Create the zip file with all necessary files
 zip -r "$OUTPUT_FILE" \
   manifest.json \
+  ioc-utils.js \
   background.js \
+  content.js \
+  content.css \
   popup.html \
   popup.js \
   archive.html \
@@ -61,9 +64,9 @@ if [ $? -eq 0 ]; then
     unzip -l "$OUTPUT_FILE"
     echo ""
     echo "🚀 Next steps:"
-    echo "   1. Go to: https://addons.mozilla.org/developers/addon/soc-osint-search/versions/submit/"
+    echo "   1. Go to: https://addons.mozilla.org/developers/addon/soc-osint-extension/versions/submit/"
     echo "   2. Upload: $OUTPUT_FILE"
-    echo "   3. Fill in release notes from: RELEASE_NOTES_v2.2.0.md"
+    echo "   3. Fill in release notes from: RELEASE_NOTES_v2.3.0.md"
     echo "   4. Submit for review"
     echo ""
     echo "📝 Don't forget to check: SUBMISSION_CHECKLIST.md"
@@ -72,5 +75,6 @@ else
     echo "❌ Error creating package"
     exit 1
 fi
+
 
 

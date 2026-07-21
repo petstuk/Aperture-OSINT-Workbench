@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "SOC OSINT Search",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Right-click search for IPs, domains, hashes and other indicators on popular OSINT services",
   
   "permissions": [
@@ -23,9 +23,18 @@
   },
   
   "background": {
-    "scripts": ["background.js"],
+    "scripts": ["ioc-utils.js", "background.js"],
     "persistent": false
   },
+
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["ioc-utils.js", "content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
   
   "icons": {
     "16": "icon512.png",

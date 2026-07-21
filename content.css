@@ -1,0 +1,135 @@
+.soc-ioc {
+  border-bottom: 1px dashed rgba(96, 165, 250, 0.7);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+
+.soc-ioc:hover {
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.soc-ioc-ip {
+  border-bottom-color: rgba(220, 53, 69, 0.8);
+}
+
+.soc-ioc-hash {
+  border-bottom-color: rgba(111, 66, 193, 0.8);
+}
+
+.soc-ioc-domain {
+  border-bottom-color: rgba(0, 123, 255, 0.8);
+}
+
+.soc-ioc-url {
+  border-bottom-color: rgba(40, 167, 69, 0.8);
+}
+
+.soc-ioc-tooltip {
+  all: initial;
+  position: fixed;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #e4e7eb;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  padding: 10px 12px;
+  max-width: 320px;
+  pointer-events: auto;
+}
+
+.soc-ioc-tooltip * {
+  all: unset;
+  display: revert;
+  box-sizing: border-box;
+}
+
+.soc-ioc-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.soc-ioc-tooltip-value {
+  display: block;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px;
+  word-break: break-all;
+  color: #f1f5f9;
+  max-width: 220px;
+}
+
+.soc-ioc-tooltip-type {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(96, 165, 250, 0.2);
+  color: #93c5fd;
+  flex-shrink: 0;
+}
+
+.soc-ioc-tooltip-archive {
+  display: block;
+  font-size: 11px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.soc-ioc-tooltip-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.soc-ioc-tooltip-btn {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(96, 165, 250, 0.15);
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #bfdbfe;
+  transition: background 0.15s ease;
+}
+
+.soc-ioc-tooltip-btn:hover {
+  background: rgba(96, 165, 250, 0.3);
+}
+
+.soc-ioc-tooltip-btn-combo {
+  background: rgba(167, 139, 250, 0.15);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #ddd6fe;
+}
+
+.soc-ioc-tooltip-btn-combo:hover {
+  background: rgba(167, 139, 250, 0.3);
+}
+
+.soc-ioc-tooltip-btn-copy {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.soc-ioc-tooltip-label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #64748b;
+  margin: 6px 0 4px;
+}
