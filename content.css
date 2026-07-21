@@ -106,6 +106,12 @@
   border-bottom: 1px solid #1a2029;
   align-items: flex-start;
 }
+.ap-pivot-head-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  align-items: flex-start;
+}
 .ap-pivot-value {
   flex: 1;
   min-width: 0;
@@ -116,20 +122,34 @@
   word-break: break-all;
   line-height: 1.35;
 }
-.ap-pivot-close {
-  width: 24px;
+.ap-pivot-close,
+.ap-pivot-copy {
   height: 24px;
   border: 1px solid #232a36;
   background: #12161f;
   border-radius: 5px;
   color: #8b93a3;
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   flex-shrink: 0;
+  padding: 0 8px;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', -apple-system, sans-serif;
 }
-.ap-pivot-close:hover {
+.ap-pivot-close {
+  width: 24px;
+  padding: 0;
+  font-size: 14px;
+}
+.ap-pivot-close:hover,
+.ap-pivot-copy:hover {
   color: #e6e9ef;
   border-color: #2f3745;
+}
+.ap-pivot-copy:hover {
+  color: #61afef;
+  border-color: #61afef;
 }
 .ap-pivot-section {
   padding: 10px 14px;

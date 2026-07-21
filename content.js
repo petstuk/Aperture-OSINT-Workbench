@@ -314,12 +314,34 @@
       valWrap.appendChild(val);
       valWrap.appendChild(typePill);
       head.appendChild(valWrap);
+
+      const headActions = document.createElement('div');
+      headActions.className = 'ap-pivot-head-actions';
+
+      const copyBtn = document.createElement('button');
+      copyBtn.type = 'button';
+      copyBtn.className = 'ap-pivot-copy';
+      copyBtn.textContent = 'Copy';
+      copyBtn.title = 'Copy indicator';
+      copyBtn.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(ioc);
+          showToast('Copied ' + ioc);
+        } catch (_) {
+          showToast('Copy failed');
+        }
+      });
+      headActions.appendChild(copyBtn);
+
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'ap-pivot-close';
       closeBtn.textContent = '×';
+      closeBtn.title = 'Close';
       closeBtn.addEventListener('click', hidePivot);
-      head.appendChild(closeBtn);
+      headActions.appendChild(closeBtn);
+
+      head.appendChild(headActions);
       tip.appendChild(head);
 
       const enrichSec = document.createElement('div');
