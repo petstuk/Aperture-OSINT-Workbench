@@ -285,12 +285,17 @@ function detectIOCType(text) {
   return IOCUtils.detectIOCType(text);
 }
 
+function normalizeIoc(text) {
+  return IOCUtils.refang(String(text || '')).trim();
+}
+
 function searchService(ioc, serviceName) {
-  if (!serviceUrls[serviceName]) return false;
-  const url = serviceUrls[serviceName].replace('[QUERY]', encodeURIComponent(ioc));
+  const normalized = normalizeIoc(ioc);
+  if (!normalized || !serviceUrls[serviceName]) return false;
+  const url = serviceUrls[serviceName].replace('[QUERY]', encodeURIComponent(normalized));
   browserAPI.tabs.create({ url });
-  const iocType = detectIOCType(ioc);
-  addToHistory(ioc, serviceName, iocType, [serviceName]);
+  const iocType = detectIOCType(normalized);
+  addToHistory(normalized, serviceName, iocType, [serviceName]);
   return true;
 }
 
@@ -344,17 +349,19 @@ async function addToHistory(ioc, tool, iocType, actualTools = null, extras = {})
 
 function runPlaybook(playbook, selectedText) {
   if (!playbook || !playbook.tools) return 0;
+  const normalized = normalizeIoc(selectedText);
+  if (!normalized) return 0;
   let opened = 0;
   playbook.tools.forEach((toolName) => {
     const name = IOCUtils.resolveServiceName(toolName);
     if (serviceUrls[name]) {
-      const url = serviceUrls[name].replace('[QUERY]', encodeURIComponent(selectedText));
+      const url = serviceUrls[name].replace('[QUERY]', encodeURIComponent(normalized));
       browserAPI.tabs.create({ url });
       opened++;
     }
   });
-  const iocType = detectIOCType(selectedText);
-  addToHistory(selectedText, playbook.name, iocType, playbook.tools);
+  const iocType = detectIOCType(normalized);
+  addToHistory(normalized, playbook.name, iocType, playbook.tools);
   return opened;
 }
 
@@ -451,7 +458,7 @@ browserAPI.storage.onChanged.addListener((changes, namespace) => {
 });
 
 browserAPI.contextMenus.onClicked.addListener(async (info) => {
-  const selectedText = (info.selectionText || '').trim();
+  const selectedText = normalizeIoc(info.selectionText);
   if (!selectedText) return;
 
   if (info.menuItemId.startsWith('playbook-')) {
@@ -555,7 +562,10 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (ok) {
           respond({ success: true });
         } else {
-          respond({ success: false, error: 'Unknown service' });
+          respond({
+            success: false,
+            error: normalizeIoc(message.ioc) ? 'Unknown service' : 'Empty indicator'
+          });
         }
         break;
       }

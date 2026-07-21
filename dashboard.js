@@ -470,7 +470,8 @@
           '<div class="pb-prompt"></div>' +
           '<div style="display:flex;gap:8px">' +
           '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm pb-run" style="flex:1"></button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-share">⇄</button>' +
+          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-share" title="Copy share code">⇄</button>' +
+          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-delete" title="Delete playbook">✕</button>' +
           '</div>';
         card.querySelector('.pb-name').textContent = pb.name;
         const trig = card.querySelector('.pb-trig');
@@ -518,6 +519,15 @@
             await navigator.clipboard.writeText(res.code).catch(() => {});
             showToast('Copied share code');
           }
+        });
+        card.querySelector('.pb-delete').addEventListener('click', async () => {
+          if (!confirm('Delete playbook “' + pb.name + '”? It will also leave the right-click menu.')) {
+            return;
+          }
+          const next = state.playbooks.filter((p) => p.id !== pb.id);
+          await sendMessage({ action: 'savePlaybooks', playbooks: next });
+          showToast('Deleted ' + pb.name);
+          load();
         });
         grid.appendChild(card);
       });
