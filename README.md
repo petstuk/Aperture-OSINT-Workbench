@@ -1,76 +1,157 @@
-# Aperture — OSINT Workbench (browser extension)
+# Aperture — OSINT Workbench
 
-Local-first **OSINT browser extension** for SOC analysts. Pivot on IPs, domains, hashes, URLs, emails, CVEs, and more across VirusTotal, AbuseIPDB, Shodan, URLScan, and other public tools — **no API keys, no accounts, no telemetry**.
+**Local-first browser extension** for SOC, DFIR, and CTI analysts.
 
-Formerly **SOC OSINT Search**. Version **4.0.0**.
+Aperture detects indicators of compromise in the browser, orchestrates pivots to public OSINT sites, and keeps cases, history, and playbooks on-device. Core use requires **no API keys, no accounts, and no telemetry**.
+
+| | |
+|---|---|
+| **Version** | 4.0.0 (Manifest V3) |
+| **Browsers** | Firefox 140+ · Chrome / Chromium |
+| **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
+| **License** | [MIT](LICENSE) |
+| **Formerly** | SOC OSINT Search |
+
+---
+
+## Why Aperture
+
+Most OSINT “extensions” are thin wrappers around cloud APIs. Aperture is built as an **investigation companion**:
+
+- Parse and classify IoCs **locally**
+- Open public tool UIs only when **you** choose
+- Capture work into **cases** and **playbooks** without sending data to a vendor
+- Stay readable for store review and forks — **no build step**, no bundler, plain HTML/CSS/JS
+
+Optional **Labs** features (local LLM, API enrichment, experimental tools) are **off by default**.
+
+---
 
 ## Features
 
-- **Popup launcher** — paste an indicator, run quick tools or playbooks, open the full workbench
-- **Dashboard workbench** — triage overview, bulk extract, cases, playbooks, relationship graph, offline packs, Labs
-- **Playbooks** — ordered multi-tool workflows with delay/concurrency options; import/export share codes
-- **Cases** — group indicators, verdicts, notes, tags, timeline, session capture, JSON/MD/CSV export
-- **On-page detect** (opt-in) — highlight IoCs; click for pivot card (notes, tags, packs, related)
-- **Side panel page** — compact investigation surface (tab fallback; uses Chrome sidePanel API when present)
-- **Right-click search** — context menu on selected text
-- **⌘K / Ctrl-K** command palette (also Ctrl+Shift+K / Ctrl+Shift+O commands)
-- **Chrome + Firefox** via Manifest V3
+- **Popup launcher** — paste an indicator, classify locally, run tools or playbooks
+- **Dashboard workbench** — triage inbox, bulk extract, cases, playbooks, relationship graph, offline packs, Labs
+- **Playbooks** — ordered multi-tool workflows; share codes (`APX|…`); delay / concurrency / skip-private-IP options
+- **Cases** — indicators, verdicts, tags, notes, timeline, session capture, JSON / Markdown / CSV export
+- **On-page detect** (opt-in) — highlight IoCs; pivot card with notes, tags, clipboard packs, related IoCs
+- **Side panel page** — compact investigation surface (tab everywhere; Chrome `sidePanel` API when available)
+- **Context menu** — right-click selection → playbooks and services
+- **Command palette** — ⌘/Ctrl+K on extension pages; Ctrl+Shift+K / Ctrl+Shift+O browser commands
 
-## Install
+### Indicator types
 
-### Firefox (140+)
-1. `about:debugging` → This Firefox → Load Temporary Add-on → select `manifest.json`
-2. Or install from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/soc-osint-extension/) when the v4 listing is live
+IPv4/IPv6, domains, URLs, emails, MD5/SHA-1/SHA-256, CVEs, BTC, ASNs, plus ETH, ATT&CK technique IDs, JA3/JARM-style labels, file paths, onion addresses, Telegram/Discord links, and additional Labs/wave-2 types.
+
+### Public OSINT pivots
+
+VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur, Have I Been Pwned, crt.sh, RDAP, Wayback Machine, URLhaus, ThreatFox, NVD, BGP HE, MITRE ATT&CK.
+
+---
+
+## Install (end users)
+
+### Firefox
+
+Install from [Firefox Browser Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/), or load temporarily:
+
+1. `about:debugging` → This Firefox → **Load Temporary Add-on**
+2. Select [`manifest.json`](manifest.json)
 
 ### Chrome / Chromium
-1. `chrome://extensions` → Developer mode → Load unpacked → select this folder
-2. Package for store upload: `./package-for-firefox.sh` → `aperture-osint-v4.0.0.zip`
+
+1. `chrome://extensions` → enable **Developer mode**
+2. **Load unpacked** → select this repository folder
+
+---
 
 ## Privacy
 
-- Parsing and enrichment run **entirely on-device**
-- The only network activity is **tabs you open** to public OSINT sites (unless you enable Labs API/LLM flags)
+- Parsing and enrichment run **on-device**
+- Network use is limited to **tabs you open** to public OSINT sites (unless you enable opt-in Labs adapters / local LLM)
 - On-page highlights are **off by default**
-- Host access (`<all_urls>`) is used for context-menu selection and optional page highlights
-- Firefox data collection declaration: **none** (`data_collection_permissions`)
+- Firefox `data_collection_permissions`: **none**
+- Host access (`<all_urls>`) supports context-menu selection and optional page highlights
 
-## Supported services
+---
 
-VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur, Have I Been Pwned, crt.sh, RDAP, Wayback Machine, URLhaus, ThreatFox, NVD, BGP HE, MITRE ATT&CK
+## Develop / fork
 
-## Development
+This project is intentionally **zero-build** so reviewers and contributors can read shipped files as-is.
 
-Plain HTML/CSS/JS — **no build step**, no bundler, no minifier. Reviewers can read every shipped file as-is.
+### Load for development
+
+Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit a file, reload the extension.
+
+### Layout
+
+| Surface | Entry points |
+|---|---|
+| Manifest | [`manifest.json`](manifest.json) |
+| Background | [`background.js`](background.js), [`ioc-utils.js`](ioc-utils.js) |
+| Popup | [`popup.html`](popup.html), [`popup.js`](popup.js) |
+| Dashboard | [`dashboard.html`](dashboard.html), [`dashboard.js`](dashboard.js) |
+| On-page | [`content.js`](content.js), [`content.css`](content.css) |
+| Side panel | [`sidepanel.html`](sidepanel.html), [`sidepanel.js`](sidepanel.js) |
+| Shared UI | [`aperture.css`](aperture.css), [`palette.js`](palette.js), `fonts/` |
+| Offline packs / flags / IDB helpers | [`aperture-packs.js`](aperture-packs.js), [`aperture-features.js`](aperture-features.js), [`aperture-store.js`](aperture-store.js) |
+| DevTools (experimental) | [`devtools.html`](devtools.html) |
+
+Design prototypes under [`design/`](design/) are **not** shipped in the store package.
+
+### Package a release zip
 
 ```bash
 ./package-for-firefox.sh
+# → aperture-osint-v4.0.0.zip
 ```
 
-IoC detection tests (open in a browser):
+### Tests
 
-```text
-test-ioc-utils.html
-```
+Open [`test-ioc-utils.html`](test-ioc-utils.html) in a browser (detection / refang corpus).  
+Manual checklist: [`TESTING_GUIDE.md`](TESTING_GUIDE.md).
 
-| Surface | Files |
+### Extending
+
+Common fork points:
+
+- **New OSINT site** — add URL template in `background.js` (`serviceUrls`) and map it in `IOCUtils.toolsFor()`
+- **New IoC type** — extend detection in `ioc-utils.js` (`detectIOCType`, `collectFromRefanged`) and cover it in `test-ioc-utils.js`
+- **New playbook** — create in the UI or import an `APX|…` share code
+- **Labs / experimental behaviour** — feature flags via the dashboard **Labs** screen (`aperture-features.js`)
+
+Keep the privacy model: network only on explicit user action; keys never in `storage.sync`; experimental features default off.
+
+---
+
+## Version history
+
+| Version | Notes |
 |---|---|
-| Popup | `popup.html`, `popup.js` |
-| Dashboard | `dashboard.html`, `dashboard.js` |
-| Side panel | `sidepanel.html`, `sidepanel.js` |
-| On-page | `content.js`, `content.css` |
-| Background | `background.js` (+ `ioc-utils.js`, packs/store/features) |
-| Shared UI | `aperture.css`, `palette.js`, `fonts/` |
-| Labs / DevTools | Labs screen in dashboard; `devtools.html` |
+| [4.0.0](RELEASE_NOTES_v4.0.0.md) | Workbench expansion: cases/inbox depth, session capture, graph, offline packs, Labs, broader detection |
+| [3.1.x](RELEASE_NOTES_v3.1.1.md) | Detection accuracy, playbook delete, always-refang |
+| [3.0.0](RELEASE_NOTES_v3.0.0.md) | Aperture rebrand, MV3, playbooks, cases, palette |
 
-Design reference (not shipped in the zip): [`design/README.md`](design/README.md)  
-Release notes: [`RELEASE_NOTES_v4.0.0.md`](RELEASE_NOTES_v4.0.0.md)
+---
 
-## Upgrade from 3.x
+## Contributing
 
-- New dashboard screens: Graph, Offline packs, Labs
-- History/cases gain optional tags, sources, templates
-- Feature flags in Labs default **off**
+Issues and pull requests are welcome.
+
+1. Fork the repository and create a focused branch
+2. Prefer small, reviewable diffs that match existing vanilla JS style
+3. Add or extend tests in `test-ioc-utils.js` when changing detection
+4. Do not add a bundler, telemetry, or mandatory cloud dependency without discussion
+
+If you are adapting Aperture for an organisation (MISP, OpenCTI, custom tools), keep org-specific connectors behind explicit opt-in flags.
+
+---
+
+## Security
+
+This extension requests broad host access for optional page highlights. Treat loaded code as trusted. Report security issues privately via GitHub Security Advisories on this repository when available, or open a minimal issue without exploit detail.
+
+---
 
 ## License
 
-See [LICENSE](LICENSE).
+[MIT](LICENSE) — © 2025–2026 Aperture / petstuk contributors.
