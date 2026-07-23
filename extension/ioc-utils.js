@@ -7,9 +7,6 @@
   const IPV4 =
     '(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)';
 
-  const IPV6 =
-    '(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))';
-
   const TYPE_COLORS = {
     ip: '#56b6c2',
     domain: '#61afef',
@@ -88,10 +85,14 @@
     { re: /^\s+dot\s+/i, to: '.' }
   ];
 
-  function typeLabel(t) {
+  function typeLabel(t, value) {
+    if (t === 'ip') {
+      const v = stripIpv6Decorations(value || '');
+      if (v.includes(':')) return 'IPv6';
+      return 'IPv4';
+    }
     return (
       {
-        ip: 'IPv4',
         domain: 'Domain',
         url: 'URL',
         hash: 'Hash',
@@ -112,6 +113,78 @@
         package: 'Package'
       }[t] || 'Other'
     );
+  }
+
+  function stripIpv6Decorations(s) {
+    let v = String(s || '').trim();
+    if (v.startsWith('[') && v.endsWith(']')) v = v.slice(1, -1);
+    const pct = v.indexOf('%');
+    if (pct >= 0) v = v.slice(0, pct);
+    return v;
+  }
+
+  /** True for IPv6 literals (optional brackets / zone id). */
+  function isIpv6Address(s) {
+    const v = stripIpv6Decorations(s);
+    if (!v || v.indexOf(':') < 0) return false;
+    try {
+      const host = new URL('http://[' + v + ']/').hostname || '';
+      return host.replace(/^\[|\]$/g, '').indexOf(':') >= 0;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /**
+   * Find IPv6 spans in free text. Avoids \\b truncation on compressed forms
+   * (e.g. 2001:db8::1 matching only through ::).
+   */
+  function findIpv6Matches(text) {
+    const s = String(text || '');
+    const found = [];
+    const used = [];
+
+    function overlaps(a, b) {
+      return a.start < b.end && b.start < a.end;
+    }
+
+    function claim(start, end, rawValue) {
+      const value = stripIpv6Decorations(rawValue);
+      if (!isIpv6Address(value)) return;
+      const span = { start, end, value };
+      if (used.some((u) => overlaps(u, span))) return;
+      used.push(span);
+      found.push(span);
+    }
+
+    // Bracketed: https://[2001:db8::1]/ or bare [addr]
+    const br = /\[[0-9A-Fa-f:.]+(?:%[^\]\s]*)?\]/gi;
+    let m;
+    while ((m = br.exec(s)) !== null) {
+      claim(m.index, m.index + m[0].length, m[0]);
+    }
+
+    // Unbracketed colon-hex runs (allow dotted v4 tail for ::ffff:a.b.c.d)
+    const run =
+      /(?:^|[^0-9A-Fa-f:[\]])([0-9A-Fa-f:.]+(?:%[0-9A-Za-z._-]+)?)/g;
+    while ((m = run.exec(s)) !== null) {
+      const raw = m[1];
+      if (raw.indexOf(':') < 0) continue;
+      const absStart = m.index + (m[0].length - raw.length);
+      // Longest valid prefix of this run
+      let candidate = raw;
+      while (candidate.length >= 2 && !isIpv6Address(candidate)) {
+        candidate = candidate.slice(0, -1);
+      }
+      // Drop trailing '.' left from a following hostname (rare)
+      while (candidate.endsWith('.')) {
+        candidate = candidate.slice(0, -1);
+      }
+      if (!isIpv6Address(candidate)) continue;
+      claim(absStart, absStart + candidate.length, candidate);
+    }
+
+    return found;
   }
 
   function resolveServiceName(name) {
@@ -258,15 +331,35 @@
   }
 
   function ipv6Scope(v) {
-    const s = String(v || '').toLowerCase();
-    if (s === '::1') return { scope: 'loopback', note: '::1 · host only' };
-    if (s.startsWith('fe80:')) return { scope: 'link-local', note: 'fe80::/10' };
-    if (s.startsWith('fc') || s.startsWith('fd')) {
+    const s = stripIpv6Decorations(v).toLowerCase();
+    if (s === '::' || s === '0:0:0:0:0:0:0:0') {
+      return { scope: 'unspecified', note: ':: · unspecified' };
+    }
+    if (s === '::1' || s === '0:0:0:0:0:0:0:1') {
+      return { scope: 'loopback', note: '::1 · host only' };
+    }
+    // fe80::/10
+    if (/^fe[89ab][0-9a-f]:/i.test(s) || s.startsWith('fe80:')) {
+      return { scope: 'link-local', note: 'fe80::/10' };
+    }
+    // fc00::/7 ULA
+    if (/^f[cd][0-9a-f]{2}:/i.test(s)) {
       return { scope: 'ula', note: 'fc00::/7 · unique local' };
     }
     if (s.startsWith('ff')) return { scope: 'multicast', note: 'ff00::/8' };
     if (s.startsWith('2001:db8:')) {
       return { scope: 'documentation', note: '2001:db8::/32 · docs only' };
+    }
+    // IPv4-mapped ::ffff:0:0/96
+    if (
+      s.startsWith('::ffff:') ||
+      /^0:0:0:0:0:ffff:/i.test(s)
+    ) {
+      return { scope: 'v4-mapped', note: '::ffff:0:0/96 · IPv4-mapped' };
+    }
+    // Well-known NAT64 64:ff9b::/96
+    if (s.startsWith('64:ff9b:')) {
+      return { scope: 'nat64', note: '64:ff9b::/96 · NAT64' };
     }
     return { scope: 'public', note: 'global unicast (assumed)' };
   }
@@ -301,6 +394,13 @@
     };
 
     if (t === 'ip') {
+      if (isIpv6Address(v)) {
+        const info = ipv6Scope(v);
+        push('family', 'IPv6');
+        push('scope', info.scope);
+        push('class', info.note);
+        return facts;
+      }
       const ipv4 = v.split('.');
       if (ipv4.length === 4 && ipv4.every((x) => /^\d+$/.test(x))) {
         const octets = ipv4.map(Number);
@@ -588,8 +688,7 @@
     const ipv4Regex = new RegExp(`^${IPV4}$`);
     if (ipv4Regex.test(t)) return 'ip';
 
-    const ipv6Regex = new RegExp(`^${IPV6}$`);
-    if (ipv6Regex.test(t)) return 'ip';
+    if (isIpv6Address(t)) return 'ip';
 
     if (/^[a-fA-F0-9]+$/.test(t) && isExactHash(t)) return 'hash';
     if (/^[a-fA-F0-9]{62}$/.test(t)) return 'ja3'; // JARM-length
@@ -765,14 +864,24 @@
       push(bm.index, bm.index + bm[0].length, bm[0], 'btc');
     }
 
+    // IPv6 before IPv4 so ::ffff:a.b.c.d and compressed forms win over nested v4
+    findIpv6Matches(refanged).forEach((span) => {
+      push(span.start, span.end, span.value, 'ip');
+    });
+
+    let ipMasked = refanged;
+    found
+      .filter((f) => f.type === 'ip' && String(f.value).indexOf(':') >= 0)
+      .forEach((f) => {
+        ipMasked =
+          ipMasked.slice(0, f.start) +
+          ' '.repeat(f.end - f.start) +
+          ipMasked.slice(f.end);
+      });
+
     const ip4Re = new RegExp(`\\b${IPV4}\\b`, 'g');
     let im;
-    while ((im = ip4Re.exec(refanged)) !== null) {
-      push(im.index, im.index + im[0].length, im[0], 'ip');
-    }
-
-    const ip6Re = new RegExp(`\\b${IPV6}\\b`, 'g');
-    while ((im = ip6Re.exec(refanged)) !== null) {
+    while ((im = ip4Re.exec(ipMasked)) !== null) {
       push(im.index, im.index + im[0].length, im[0], 'ip');
     }
 
@@ -830,7 +939,7 @@
       out.push({
         value: m.value,
         type: m.type,
-        typeLabel: typeLabel(m.type),
+        typeLabel: typeLabel(m.type, m.value),
         enrich: enrich(m.type, m.value)
       });
     });
@@ -931,6 +1040,9 @@
     const t = type || detectIOCType(refanged);
     if (t === 'cve' || t === 'asn') return refanged.toUpperCase();
     if (t === 'email' || t === 'domain' || t === 'hash') return refanged.toLowerCase();
+    if (t === 'ip' && isIpv6Address(refanged)) {
+      return stripIpv6Decorations(refanged).toLowerCase();
+    }
     return refanged;
   }
 
@@ -950,6 +1062,10 @@
 
   function isPrivateOrLocalIp(ioc) {
     const v = refang(String(ioc || '').trim());
+    if (isIpv6Address(v)) {
+      const info = ipv6Scope(v);
+      return info.scope !== 'public';
+    }
     const ipv4 = v.split('.');
     if (ipv4.length === 4 && ipv4.every((x) => /^\d+$/.test(x))) {
       const info = ipv4Scope(ipv4.map(Number));
@@ -962,7 +1078,10 @@
   function stixPatternFor(type, ioc) {
     const v = String(ioc || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const t = type || detectIOCType(ioc);
-    if (t === 'ip') return "[ipv4-addr:value = '" + v + "']";
+    if (t === 'ip') {
+      if (isIpv6Address(ioc)) return "[ipv6-addr:value = '" + stripIpv6Decorations(v) + "']";
+      return "[ipv4-addr:value = '" + v + "']";
+    }
     if (t === 'domain') return "[domain-name:value = '" + v + "']";
     if (t === 'url') return "[url:value = '" + v + "']";
     if (t === 'email') return "[email-addr:value = '" + v + "']";
@@ -992,7 +1111,7 @@
             '- `' +
             e.ioc +
             '` (' +
-            typeLabel(e.type || detectIOCType(e.ioc)) +
+            typeLabel(e.type || detectIOCType(e.ioc), e.ioc) +
             ')' +
             (e.verdict ? ' — **' + e.verdict + '**' : '');
           const extras = [];
@@ -1065,7 +1184,10 @@
     defang,
     clipboardPack,
     normalizeTags,
-    isPrivateOrLocalIp
+    isPrivateOrLocalIp,
+    isIpv6Address,
+    stripIpv6Decorations,
+    findIpv6Matches
   };
 
 })(typeof self !== 'undefined' ? self : this);

@@ -3,8 +3,10 @@
 
   const SKIP_TAGS = new Set([
     'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT',
-    'OPTION', 'CODE', 'PRE', 'KBD', 'SAMP', 'SVG', 'MATH'
+    'OPTION', 'KBD', 'SAMP', 'SVG', 'MATH'
   ]);
+  // PRE kept scannable only when short (inline forum snippets); large dumps skipped
+  const PRE_MAX_CHARS = 800;
   const MAX_HIGHLIGHTS = 500;
 
   let overlayEnabled = false;
@@ -122,6 +124,10 @@
     let el = node.parentElement;
     while (el) {
       if (SKIP_TAGS.has(el.tagName)) return true;
+      if (el.tagName === 'PRE') {
+        const len = (el.textContent || '').length;
+        if (len > PRE_MAX_CHARS) return true;
+      }
       if (el.isContentEditable) return true;
       if (el.classList && el.classList.contains('soc-ioc')) return true;
       if (el.classList && (el.classList.contains('ap-pivot') || el.classList.contains('ap-pivot-toast'))) {
@@ -209,39 +215,81 @@
         highlightTextNode(node);
       }
     }
+
+    // Open shadow roots (closed roots are inaccessible)
+    if (root.nodeType === Node.ELEMENT_NODE || root === document) {
+      const host = root === document ? document.documentElement : root;
+      if (host && host.querySelectorAll) {
+        host.querySelectorAll('*').forEach((el) => {
+          if (el.shadowRoot && highlightCount < MAX_HIGHLIGHTS) {
+            scanRoot(el.shadowRoot);
+          }
+        });
+      }
+    } else if (root.querySelectorAll) {
+      root.querySelectorAll('*').forEach((el) => {
+        if (el.shadowRoot && highlightCount < MAX_HIGHLIGHTS) {
+          scanRoot(el.shadowRoot);
+        }
+      });
+    }
   }
 
   function startObserver() {
     if (observer) return;
 
     let debounceTimer = null;
+    const pending = new Set();
+
+    function flush() {
+      if (!overlayEnabled || highlightCount >= MAX_HIGHLIGHTS) {
+        pending.clear();
+        return;
+      }
+      const roots = Array.from(pending);
+      pending.clear();
+      roots.forEach((root) => {
+        if (root && (root.isConnected || root === document.body || root.host)) {
+          scanRoot(root);
+        }
+      });
+    }
+
     observer = new MutationObserver((mutations) => {
       if (!overlayEnabled) return;
 
-      const roots = [];
       for (const mutation of mutations) {
+        if (mutation.type === 'characterData' && mutation.target) {
+          const parent = mutation.target.parentElement;
+          if (parent) pending.add(parent);
+          continue;
+        }
         mutation.addedNodes.forEach((node) => {
           if (
             node.nodeType === Node.ELEMENT_NODE &&
             !node.classList?.contains('ap-pivot') &&
-            !node.classList?.contains('ap-pivot-toast')
+            !node.classList?.contains('ap-pivot-toast') &&
+            !node.classList?.contains('soc-ioc')
           ) {
-            roots.push(node);
+            pending.add(node);
+            if (node.shadowRoot) pending.add(node.shadowRoot);
           } else if (node.nodeType === Node.TEXT_NODE && node.parentElement) {
-            roots.push(node.parentElement);
+            pending.add(node.parentElement);
           }
         });
       }
 
-      if (!roots.length || highlightCount >= MAX_HIGHLIGHTS) return;
+      if (!pending.size || highlightCount >= MAX_HIGHLIGHTS) return;
 
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        roots.forEach((root) => scanRoot(root));
-      }, 400);
+      debounceTimer = setTimeout(flush, 400);
     });
 
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
   }
 
   function stopObserver() {
@@ -382,7 +430,7 @@
       const typePill = document.createElement('span');
       typePill.className = 'ap-pivot-pill';
       typePill.style.cssText = pill(typeColor);
-      typePill.textContent = IOCUtils.typeLabel(type);
+      typePill.textContent = IOCUtils.typeLabel(type, ioc);
       valWrap.appendChild(val);
       valWrap.appendChild(typePill);
       head.appendChild(valWrap);

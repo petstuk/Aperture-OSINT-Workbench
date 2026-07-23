@@ -137,7 +137,87 @@
     hasTypeValue('Contact admin[at]phish[dot]example', 'email', 'admin@phish.example')
   );
 
-  // --- IPv6 still works ---
+  // --- IPv6 coverage ---
+  assert(
+    'ipv6 detect compressed',
+    IOCUtils.detectIOCType('2001:4860:4860::8888') === 'ip'
+  );
+  assert(
+    'ipv6 detect loopback',
+    IOCUtils.detectIOCType('::1') === 'ip'
+  );
+  assert(
+    'ipv6 detect bracketed',
+    IOCUtils.detectIOCType('[2001:db8::1]') === 'ip'
+  );
+  assert(
+    'ipv6 detect v4-mapped',
+    IOCUtils.detectIOCType('::ffff:192.0.2.1') === 'ip'
+  );
+  assert(
+    'ipv6 find compressed full span',
+    (() => {
+      const page = 'Resolver 2001:4860:4860::8888 in log';
+      const m = IOCUtils.findIOCMatches(page).filter((x) => x.type === 'ip');
+      return (
+        m.length === 1 &&
+        m[0].value.toLowerCase() === '2001:4860:4860::8888' &&
+        page.slice(m[0].start, m[0].end) === '2001:4860:4860::8888'
+      );
+    })()
+  );
+  assert(
+    'ipv6 find loopback',
+    (() => {
+      const page = 'bind to ::1 only';
+      const m = IOCUtils.findIOCMatches(page).find((x) => x.type === 'ip');
+      return !!(m && m.value === '::1' && page.slice(m.start, m.end) === '::1');
+    })()
+  );
+  assert(
+    'ipv6 find bracketed',
+    (() => {
+      const page = 'host [2001:db8::1] reachable';
+      const m = IOCUtils.findIOCMatches(page).find((x) => x.type === 'ip');
+      return !!(
+        m &&
+        m.value.toLowerCase() === '2001:db8::1' &&
+        page.slice(m.start, m.end) === '[2001:db8::1]'
+      );
+    })()
+  );
+  assert(
+    'ipv6 v4-mapped not stripped to ipv4',
+    (() => {
+      const m = IOCUtils.findIOCMatches('see ::ffff:192.0.2.1 mapped');
+      const ips = m.filter((x) => x.type === 'ip');
+      return (
+        ips.length === 1 &&
+        ips[0].value.toLowerCase().indexOf('::ffff:') === 0 &&
+        !ips.some((x) => x.value === '192.0.2.1')
+      );
+    })()
+  );
+  assert(
+    'ipv6 typeLabel',
+    IOCUtils.typeLabel('ip', '2001:db8::1') === 'IPv6' &&
+      IOCUtils.typeLabel('ip', '1.1.1.1') === 'IPv4'
+  );
+  assert(
+    'ipv6 private skip',
+    IOCUtils.isPrivateOrLocalIp('::1') &&
+      IOCUtils.isPrivateOrLocalIp('fe80::1') &&
+      !IOCUtils.isPrivateOrLocalIp('2001:4860:4860::8888')
+  );
+  assert(
+    'ipv6 in url still url',
+    hasTypeValue(
+      'https://[2001:db8::1]/path',
+      'url',
+      'https://[2001:db8::1]/path'
+    )
+  );
+
   assert(
     'ipv6',
     IOCUtils.detectIOCType('2001:4860:4860::8888') === 'ip'
@@ -151,6 +231,15 @@
     });
     return m;
   }
+
+  assert(
+    'ipv6 scope docs',
+    factMap('ip', '2001:db8::1').scope === 'documentation'
+  );
+  assert(
+    'ipv6 scope link-local',
+    factMap('ip', 'fe80::1').scope === 'link-local'
+  );
   assert(
     'enrich private IP scope',
     factMap('ip', '192.168.1.10').scope === 'private'
