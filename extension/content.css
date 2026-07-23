@@ -123,7 +123,8 @@
   line-height: 1.35;
 }
 .ap-pivot-close,
-.ap-pivot-copy {
+.ap-pivot-copy,
+.ap-pivot-goto {
   height: 24px;
   border: 1px solid #232a36;
   background: #12161f;
@@ -143,13 +144,22 @@
   font-size: 14px;
 }
 .ap-pivot-close:hover,
-.ap-pivot-copy:hover {
+.ap-pivot-copy:hover,
+.ap-pivot-goto:hover {
   color: #e6e9ef;
   border-color: #2f3745;
 }
 .ap-pivot-copy:hover {
   color: #61afef;
   border-color: #61afef;
+}
+.ap-pivot-goto {
+  color: #61afef;
+  border-color: #2a4a6a;
+}
+.ap-pivot-goto:hover {
+  color: #98c379;
+  border-color: #98c379;
 }
 .ap-pivot-section {
   padding: 10px 14px;

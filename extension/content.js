@@ -17,18 +17,28 @@
   let overlayLoadGen = 0;
 
   function sendMessage(message) {
+    try {
+      const result = browserAPI.runtime.sendMessage(message);
+      if (result && typeof result.then === 'function') {
+        return Promise.resolve(result).then((response) => {
+          if (browserAPI.runtime.lastError) {
+            throw new Error(browserAPI.runtime.lastError.message);
+          }
+          return response;
+        });
+      }
+    } catch (_) {
+      /* fall through */
+    }
     return new Promise((resolve, reject) => {
       try {
-        const result = browserAPI.runtime.sendMessage(message, (response) => {
+        browserAPI.runtime.sendMessage(message, (response) => {
           if (browserAPI.runtime.lastError) {
             reject(new Error(browserAPI.runtime.lastError.message));
             return;
           }
           resolve(response);
         });
-        if (result && typeof result.then === 'function') {
-          result.then(resolve).catch(reject);
-        }
       } catch (error) {
         reject(error);
       }
@@ -270,6 +280,30 @@
     return pivotEl;
   }
 
+  /** Prefer page <a href>; else URL-typed IoC value. */
+  function resolvePivotNavUrl(span, type, ioc) {
+    const anchor = span && span.closest && span.closest('a[href]');
+    if (anchor) {
+      try {
+        const href = anchor.href;
+        if (href && /^https?:\/\//i.test(href)) return href;
+      } catch (_) {
+        /* ignore */
+      }
+    }
+    const raw = String(ioc || '').trim();
+    if (type === 'url' || /^https?:\/\//i.test(raw)) {
+      const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+      try {
+        const u = new URL(withScheme);
+        if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+
   function scheduleHidePivot() {
     clearTimeout(hidePivotTimer);
     hidePivotTimer = setTimeout(hidePivot, 280);
@@ -355,6 +389,20 @@
 
       const headActions = document.createElement('div');
       headActions.className = 'ap-pivot-head-actions';
+
+      const navUrl = resolvePivotNavUrl(span, type, ioc);
+      if (navUrl) {
+        const gotoBtn = document.createElement('button');
+        gotoBtn.type = 'button';
+        gotoBtn.className = 'ap-pivot-goto';
+        gotoBtn.textContent = 'Open link';
+        gotoBtn.title = 'Open ' + navUrl;
+        gotoBtn.addEventListener('click', () => {
+          window.open(navUrl, '_blank', 'noopener,noreferrer');
+          hidePivot();
+        });
+        headActions.appendChild(gotoBtn);
+      }
 
       const copyBtn = document.createElement('button');
       copyBtn.type = 'button';

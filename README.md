@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.0.0 (Manifest V3) |
+| **Version** | 4.0.1 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **License** | [MIT](LICENSE) |
@@ -123,7 +123,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.0.0.zip (extension runtime only)
+# → aperture-osint-v4.0.1.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -157,6 +157,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.0.1](docs/releases/RELEASE_NOTES_v4.0.1.md) | Popup workbench/services fixes; Open link on pivot; scheme-less URL highlights |
 | [4.0.0](docs/releases/RELEASE_NOTES_v4.0.0.md) | Workbench expansion: cases/inbox depth, session capture, graph, offline packs, Labs, broader detection |
 | [3.1.x](docs/releases/RELEASE_NOTES_v3.1.1.md) | Detection accuracy, playbook delete, always-refang |
 | [3.0.0](docs/releases/RELEASE_NOTES_v3.0.0.md) | Aperture rebrand, MV3, playbooks, cases, palette |

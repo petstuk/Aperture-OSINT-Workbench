@@ -24,13 +24,50 @@
   const servicesList = document.getElementById('services-list');
 
   async function load() {
-    const data = await sendMessage({ action: 'getDashboardData' });
+    let data = {};
+    try {
+      data = (await sendMessage({ action: 'getDashboardData' })) || {};
+    } catch (err) {
+      console.error('getDashboardData failed', err);
+    }
+
+    // Empty array is truthy — treat missing/empty services as a failed payload
+    if (!data.services || !data.services.length) {
+      try {
+        const svc = (await sendMessage({ action: 'getServices' })) || {};
+        if (svc.services && svc.services.length) {
+          data.services = svc.services;
+          if (!data.enabledServices) data.enabledServices = svc.enabledServices;
+        }
+      } catch (err) {
+        console.error('getServices failed', err);
+      }
+    }
+
     state.history = data.history || [];
     state.playbooks = data.playbooks || [];
     state.enabledServices = data.enabledServices || {};
     state.overlayEnabled = !!data.overlayEnabled;
-    state.services = data.services || Object.keys(state.enabledServices);
+    state.services =
+      data.services && data.services.length
+        ? data.services
+        : Object.keys(state.enabledServices);
     render();
+  }
+
+  async function openWorkbench(screen) {
+    const hash = screen ? '#' + screen : '#overview';
+    const url = browserAPI.runtime.getURL('dashboard.html') + hash;
+    try {
+      await browserAPI.tabs.create({ url });
+    } catch (err) {
+      try {
+        await sendMessage({ action: 'openDashboard', screen: screen || 'overview' });
+      } catch (err2) {
+        console.error(err2);
+        showToast('Could not open workbench');
+      }
+    }
   }
 
   function render() {
@@ -106,6 +143,11 @@
   function renderSettings() {
     overlayToggle.classList.toggle('on', state.overlayEnabled);
     servicesList.innerHTML = '';
+    if (!state.services.length) {
+      servicesList.innerHTML =
+        '<div class="ap-empty" style="padding:8px 0">No services loaded — try reloading the extension</div>';
+      return;
+    }
     state.services.forEach((name) => {
       const row = document.createElement('div');
       row.className = 'svc-row';
@@ -202,7 +244,7 @@
   detectInput.addEventListener('input', () => updateDetect(detectInput.value));
 
   document.getElementById('btn-workbench').addEventListener('click', () => {
-    sendMessage({ action: 'openDashboard', screen: 'overview' });
+    openWorkbench('overview');
   });
 
   document.getElementById('btn-settings').addEventListener('click', () => {
@@ -261,19 +303,19 @@
           icon: '▤',
           label: 'Open workbench',
           meta: 'dashboard',
-          onClick: () => sendMessage({ action: 'openDashboard', screen: 'overview' })
+          onClick: () => openWorkbench('overview')
         },
         {
           icon: '⧉',
           label: 'Bulk extract',
           meta: 'dashboard',
-          onClick: () => sendMessage({ action: 'openDashboard', screen: 'extract' })
+          onClick: () => openWorkbench('extract')
         },
         {
           icon: '▷',
           label: 'Playbooks',
           meta: 'dashboard',
-          onClick: () => sendMessage({ action: 'openDashboard', screen: 'playbooks' })
+          onClick: () => openWorkbench('playbooks')
         }
       ];
 

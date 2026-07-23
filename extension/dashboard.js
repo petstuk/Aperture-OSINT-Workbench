@@ -353,7 +353,8 @@
     state.cases = data.cases || [];
     state.playbooks = data.playbooks || [];
     state.enabledServices = data.enabledServices || {};
-    state.services = data.services || [];
+    state.services =
+      data.services && data.services.length ? data.services : Object.keys(state.enabledServices);
     state.session = data.session || { caseId: null, paused: false, excludeDomains: [] };
     state.featureFlags = data.featureFlags || {};
     state.favorites = data.favorites || [];

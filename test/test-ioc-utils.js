@@ -80,6 +80,39 @@
     hasTypeValue('See https://evil.test/a).', 'url', 'https://evil.test/a')
   );
 
+  // --- scheme-less host/path as url (not domain-only) ---
+  assert(
+    'scheme-less host/path is url',
+    hasTypeValue('see evil.test/path/x', 'url', 'https://evil.test/path/x')
+  );
+  assert(
+    'scheme-less findIOCMatches covers host+path',
+    (() => {
+      const m = IOCUtils.findIOCMatches('see evil.test/path/x here');
+      const u = m.find((x) => x.type === 'url');
+      return !!(
+        u &&
+        u.value === 'https://evil.test/path/x' &&
+        u.display === 'evil.test/path/x' &&
+        !m.some((x) => x.type === 'domain' && x.value === 'evil.test')
+      );
+    })()
+  );
+  assert(
+    'https URL still url',
+    hasTypeValue('https://evil.test/path', 'url', 'https://evil.test/path')
+  );
+  assert(
+    'bare domain stays domain',
+    IOCUtils.detectIOCType('evil.test') === 'domain' &&
+      hasTypeValue('see evil.test alone', 'domain', 'evil.test') &&
+      noTypeValue('see evil.test alone', 'url', 'https://evil.test')
+  );
+  assert(
+    'detectIOCType scheme-less path',
+    IOCUtils.detectIOCType('evil.test/path/x') === 'url'
+  );
+
   // --- defanged on-page offsets ---
   const page = 'Indicator 1.1.1[.]1 and hxxp://bad[.]example[.]com/path in advisory.';
   const matches = IOCUtils.findIOCMatches(page);

@@ -109,8 +109,14 @@
     load();
   });
 
-  document.getElementById('sp-dash').addEventListener('click', () => {
-    sendMessage({ action: 'openDashboard', screen: 'overview' });
+  document.getElementById('sp-dash').addEventListener('click', async () => {
+    const api = typeof browser !== 'undefined' ? browser : chrome;
+    const url = api.runtime.getURL('dashboard.html#overview');
+    try {
+      await api.tabs.create({ url });
+    } catch (_) {
+      sendMessage({ action: 'openDashboard', screen: 'overview' });
+    }
   });
 
   load();

@@ -596,6 +596,16 @@
 
     if (/^https?:\/\/.+/i.test(t)) return 'url';
 
+    // Scheme-less host/path (e.g. evil.test/phish/login)
+    {
+      const slash = t.indexOf('/');
+      if (slash > 0) {
+        const host = t.slice(0, slash);
+        const path = t.slice(slash);
+        if (path.length > 1 && isValidDomain(host) && !/\s/.test(t)) return 'url';
+      }
+    }
+
     if (/^[a-z2-7]{16}\.onion$/i.test(t) || /^[a-z2-7]{56}\.onion$/i.test(t)) {
       return 'onion';
     }
@@ -632,6 +642,9 @@
         const cleaned = stripUrlTrailingPunct(v);
         e = start + cleaned.length;
         v = cleaned;
+        if (!/^https?:\/\//i.test(v)) {
+          v = 'https://' + v;
+        }
       }
       found.push({ start, end: e, value: v, type });
     }
@@ -651,6 +664,16 @@
     let um;
     while ((um = urlRe.exec(refanged)) !== null) {
       push(um.index, um.index + um[0].length, um[0], 'url');
+    }
+
+    // Scheme-less host + path (evil.test/a/b) — bare hosts stay domain
+    const bareUrlRe =
+      /\b([a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+)(\/[^\s"'<>]+)/g;
+    let bum;
+    while ((bum = bareUrlRe.exec(refanged)) !== null) {
+      const host = bum[1];
+      if (!isValidDomain(host)) continue;
+      push(bum.index, bum.index + bum[0].length, bum[0], 'url');
     }
 
     const emailRe = /\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b/gi;

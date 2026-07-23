@@ -918,34 +918,56 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       case 'getDashboardData': {
-        const [history, cases, playbooks, sync, local] = await Promise.all([
-          getHistory(),
-          getCases(),
-          getPlaybooks(),
-          storageGet('sync', ['enabledServices', 'overlayEnabled']),
-          storageGet('local', [
-            'apertureFeatures',
-            'apertureSession',
-            'aperturePacksInstalled',
-            'apertureFavorites',
-            'apertureWorkspace'
-          ])
-        ]);
-        const featureFlags = ApertureFeatures.mergeFlags(local.apertureFeatures);
-        respond({
-          history,
-          cases,
-          playbooks,
-          enabledServices: sync.enabledServices || enabledServices,
-          overlayEnabled: !!sync.overlayEnabled,
-          services: Object.keys(serviceUrls),
-          featureFlags,
-          session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
-          installedPacks: local.aperturePacksInstalled || {},
-          favorites: local.apertureFavorites || [],
-          workspace: local.apertureWorkspace || { id: 'default', name: 'Default' },
-          packs: typeof AperturePacks !== 'undefined' ? AperturePacks.listPacks() : []
-        });
+        try {
+          const [history, cases, playbooks, sync, local] = await Promise.all([
+            getHistory(),
+            getCases(),
+            getPlaybooks(),
+            storageGet('sync', ['enabledServices', 'overlayEnabled']),
+            storageGet('local', [
+              'apertureFeatures',
+              'apertureSession',
+              'aperturePacksInstalled',
+              'apertureFavorites',
+              'apertureWorkspace'
+            ])
+          ]);
+          const featureFlags =
+            typeof ApertureFeatures !== 'undefined'
+              ? ApertureFeatures.mergeFlags(local.apertureFeatures)
+              : { ...(local.apertureFeatures || {}) };
+          respond({
+            history,
+            cases,
+            playbooks,
+            enabledServices: sync.enabledServices || enabledServices || defaultServices,
+            overlayEnabled: !!sync.overlayEnabled,
+            services: Object.keys(serviceUrls),
+            featureFlags,
+            session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
+            installedPacks: local.aperturePacksInstalled || {},
+            favorites: local.apertureFavorites || [],
+            workspace: local.apertureWorkspace || { id: 'default', name: 'Default' },
+            packs: typeof AperturePacks !== 'undefined' ? AperturePacks.listPacks() : []
+          });
+        } catch (error) {
+          console.error('getDashboardData failed', error);
+          respond({
+            history: [],
+            cases: [],
+            playbooks: [],
+            enabledServices: enabledServices || defaultServices,
+            overlayEnabled: false,
+            services: Object.keys(serviceUrls),
+            featureFlags: {},
+            session: { caseId: null, paused: false, excludeDomains: [] },
+            installedPacks: {},
+            favorites: [],
+            workspace: { id: 'default', name: 'Default' },
+            packs: [],
+            error: error.message || String(error)
+          });
+        }
         break;
       }
 
@@ -1231,7 +1253,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'openDashboard': {
         const url = browserAPI.runtime.getURL('dashboard.html');
         const hash = message.screen ? '#' + message.screen : '';
-        browserAPI.tabs.create({ url: url + hash });
+        await browserAPI.tabs.create({ url: url + hash });
         respond({ success: true });
         break;
       }

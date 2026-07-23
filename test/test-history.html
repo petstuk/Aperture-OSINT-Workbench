@@ -11,7 +11,7 @@
 <body>
     <h1>Aperture IoC test page</h1>
     
-    <p>Enable <strong>On-page IoC detect</strong> in the Aperture popup, then click highlighted indicators for the pivot card. Or right-click any IoC → Aperture OSINT.</p>
+    <p>Enable <strong>On-page IoC detect</strong> in the Aperture popup, then click highlighted indicators for the pivot card. Use <strong>Open link</strong> in the pivot to navigate (when the IoC is a URL or sits inside a page link). Scheme-less URLs like <span class="ioc">evil.test/path/x</span> should highlight host+path as one URL. Or right-click any IoC → Aperture OSINT.</p>
     
     <div class="test-section">
         <h3>IP Addresses (IPv4)</h3>
@@ -37,7 +37,8 @@
     
     <div class="test-section">
         <h3>URLs</h3>
-        <p>Test these URLs: <span class="ioc">https://example.com/malicious</span>, <span class="ioc">http://suspicious-site.org/payload</span></p>
+        <p>Test these URLs: <span class="ioc">https://example.com/malicious</span>, <span class="ioc">http://suspicious-site.org/payload</span>, scheme-less <span class="ioc">evil.test/phish/login</span></p>
+        <p>Link with domain label (Open link should follow href): <a href="https://example.com/full/path">example.com</a></p>
     </div>
     
     <div class="test-section">
@@ -57,7 +58,7 @@
         <ol>
             <li>Open the extension popup and enable <strong>IoC Hover Overlays</strong></li>
             <li>Reload this page — IoCs above should show dashed underlines</li>
-            <li>Hover an IoC — tooltip should show type, Copy, and services</li>
+            <li>Click an IoC — pivot shows type, Copy, tools; URL/link IoCs also show Open link</li>
             <li>Click a service — new tab opens and archive updates</li>
             <li>Disable overlays in the popup — underlines should disappear</li>
             <li>Confirm no highlights appear inside code/form fields on other pages</li>

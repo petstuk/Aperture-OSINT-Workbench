@@ -222,18 +222,30 @@
 
   function sendMessage(message) {
     const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+    // Prefer the Promise form (Firefox browser.*, Chrome MV3). Avoid callback+Promise
+    // double-resolve, which can yield an empty/undefined response in the popup.
+    try {
+      const result = browserAPI.runtime.sendMessage(message);
+      if (result && typeof result.then === 'function') {
+        return Promise.resolve(result).then((response) => {
+          if (browserAPI.runtime.lastError) {
+            throw new Error(browserAPI.runtime.lastError.message);
+          }
+          return response;
+        });
+      }
+    } catch (_) {
+      /* fall through to callback style */
+    }
     return new Promise((resolve, reject) => {
       try {
-        const result = browserAPI.runtime.sendMessage(message, (response) => {
+        browserAPI.runtime.sendMessage(message, (response) => {
           if (browserAPI.runtime.lastError) {
             reject(new Error(browserAPI.runtime.lastError.message));
             return;
           }
           resolve(response);
         });
-        if (result && typeof result.then === 'function') {
-          result.then(resolve).catch(reject);
-        }
       } catch (err) {
         reject(err);
       }
