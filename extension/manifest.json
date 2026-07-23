@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aperture \u2014 OSINT Workbench",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, offline packs, and right-click search. No API keys by default. Formerly SOC OSINT Search.",
   "permissions": [
     "contextMenus",

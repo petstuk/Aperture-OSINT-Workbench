@@ -138,28 +138,29 @@ async function migrateStorage() {
   const local = await storageGet('local', ['iocHistory', 'cases']);
 
   // History: always merge remaining sync history into local (survives race with early writes)
+  const normalizeHistoryEntry = (entry) => ({
+    ...entry,
+    ioc: entry.ioc
+      ? IOCUtils.canonicalize(entry.type || detectIOCType(entry.ioc), entry.ioc)
+      : entry.ioc,
+    verdict: IOCUtils.normalizeVerdict(entry.verdict || entry.status),
+    status: IOCUtils.normalizeVerdict(entry.verdict || entry.status),
+    caseIds: entry.caseIds || [],
+    tags: IOCUtils.normalizeTags(entry.tags || [])
+  });
+
   if (Array.isArray(sync.iocHistory) && sync.iocHistory.length) {
     const byIoc = new Map();
-    const normalize = (entry) => ({
-      ...entry,
-      ioc: entry.ioc
-        ? IOCUtils.canonicalize(entry.type || detectIOCType(entry.ioc), entry.ioc)
-        : entry.ioc,
-      verdict: IOCUtils.normalizeVerdict(entry.verdict || entry.status),
-      status: IOCUtils.normalizeVerdict(entry.verdict || entry.status),
-      caseIds: entry.caseIds || [],
-      tags: IOCUtils.normalizeTags(entry.tags || [])
-    });
     // Sync first, then local wins on same ioc (preserves newer activity)
     sync.iocHistory.forEach((entry) => {
       if (entry && entry.ioc) {
-        const norm = normalize(entry);
+        const norm = normalizeHistoryEntry(entry);
         byIoc.set(canonicalIoc(norm.ioc, norm.type), norm);
       }
     });
     (local.iocHistory || []).forEach((entry) => {
       if (entry && entry.ioc) {
-        const norm = normalize(entry);
+        const norm = normalizeHistoryEntry(entry);
         byIoc.set(canonicalIoc(norm.ioc, norm.type), norm);
       }
     });
@@ -169,12 +170,7 @@ async function migrateStorage() {
     await storageSet('local', { iocHistory: merged });
     await storageRemove('sync', 'iocHistory');
   } else if (local.iocHistory && local.iocHistory.length) {
-    const normalized = local.iocHistory.map((entry) => ({
-      ...normalize(entry),
-      ioc: entry.ioc
-        ? IOCUtils.canonicalize(entry.type || detectIOCType(entry.ioc), entry.ioc)
-        : entry.ioc
-    }));
+    const normalized = local.iocHistory.map((entry) => normalizeHistoryEntry(entry));
     await storageSet('local', { iocHistory: normalized });
   }
 
