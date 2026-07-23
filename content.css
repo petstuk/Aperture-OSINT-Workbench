@@ -260,6 +260,52 @@
   margin-top: 6px;
   border: 1px solid;
 }
+.ap-pivot-pack {
+  display: flex;
+  gap: 3px;
+}
+.ap-pivot-pack-btn {
+  width: 24px;
+  height: 26px;
+  padding: 0;
+  background: #12161f;
+  border: 1px solid #232a36;
+  border-radius: 5px;
+  color: #8b93a3;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+}
+.ap-pivot-pack-btn:hover {
+  border-color: #61afef;
+  color: #61afef;
+}
+.ap-pivot-notes {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  background: #0a0d12;
+  border: 1px solid #232a36;
+  border-radius: 6px;
+  color: #c3cad6;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  resize: vertical;
+  outline: none;
+}
+.ap-pivot-notes:focus { border-color: #61afef; }
+.ap-pivot-tags {
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  background: #0a0d12;
+  border: 1px solid #232a36;
+  border-radius: 6px;
+  color: #c3cad6;
+  font-size: 11px;
+  outline: none;
+}
+.ap-pivot-tags:focus { border-color: #61afef; }
 .ap-pivot-toast {
   position: fixed;
   bottom: 20px;

@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-VERSION="3.1.1"
+VERSION="4.0.0"
 OUTPUT_FILE="aperture-osint-v${VERSION}.zip"
 
 echo "Aperture — OSINT Workbench packaging"
@@ -28,13 +28,23 @@ zip -r "$OUTPUT_FILE" \
   content.js \
   content.css \
   aperture.css \
+  aperture-features.js \
+  aperture-packs.js \
+  aperture-store.js \
+  ioc-scan-worker.js \
   palette.js \
   popup.html \
   popup.js \
   dashboard.html \
   dashboard.js \
+  sidepanel.html \
+  sidepanel.js \
   archive.html \
   archive-redirect.js \
+  devtools.html \
+  devtools.js \
+  devtools-panel.html \
+  devtools-panel.js \
   fonts \
   icon16.png \
   icon32.png \
@@ -48,7 +58,6 @@ zip -r "$OUTPUT_FILE" \
   test-ioc-utils.js \
   -x "*.git*" \
   -x "*.sh" \
-  -x "*RELEASE_NOTES*" \
   -x "*SUBMISSION*" \
   -x "*CHROME_WEB*" \
   -x "*STORAGE_*" \
@@ -68,4 +77,4 @@ echo ""
 echo "Package created:"
 ls -lh "$OUTPUT_FILE"
 echo ""
-echo "Next: upload to AMO / Chrome Web Store with RELEASE_NOTES_v3.1.1.md"
+echo "Next: upload with RELEASE_NOTES_v4.0.0.md"

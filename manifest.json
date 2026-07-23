@@ -1,14 +1,30 @@
 {
   "manifest_version": 3,
   "name": "Aperture — OSINT Workbench",
-  "version": "3.1.1",
-  "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, and right-click search across VirusTotal, Shodan, AbuseIPDB, and more. Formerly SOC OSINT Search. No API keys.",
+  "version": "4.0.0",
+  "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, offline packs, and right-click search. No API keys by default. Formerly SOC OSINT Search.",
   "permissions": [
     "contextMenus",
     "storage",
     "tabs",
     "activeTab"
   ],
+  "commands": {
+    "toggle-palette": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+K",
+        "mac": "Command+Shift+K"
+      },
+      "description": "Open Aperture command palette"
+    },
+    "toggle-overlay": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+O",
+        "mac": "Command+Shift+O"
+      },
+      "description": "Toggle on-page IoC detect"
+    }
+  },
   "host_permissions": [
     "<all_urls>"
   ],
@@ -24,13 +40,20 @@
   },
   "background": {
     "service_worker": "background.js",
-    "scripts": ["ioc-utils.js", "background.js"]
+    "scripts": [
+      "ioc-utils.js",
+      "aperture-features.js",
+      "aperture-packs.js",
+      "aperture-store.js",
+      "background.js"
+    ]
   },
+  "devtools_page": "devtools.html",
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["ioc-utils.js", "content.js"],
-      "css": ["content.css"],
+      "js": ["ioc-utils.js", "palette.js", "content.js"],
+      "css": ["aperture.css", "content.css"],
       "run_at": "document_idle"
     }
   ],
@@ -57,11 +80,16 @@
       "resources": [
         "dashboard.html",
         "archive.html",
+        "sidepanel.html",
         "fonts/*",
         "aperture.css",
         "ioc-utils.js",
         "palette.js",
-        "content.css"
+        "content.css",
+        "aperture-features.js",
+        "aperture-packs.js",
+        "aperture-store.js",
+        "ioc-scan-worker.js"
       ],
       "matches": ["<all_urls>"]
     }

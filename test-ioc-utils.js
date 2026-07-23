@@ -110,6 +110,47 @@
     IOCUtils.detectIOCType('2001:4860:4860::8888') === 'ip'
   );
 
+  // --- local enrichFacts ---
+  function factMap(type, value) {
+    const m = {};
+    IOCUtils.enrichFacts(type, value).forEach(([k, v]) => {
+      m[k] = v;
+    });
+    return m;
+  }
+  assert(
+    'enrich private IP scope',
+    factMap('ip', '192.168.1.10').scope === 'private'
+  );
+  assert(
+    'enrich public IP scope',
+    factMap('ip', '1.1.1.1').scope === 'public'
+  );
+  assert(
+    'enrich CGNAT',
+    factMap('ip', '100.64.1.1').scope === 'cgnat'
+  );
+  assert(
+    'enrich domain registrable co.uk',
+    factMap('domain', 'a.b.foo.co.uk').registrable === 'foo.co.uk'
+  );
+  assert(
+    'enrich URL userinfo',
+    !!factMap('url', 'https://user:pass@evil.test/login').userinfo
+  );
+  assert(
+    'enrich free mail',
+    factMap('email', 'someone@gmail.com').provider.indexOf('free') >= 0
+  );
+  assert(
+    'enrich null hash pattern',
+    factMap('hash', '00000000000000000000000000000000').pattern.indexOf('zeros') >= 0
+  );
+  assert(
+    'enrich private ASN',
+    factMap('asn', 'AS65000').scope.indexOf('private') >= 0
+  );
+
   const summary = document.getElementById('summary');
   const out = document.getElementById('out');
   if (summary) {

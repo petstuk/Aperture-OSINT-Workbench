@@ -504,6 +504,77 @@
       padding: 0;
       margin-bottom: 10px;
     }
+    .inbox-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--divider);
+      align-items: center;
+    }
+    .inbox-search {
+      flex: 1;
+      height: 32px;
+      padding: 0 10px;
+      background: var(--inset);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .inbox-search:focus { border-color: var(--accent); }
+    .inbox-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .inbox-tag-chip {
+      height: 24px;
+      padding: 0 10px;
+      border: 1px solid var(--border-2);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      transition: 0.12s;
+    }
+    .inbox-tag-chip:hover,
+    .inbox-tag-chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(97, 175, 239, 0.1);
+    }
+    .inbox-row:hover { background: var(--surface-2); }
+    .case-ioc-block {
+      border-bottom: 1px solid var(--divider-faint);
+      padding-bottom: 10px;
+    }
+    .case-ioc-notes-label {
+      font-size: 9.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 600;
+      padding: 6px 14px 4px;
+    }
+    .case-ioc-notes {
+      width: calc(100% - 28px);
+      min-height: 52px;
+      margin: 0 14px 8px;
+      padding: 8px 10px;
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+    }
+    .case-ioc-notes:focus { border-color: var(--accent); }
+    .modal.modal-wide { width: 520px; }
   </style>
 </head>
 <body class="aperture">
@@ -535,6 +606,9 @@
         <button type="button" class="nav-btn active" data-nav="overview"><span>▤</span>Overview</button>
         <button type="button" class="nav-btn" data-nav="extract"><span>⧉</span>Bulk extract</button>
         <button type="button" class="nav-btn" data-nav="playbooks"><span>▷</span>Playbooks</button>
+        <button type="button" class="nav-btn" data-nav="graph"><span>◈</span>Graph</button>
+        <button type="button" class="nav-btn" data-nav="packs"><span>▣</span>Offline packs</button>
+        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs</button>
       </div>
       <div>
         <div class="nav-label"><span>Cases</span><span id="case-count">0</span></div>
@@ -543,6 +617,7 @@
       <div style="margin-top:auto">
         <div class="nav-label">Surfaces</div>
         <button type="button" class="nav-btn" id="nav-popup"><span>◱</span>Popup launcher</button>
+        <button type="button" class="nav-btn" id="nav-sidepanel"><span>▥</span>Side panel</button>
         <button type="button" class="nav-btn" data-nav="onpage-help"><span>❖</span>On-page detect</button>
       </div>
     </aside>
@@ -552,6 +627,9 @@
       <section class="screen" id="screen-extract"></section>
       <section class="screen" id="screen-playbooks"></section>
       <section class="screen" id="screen-case"></section>
+      <section class="screen" id="screen-graph"></section>
+      <section class="screen" id="screen-packs"></section>
+      <section class="screen" id="screen-labs"></section>
       <section class="screen" id="screen-onpage-help"></section>
     </main>
   </div>
@@ -561,6 +639,8 @@
   </div>
 
   <script src="ioc-utils.js"></script>
+  <script src="aperture-features.js"></script>
+  <script src="aperture-packs.js"></script>
   <script src="palette.js"></script>
   <script src="dashboard.js"></script>
 </body>

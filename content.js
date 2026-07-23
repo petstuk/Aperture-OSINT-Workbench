@@ -73,6 +73,41 @@
     toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
   }
 
+  function defangIoc(ioc) {
+    if (typeof IOCUtils.defang === 'function') return IOCUtils.defang(ioc);
+    return String(ioc)
+      .replace(/\./g, '[.]')
+      .replace(/https:\/\//gi, 'hxxps://')
+      .replace(/http:\/\//gi, 'hxxp://')
+      .replace(/@/g, '[at]');
+  }
+
+  function packText(format, items) {
+    if (typeof IOCUtils.clipboardPack === 'function') {
+      return IOCUtils.clipboardPack(format, items);
+    }
+    const rows = items.map((h) => (typeof h === 'string' ? { ioc: h } : h));
+    if (format === 'defang') return rows.map((r) => defangIoc(r.ioc)).join('\n');
+    if (format === 'md') {
+      return rows
+        .map(
+          (r) =>
+            '- `' +
+            r.ioc +
+            '` · ' +
+            IOCUtils.typeLabel(r.type || IOCUtils.detectIOCType(r.ioc))
+        )
+        .join('\n');
+    }
+    if (format === 'csv') {
+      const lines = rows.map(
+        (r) => '"' + r.ioc + '","' + (r.type || IOCUtils.detectIOCType(r.ioc)) + '"'
+      );
+      return 'ioc,type\n' + lines.join('\n');
+    }
+    return rows.map((r) => r.ioc).join('\n');
+  }
+
   function shouldSkipNode(node) {
     let el = node.parentElement;
     while (el) {
@@ -206,6 +241,24 @@
     }
   }
 
+  async function reportPageIocDiff() {
+    try {
+      const iocs = Array.from(document.querySelectorAll('.soc-ioc')).map(
+        (el) => el.dataset.ioc
+      );
+      const res = await sendMessage({
+        action: 'pageIocDiff',
+        url: location.href,
+        iocs
+      });
+      if (res && res.success && res.added && res.added.length) {
+        showToast(res.added.length + ' new IoCs since last visit');
+      }
+    } catch (_) {
+      /* feature may be off */
+    }
+  }
+
   function ensurePivot() {
     if (!pivotEl) {
       pivotEl = document.createElement('div');
@@ -249,21 +302,6 @@
     tip.style.left = left + 'px';
   }
 
-  function enrichFacts(type, value) {
-    const line = IOCUtils.enrich(type, value);
-    const facts = [['enrichment', line]];
-    if (type === 'ip' && value.includes('.')) {
-      facts.push(['reverse', value.split('.').reverse().join('.') + '.in-addr.arpa']);
-    }
-    if (type === 'hash') {
-      facts.push(['length', String(value.length) + ' hex']);
-    }
-    if (type === 'domain') {
-      facts.push(['tld', '.' + value.split('.').pop()]);
-    }
-    return facts;
-  }
-
   async function openPivot(span) {
     activeIocSpan = span;
     clearTimeout(hidePivotTimer);
@@ -289,7 +327,7 @@
       const tools = IOCUtils.toolsFor(type);
       const enabled = (config && config.enabledServices) || {};
       const filteredTools = tools.filter((t) => enabled[t.name] !== false);
-      const facts = enrichFacts(type, ioc);
+      const facts = IOCUtils.enrichFacts(type, ioc);
       const verdicts = [
         ['benign', 'B'],
         ['suspicious', 'S'],
@@ -333,6 +371,28 @@
       });
       headActions.appendChild(copyBtn);
 
+      const packWrap = document.createElement('div');
+      packWrap.className = 'ap-pivot-pack';
+      packWrap.title = 'Clipboard pack';
+      ['defang', 'md', 'csv'].forEach((fmt) => {
+        const packBtn = document.createElement('button');
+        packBtn.type = 'button';
+        packBtn.className = 'ap-pivot-pack-btn';
+        packBtn.textContent = fmt === 'defang' ? 'D' : fmt.toUpperCase();
+        packBtn.title = fmt === 'defang' ? 'Copy defanged' : 'Copy ' + fmt.toUpperCase();
+        packBtn.addEventListener('click', async () => {
+          try {
+            const text = packText(fmt, [{ ioc, type }]);
+            await navigator.clipboard.writeText(text);
+            showToast('Copied ' + (fmt === 'defang' ? 'defanged' : fmt.toUpperCase()));
+          } catch (_) {
+            showToast('Copy failed');
+          }
+        });
+        packWrap.appendChild(packBtn);
+      });
+      headActions.appendChild(packWrap);
+
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'ap-pivot-close';
@@ -347,7 +407,7 @@
       const enrichSec = document.createElement('div');
       enrichSec.className = 'ap-pivot-section';
       enrichSec.innerHTML =
-        '<div class="ap-pivot-label">Local enrichment · no network</div><div class="ap-pivot-facts"></div>';
+        '<div class="ap-pivot-label">Local OSINT · offline</div><div class="ap-pivot-facts"></div>';
       const factsEl = enrichSec.querySelector('.ap-pivot-facts');
       facts.forEach(([k, v]) => {
         const row = document.createElement('div');
@@ -368,7 +428,104 @@
           (archive.date ? ' · ' + archive.date : '');
         factsEl.appendChild(row);
       }
+      if (archive && archive.toolsUsed && archive.toolsUsed.length) {
+        const row = document.createElement('div');
+        row.className = 'ap-pivot-fact';
+        row.innerHTML =
+          '<span class="ap-pivot-fact-k">tools used</span><span class="ap-pivot-fact-v"></span>';
+        row.querySelector('.ap-pivot-fact-v').textContent = archive.toolsUsed.join(', ');
+        factsEl.appendChild(row);
+      }
       tip.appendChild(enrichSec);
+
+      const notesSec = document.createElement('div');
+      notesSec.className = 'ap-pivot-section';
+      const notesLab = document.createElement('div');
+      notesLab.className = 'ap-pivot-label';
+      notesLab.textContent = 'Notes';
+      const notesArea = document.createElement('textarea');
+      notesArea.className = 'ap-pivot-notes';
+      notesArea.value = (archive && archive.notes) || '';
+      notesArea.placeholder = 'Analyst notes…';
+      notesArea.addEventListener('blur', async () => {
+        try {
+          const res = await sendMessage({
+            action: 'updateNotes',
+            ioc,
+            notes: notesArea.value
+          });
+          if (res && res.success !== false) showToast('Notes saved');
+          else showToast((res && res.error) || 'Failed to save notes');
+        } catch (err) {
+          showToast(err.message || 'Failed to save notes');
+        }
+      });
+      notesSec.appendChild(notesLab);
+      notesSec.appendChild(notesArea);
+      tip.appendChild(notesSec);
+
+      const tagsSec = document.createElement('div');
+      tagsSec.className = 'ap-pivot-section';
+      const tagsLab = document.createElement('div');
+      tagsLab.className = 'ap-pivot-label';
+      tagsLab.textContent = 'Tags';
+      const tagsInput = document.createElement('input');
+      tagsInput.className = 'ap-pivot-tags';
+      tagsInput.type = 'text';
+      tagsInput.placeholder = 'comma-separated';
+      tagsInput.value =
+        archive && archive.tags && archive.tags.length ? archive.tags.join(', ') : '';
+      tagsInput.addEventListener('blur', async () => {
+        try {
+          const res = await sendMessage({
+            action: 'setTags',
+            ioc,
+            tags: tagsInput.value
+          });
+          if (res && res.success !== false) showToast('Tags saved');
+          else showToast((res && res.error) || 'Failed to save tags');
+        } catch (err) {
+          showToast(err.message || 'Failed to save tags');
+        }
+      });
+      tagsSec.appendChild(tagsLab);
+      tagsSec.appendChild(tagsInput);
+      tip.appendChild(tagsSec);
+
+      try {
+        const rel = await sendMessage({ action: 'getRelatedIocs', ioc });
+        const related = (rel && rel.related) || [];
+        if (related.length) {
+          const relSec = document.createElement('div');
+          relSec.className = 'ap-pivot-section';
+          const relLab = document.createElement('div');
+          relLab.className = 'ap-pivot-label';
+          relLab.textContent = 'Related';
+          relSec.appendChild(relLab);
+          const toolsWrap = document.createElement('div');
+          toolsWrap.className = 'ap-pivot-tools';
+          related.forEach((r) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'ap-pivot-tool';
+            btn.textContent = (r.ioc || '').slice(0, 18);
+            btn.title = r.ioc + ' · ' + (r.reason || '');
+            btn.addEventListener('click', async () => {
+              try {
+                await navigator.clipboard.writeText(r.ioc);
+                showToast('Copied related IoC');
+              } catch (_) {
+                showToast(r.ioc);
+              }
+            });
+            toolsWrap.appendChild(btn);
+          });
+          relSec.appendChild(toolsWrap);
+          tip.appendChild(relSec);
+        }
+      } catch (_) {
+        /* related is optional */
+      }
 
       const verdSec = document.createElement('div');
       verdSec.className = 'ap-pivot-section';
@@ -474,6 +631,7 @@
     overlayEnabled = !!enabled;
     if (overlayEnabled) {
       enableOverlays();
+      refreshOverlayConfig();
     } else {
       disableOverlays();
     }
@@ -483,6 +641,7 @@
     highlightCount = 0;
     scanRoot(document.body);
     startObserver();
+    reportPageIocDiff();
   }
 
   function disableOverlays() {
@@ -522,9 +681,91 @@
     if (e.key === 'Escape') hidePivot();
   });
 
+  let pagePalette = null;
+
+  function initPagePalette() {
+    if (typeof ApertureUI === 'undefined' || pagePalette) return;
+    pagePalette = ApertureUI.createPalette({
+      getGroups() {
+        const cfg = window.__apertureOverlayConfig || {};
+        const enabled = cfg.enabledServices || {};
+        const playbooks = cfg.playbooks || cfg.customCombinations || [];
+        const toolNames = new Set();
+        ['ip', 'domain', 'url', 'hash', 'email', 'cve', 'btc', 'asn'].forEach((t) => {
+          IOCUtils.toolsFor(t).forEach((tool) => {
+            if (enabled[tool.name] !== false) toolNames.add(tool.name);
+          });
+        });
+        const tools = Array.from(toolNames).sort().map((name) => ({
+          icon: '◇',
+          label: name,
+          meta: 'tool',
+          onClick: () => {
+            const iocVal = prompt('Indicator for ' + name + ':');
+            if (!iocVal) return;
+            sendMessage({
+              action: 'searchService',
+              ioc: iocVal.trim(),
+              service: name
+            }).then((res) => {
+              showToast(res && res.success ? 'Opened ' + name : (res && res.error) || 'Failed');
+            });
+          }
+        }));
+        const plays = playbooks.map((pb) => ({
+          icon: '▷',
+          label: pb.name,
+          meta: pb.trigger,
+          onClick: () => {
+            const iocVal = prompt('Indicator for ' + pb.name + ':');
+            if (!iocVal) return;
+            sendMessage({
+              action: 'runPlaybook',
+              ioc: iocVal.trim(),
+              playbookId: pb.id
+            }).then((res) => {
+              showToast(
+                res && res.success
+                  ? 'Ran ' + pb.name
+                  : (res && res.error) || 'Failed'
+              );
+            });
+          }
+        }));
+        return [
+          { label: 'Run OSINT tool', items: tools },
+          { label: 'Playbooks', items: plays }
+        ];
+      }
+    });
+  }
+
+  async function refreshOverlayConfig() {
+    try {
+      const cfg = await sendMessage({ action: 'getOverlayConfig' });
+      window.__apertureOverlayConfig = cfg || {};
+      if (overlayEnabled) initPagePalette();
+    } catch (_) {
+      window.__apertureOverlayConfig = {};
+    }
+  }
+
+  browserAPI.runtime.onMessage.addListener((message) => {
+    if (!message) return;
+    if (message.action === 'openPalette') {
+      initPagePalette();
+      if (pagePalette) pagePalette.open();
+      else showToast('Palette unavailable');
+    }
+  });
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadOverlaySetting);
+    document.addEventListener('DOMContentLoaded', () => {
+      loadOverlaySetting();
+      refreshOverlayConfig();
+    });
   } else {
     loadOverlaySetting();
+    refreshOverlayConfig();
   }
 })();

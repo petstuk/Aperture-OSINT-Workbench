@@ -19,6 +19,17 @@
     cve: '#e06c75',
     btc: '#98c379',
     asn: '#8b93a3',
+    eth: '#627eea',
+    attack: '#e06c75',
+    ja3: '#c678dd',
+    path: '#56b6c2',
+    onion: '#7c8490',
+    telegram: '#2aabee',
+    discord: '#5865f2',
+    cwe: '#e06c75',
+    uuid: '#8b93a3',
+    arn: '#d9a15b',
+    package: '#61afef',
     unknown: '#8b93a3'
   };
 
@@ -43,7 +54,18 @@
     Spur: 'Spur',
     MalwareBazaar: 'MalwareBazaar',
     'Have I Been Pwned': 'Have I Been Pwned',
-    HIBP: 'Have I Been Pwned'
+    HIBP: 'Have I Been Pwned',
+    'crt.sh': 'crt.sh',
+    RDAP: 'RDAP',
+    Wayback: 'Wayback Machine',
+    MITRE: 'MITRE ATT&CK',
+    'ATT&CK': 'MITRE ATT&CK',
+    'Wayback Machine': 'Wayback Machine',
+    URLhaus: 'URLhaus',
+    ThreatFox: 'ThreatFox',
+    NVD: 'NVD',
+    'BGP HE': 'BGP HE',
+    ThreatCrowd: 'ThreatCrowd'
   };
 
   // Ordered longest-first so multi-char tokens win
@@ -76,7 +98,18 @@
         email: 'Email',
         cve: 'CVE',
         btc: 'Wallet',
-        asn: 'ASN'
+        asn: 'ASN',
+        eth: 'Ethereum',
+        attack: 'Attack Pattern',
+        ja3: 'JA3',
+        path: 'File Path',
+        onion: 'Onion',
+        telegram: 'Telegram',
+        discord: 'Discord',
+        cwe: 'CWE',
+        uuid: 'UUID',
+        arn: 'AWS ARN',
+        package: 'Package'
       }[t] || 'Other'
     );
   }
@@ -91,23 +124,33 @@
         ['AB', 'AbuseIPDB'],
         ['GN', 'GreyNoise'],
         ['SH', 'Shodan'],
-        ['VT', 'VirusTotal']
+        ['VT', 'VirusTotal'],
+        ['UH', 'URLhaus'],
+        ['TF', 'ThreatFox'],
+        ['BGP', 'BGP HE']
       ],
       domain: [
         ['VT', 'VirusTotal'],
         ['US', 'URLScan'],
         ['OTX', 'AlienVault OTX'],
-        ['CE', 'Censys']
+        ['CE', 'Censys'],
+        ['CRT', 'crt.sh'],
+        ['RDAP', 'RDAP'],
+        ['WB', 'Wayback Machine']
       ],
       url: [
         ['US', 'URLScan'],
         ['VT', 'VirusTotal'],
-        ['SP', 'Spur']
+        ['SP', 'Spur'],
+        ['UH', 'URLhaus'],
+        ['TF', 'ThreatFox'],
+        ['WB', 'Wayback Machine']
       ],
       hash: [
         ['VT', 'VirusTotal'],
         ['MB', 'MalwareBazaar'],
-        ['OTX', 'AlienVault OTX']
+        ['OTX', 'AlienVault OTX'],
+        ['TF', 'ThreatFox']
       ],
       email: [
         ['HIBP', 'Have I Been Pwned'],
@@ -116,13 +159,38 @@
       ],
       cve: [
         ['XF', 'IBM X-Force Exchange'],
-        ['VT', 'VirusTotal']
+        ['VT', 'VirusTotal'],
+        ['NVD', 'NVD']
       ],
       btc: [['VT', 'VirusTotal']],
       asn: [
         ['SH', 'Shodan'],
+        ['CE', 'Censys'],
+        ['BGP', 'BGP HE']
+      ],
+      eth: [['VT', 'VirusTotal']],
+      attack: [['MITRE', 'MITRE ATT&CK']],
+      ja3: [
+        ['SH', 'Shodan'],
         ['CE', 'Censys']
-      ]
+      ],
+      path: [['VT', 'VirusTotal']],
+      onion: [
+        ['VT', 'VirusTotal'],
+        ['OTX', 'AlienVault OTX']
+      ],
+      telegram: [
+        ['VT', 'VirusTotal'],
+        ['OTX', 'AlienVault OTX']
+      ],
+      discord: [
+        ['VT', 'VirusTotal'],
+        ['OTX', 'AlienVault OTX']
+      ],
+      cwe: [['NVD', 'NVD']],
+      uuid: [['VT', 'VirusTotal']],
+      arn: [['VT', 'VirusTotal']],
+      package: [['VT', 'VirusTotal']]
     };
     return (m[t] || [['VT', 'VirusTotal']]).map((x) => ({
       code: x[0],
@@ -130,52 +198,277 @@
     }));
   }
 
-  function enrich(t, v) {
+  const FREE_MAIL = new Set([
+    'gmail.com', 'googlemail.com', 'yahoo.com', 'yahoo.co.uk', 'hotmail.com',
+    'outlook.com', 'live.com', 'msn.com', 'icloud.com', 'me.com', 'mac.com',
+    'aol.com', 'proton.me', 'protonmail.com', 'pm.me', 'gmx.com', 'gmx.net',
+    'mail.com', 'yandex.com', 'yandex.ru', 'zoho.com', 'tutanota.com', 'tutamail.com'
+  ]);
+
+  const ROLE_LOCAL = new Set([
+    'admin', 'administrator', 'abuse', 'postmaster', 'hostmaster', 'webmaster',
+    'noreply', 'no-reply', 'donotreply', 'do-not-reply', 'support', 'info',
+    'sales', 'security', 'root', 'contact', 'help', 'billing'
+  ]);
+
+  function registrableDomain(domain) {
+    const d = String(domain || '').toLowerCase().replace(/\.$/, '');
+    const labels = d.split('.').filter(Boolean);
+    if (labels.length < 2) return d;
+    const last = labels[labels.length - 1];
+    const compound = labels[labels.length - 2] + '.' + last;
+    if (COMPOUND_TLDS.has(compound) && labels.length >= 3) {
+      return labels.slice(-3).join('.');
+    }
+    return labels.slice(-2).join('.');
+  }
+
+  function ipv4Scope(octets) {
+    const a = octets[0];
+    const b = octets[1];
+    const c = octets[2];
+    if (a === 0) return { scope: 'this-network', note: '0.0.0.0/8 · not public' };
+    if (a === 10) return { scope: 'private', note: 'RFC1918 10/8 · not routable' };
+    if (a === 127) return { scope: 'loopback', note: '127/8 · host only' };
+    if (a === 169 && b === 254) return { scope: 'link-local', note: '169.254/16 · APIPA' };
+    if (a === 172 && b >= 16 && b <= 31) {
+      return { scope: 'private', note: 'RFC1918 172.16/12 · not routable' };
+    }
+    if (a === 192 && b === 0 && c === 2) {
+      return { scope: 'documentation', note: 'TEST-NET-1 192.0.2/24' };
+    }
+    if (a === 192 && b === 168) {
+      return { scope: 'private', note: 'RFC1918 192.168/16 · not routable' };
+    }
+    if (a === 100 && b >= 64 && b <= 127) {
+      return { scope: 'cgnat', note: 'RFC6598 100.64/10 · carrier NAT' };
+    }
+    if (a === 198 && (b === 18 || b === 19)) {
+      return { scope: 'benchmark', note: '198.18/15 · benchmarking' };
+    }
+    if (a === 198 && b === 51 && c === 100) {
+      return { scope: 'documentation', note: 'TEST-NET-2 198.51.100/24' };
+    }
+    if (a === 203 && b === 0 && c === 113) {
+      return { scope: 'documentation', note: 'TEST-NET-3 203.0.113/24' };
+    }
+    if (a >= 224 && a <= 239) return { scope: 'multicast', note: '224/4 · not unicast' };
+    if (a >= 240) return { scope: 'reserved', note: '240/4 · reserved' };
+    return { scope: 'public', note: 'public unicast · internet-routable' };
+  }
+
+  function ipv6Scope(v) {
+    const s = String(v || '').toLowerCase();
+    if (s === '::1') return { scope: 'loopback', note: '::1 · host only' };
+    if (s.startsWith('fe80:')) return { scope: 'link-local', note: 'fe80::/10' };
+    if (s.startsWith('fc') || s.startsWith('fd')) {
+      return { scope: 'ula', note: 'fc00::/7 · unique local' };
+    }
+    if (s.startsWith('ff')) return { scope: 'multicast', note: 'ff00::/8' };
+    if (s.startsWith('2001:db8:')) {
+      return { scope: 'documentation', note: '2001:db8::/32 · docs only' };
+    }
+    return { scope: 'public', note: 'global unicast (assumed)' };
+  }
+
+  function hashAlgo(hex) {
+    const n = String(hex || '').length;
+    if (n === 64) return 'SHA-256';
+    if (n === 40) return 'SHA-1';
+    if (n === 32) return 'MD5';
+    return 'unknown';
+  }
+
+  function hashPattern(hex) {
+    const h = String(hex || '').toLowerCase();
+    if (/^0+$/.test(h)) return 'all zeros · empty/null sample';
+    if (/^f+$/.test(h)) return 'all f · filler pattern';
+    if (/^(.)\1+$/.test(h)) return 'repeating nibble · unlikely real file';
+    return 'mixed hex';
+  }
+
+  function btcFormat(v) {
+    if (/^bc1/.test(v)) return { kind: 'bech32', note: 'Native SegWit (bc1…)' };
+    if (/^3/.test(v)) return { kind: 'p2sh', note: 'P2SH (3…)' };
+    if (/^[1]/.test(v)) return { kind: 'p2pkh', note: 'P2PKH (1…)' };
+    return { kind: 'bitcoin', note: 'Bitcoin address' };
+  }
+
+  function enrichFacts(t, v) {
+    const facts = [];
+    const push = (k, val) => {
+      if (val !== undefined && val !== null && String(val).length) facts.push([k, String(val)]);
+    };
+
     if (t === 'ip') {
-      const p = v.split('.');
-      if (p.length === 4) {
-        const first = +p[0];
-        const priv =
-          first === 10 ||
-          (first === 172 && +p[1] >= 16 && +p[1] <= 31) ||
-          (first === 192 && +p[1] === 168);
-        return priv
-          ? 'Private (RFC1918) · not routable'
-          : 'Public IPv4 · rev ' + p.slice().reverse().join('.') + '.in-addr.arpa';
+      const ipv4 = v.split('.');
+      if (ipv4.length === 4 && ipv4.every((x) => /^\d+$/.test(x))) {
+        const octets = ipv4.map(Number);
+        const info = ipv4Scope(octets);
+        push('family', 'IPv4');
+        push('scope', info.scope);
+        push('class', info.note);
+        push('ptr', octets.slice().reverse().join('.') + '.in-addr.arpa');
+        push('octet1', String(octets[0]));
+      } else {
+        const info = ipv6Scope(v);
+        push('family', 'IPv6');
+        push('scope', info.scope);
+        push('class', info.note);
       }
-      return 'IPv6 address';
+      return facts;
     }
-    if (t === 'hash') {
-      return v.length === 64
-        ? 'SHA-256 (64 hex)'
-        : v.length === 40
-          ? 'SHA-1 (40 hex)'
-          : 'MD5 (32 hex)';
+
+    if (t === 'domain') {
+      const d = String(v).toLowerCase().replace(/\.$/, '');
+      const labels = d.split('.');
+      const tld = labels[labels.length - 1] || '';
+      const reg = registrableDomain(d);
+      const subDepth = Math.max(0, labels.length - reg.split('.').length);
+      push('tld', '.' + tld);
+      push('registrable', reg);
+      push('labels', String(labels.length));
+      push('subdepth', String(subDepth));
+      push('length', String(d.length) + ' chars');
+      if (d.indexOf('xn--') >= 0) push('idn', 'punycode present · check homoglyphs');
+      if (labels.some((lab) => lab.length >= 20)) push('hint', 'long label · possible DGA/noise');
+      if ((d.match(/-/g) || []).length >= 3) push('hint', 'many hyphens · review carefully');
+      return facts;
     }
+
     if (t === 'url') {
-      return 'host ' + v.replace(/^https?:\/\//i, '').split('/')[0];
+      let parsed = null;
+      try {
+        parsed = new URL(v);
+      } catch (_) {
+        push('parse', 'invalid URL structure');
+        push('raw', v.slice(0, 80));
+        return facts;
+      }
+      const host = parsed.hostname || '';
+      push('scheme', parsed.protocol.replace(':', ''));
+      push('host', host);
+      if (parsed.port) push('port', parsed.port);
+      else push('port', 'default');
+      const pathParts = parsed.pathname.split('/').filter(Boolean);
+      push('path', pathParts.length ? pathParts.length + ' segments' : 'none');
+      push('query', parsed.search ? 'yes' : 'no');
+      push('fragment', parsed.hash ? 'yes' : 'no');
+      if (parsed.username || parsed.password) {
+        push('userinfo', 'present · phishing lure risk');
+      }
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.indexOf(':') >= 0) {
+        push('host-kind', 'literal IP · unusual for brands');
+      } else if (host) {
+        push('registrable', registrableDomain(host));
+      }
+      if (parsed.protocol === 'http:') push('tls', 'none · plaintext HTTP');
+      else if (parsed.protocol === 'https:') push('tls', 'HTTPS');
+      return facts;
     }
+
+    if (t === 'hash') {
+      const algo = hashAlgo(v);
+      push('algo', algo);
+      push('length', String(v.length) + ' hex');
+      push('pattern', hashPattern(v));
+      return facts;
+    }
+
     if (t === 'email') {
-      return 'domain ' + (v.split('@')[1] || '');
+      const parts = String(v).toLowerCase().split('@');
+      const local = parts[0] || '';
+      const domain = parts[1] || '';
+      push('local', local);
+      push('domain', domain);
+      if (domain) push('registrable', registrableDomain(domain));
+      if (FREE_MAIL.has(domain)) push('provider', 'consumer / free mail');
+      else if (domain) push('provider', 'org / other domain');
+      if (ROLE_LOCAL.has(local) || ROLE_LOCAL.has(local.split('+')[0])) {
+        push('role', 'role-style local part');
+      }
+      if (local.indexOf('+') >= 0) push('tag', 'plus-address tag');
+      return facts;
     }
+
     if (t === 'cve') {
-      return 'CVE · year ' + (v.split('-')[1] || '');
+      const bits = String(v).toUpperCase().split('-');
+      const year = parseInt(bits[1], 10);
+      const id = bits[2] || '';
+      const nowY = new Date().getUTCFullYear();
+      push('id', String(v).toUpperCase());
+      push('year', String(year || ''));
+      if (year && year <= nowY) push('age', String(nowY - year) + 'y since assign year');
+      push('seq', id.length + '-digit sequence');
+      return facts;
     }
+
     if (t === 'btc') {
-      return v.slice(0, 3) === 'bc1'
-        ? 'Bitcoin bech32 address'
-        : 'Bitcoin P2PKH address';
+      const fmt = btcFormat(v);
+      push('asset', 'Bitcoin');
+      push('format', fmt.kind);
+      push('note', fmt.note);
+      push('length', String(v.length) + ' chars');
+      return facts;
     }
+
     if (t === 'asn') {
-      return 'Autonomous System number';
+      const num = String(v).toUpperCase().replace(/^AS/, '');
+      push('asn', 'AS' + num);
+      push('number', num);
+      const n = parseInt(num, 10);
+      if (n >= 64512 && n <= 65534) push('scope', 'private 16-bit ASN');
+      else if (n >= 4200000000 && n <= 4294967294) push('scope', 'private 32-bit ASN');
+      else push('scope', 'public ASN range (assumed)');
+      return facts;
+    }
+
+    push('note', 'unclassified token');
+    return facts;
+  }
+
+  function enrich(t, v) {
+    const facts = enrichFacts(t, v);
+    if (!facts.length) return 'unclassified token';
+    if (t === 'ip') {
+      const scope = (facts.find((f) => f[0] === 'scope') || [])[1];
+      const note = (facts.find((f) => f[0] === 'class') || [])[1];
+      return (scope || 'ip') + (note ? ' · ' + note : '');
     }
     if (t === 'domain') {
-      const tld = v.split('.').pop();
-      return v.indexOf('xn--') >= 0
-        ? 'punycode ⚠ · TLD .' + tld
-        : 'TLD .' + tld + ' · ' + (v.split('.').length - 1) + ' labels';
+      const idn = facts.find((f) => f[0] === 'idn');
+      const tld = (facts.find((f) => f[0] === 'tld') || [])[1];
+      const labels = (facts.find((f) => f[0] === 'labels') || [])[1];
+      if (idn) return idn[1] + ' · TLD ' + tld;
+      return 'TLD ' + tld + ' · ' + labels + ' labels';
     }
-    return 'unclassified token';
+    if (t === 'url') {
+      const host = (facts.find((f) => f[0] === 'host') || [])[1];
+      return host ? 'host ' + host : facts[0][1];
+    }
+    if (t === 'hash') {
+      const algo = (facts.find((f) => f[0] === 'algo') || [])[1];
+      const len = (facts.find((f) => f[0] === 'length') || [])[1];
+      return algo + ' (' + len + ')';
+    }
+    if (t === 'email') {
+      const domain = (facts.find((f) => f[0] === 'domain') || [])[1];
+      const provider = (facts.find((f) => f[0] === 'provider') || [])[1];
+      return 'domain ' + domain + (provider ? ' · ' + provider : '');
+    }
+    if (t === 'cve') {
+      const year = (facts.find((f) => f[0] === 'year') || [])[1];
+      const age = (facts.find((f) => f[0] === 'age') || [])[1];
+      return 'CVE · year ' + year + (age ? ' · ' + age : '');
+    }
+    if (t === 'btc') {
+      return (facts.find((f) => f[0] === 'note') || facts[0])[1];
+    }
+    if (t === 'asn') {
+      const scope = (facts.find((f) => f[0] === 'scope') || [])[1];
+      return scope || 'Autonomous System number';
+    }
+    return facts[0][1];
   }
 
   function refangMapped(input) {
@@ -276,10 +569,17 @@
     if (!t) return 'unknown';
 
     if (/^CVE-\d{4}-\d{4,7}$/i.test(t)) return 'cve';
+    if (/^CWE-\d{1,5}$/i.test(t)) return 'cwe';
+    if (/^T\d{4}(?:\.\d{3})?$/i.test(t)) return 'attack';
     if (/^AS\d{3,6}$/i.test(t)) return 'asn';
+    if (/^0x[a-fA-F0-9]{40}$/.test(t)) return 'eth';
     if (/^(?:bc1[a-z0-9]{20,70}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(t)) {
       return 'btc';
     }
+    if (/^t\.me\/[a-zA-Z0-9_]{4,}$/i.test(t) || /^@[a-zA-Z][a-zA-Z0-9_]{4,31}$/.test(t)) {
+      return 'telegram';
+    }
+    if (/^discord\.gg\/[a-zA-Z0-9-]+$/i.test(t)) return 'discord';
     if (/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/i.test(t)) {
       const host = t.split('@')[1];
       if (host && isValidDomain(host)) return 'email';
@@ -292,8 +592,29 @@
     if (ipv6Regex.test(t)) return 'ip';
 
     if (/^[a-fA-F0-9]+$/.test(t) && isExactHash(t)) return 'hash';
+    if (/^[a-fA-F0-9]{62}$/.test(t)) return 'ja3'; // JARM-length
 
     if (/^https?:\/\/.+/i.test(t)) return 'url';
+
+    if (/^[a-z2-7]{16}\.onion$/i.test(t) || /^[a-z2-7]{56}\.onion$/i.test(t)) {
+      return 'onion';
+    }
+
+    if (/^[A-Za-z]:\\/.test(t) || /^\\\\[^\\]+\\/.test(t)) return 'path';
+    if (
+      /^\/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)(?:\/|$)/i.test(t) ||
+      /\.(?:exe|dll|ps1|bat|cmd|sh|dylib|so)$/i.test(t)
+    ) {
+      if (t.includes('/') || t.includes('\\')) return 'path';
+    }
+
+    if (/^arn:aws:[a-z0-9-]+:/i.test(t)) return 'arn';
+    if (/^(?:npm:|pypi:|gem:)?[a-z0-9@/_-]{2,}$/i.test(t) && t.includes('/') && !t.includes('://')) {
+      /* leave package to explicit collect */
+    }
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t)) {
+      return 'uuid';
+    }
 
     if (isValidDomain(t)) return 'domain';
 
@@ -344,6 +665,75 @@
     let cm;
     while ((cm = cveRe.exec(refanged)) !== null) {
       push(cm.index, cm.index + cm[0].length, cm[0].toUpperCase(), 'cve');
+    }
+
+    const ethRe = /\b0x[a-fA-F0-9]{40}\b/g;
+    let ethm;
+    while ((ethm = ethRe.exec(refanged)) !== null) {
+      push(ethm.index, ethm.index + ethm[0].length, ethm[0], 'eth');
+    }
+
+    const attackRe = /\bT\d{4}(?:\.\d{3})?\b/g;
+    let atm;
+    while ((atm = attackRe.exec(refanged)) !== null) {
+      push(atm.index, atm.index + atm[0].length, atm[0].toUpperCase(), 'attack');
+    }
+
+    const cweRe = /\bCWE-\d{1,5}\b/gi;
+    let cwem;
+    while ((cwem = cweRe.exec(refanged)) !== null) {
+      push(cwem.index, cwem.index + cwem[0].length, cwem[0].toUpperCase(), 'cwe');
+    }
+
+    const ja3Re = /\b(?:ja3(?:h)?|ja4|jarm)[:\s=]+([a-zA-Z0-9_]{10,62})\b/gi;
+    let jm;
+    while ((jm = ja3Re.exec(refanged)) !== null) {
+      const val = jm[1];
+      const start = jm.index + jm[0].indexOf(val);
+      push(start, start + val.length, val, 'ja3');
+    }
+
+    const tgRe = /\bt\.me\/[a-zA-Z0-9_]{4,}\b/gi;
+    let tgm;
+    while ((tgm = tgRe.exec(refanged)) !== null) {
+      push(tgm.index, tgm.index + tgm[0].length, tgm[0], 'telegram');
+    }
+
+    const discRe = /\bdiscord\.gg\/[a-zA-Z0-9-]+\b/gi;
+    let dcm;
+    while ((dcm = discRe.exec(refanged)) !== null) {
+      push(dcm.index, dcm.index + dcm[0].length, dcm[0], 'discord');
+    }
+
+    const onionRe = /\b[a-z2-7]{16}\.onion\b|\b[a-z2-7]{56}\.onion\b/gi;
+    let om;
+    while ((om = onionRe.exec(refanged)) !== null) {
+      push(om.index, om.index + om[0].length, om[0].toLowerCase(), 'onion');
+    }
+
+    const winPathRe = /\b[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*\b/g;
+    let pm;
+    while ((pm = winPathRe.exec(refanged)) !== null) {
+      if (pm[0].length > 4) push(pm.index, pm.index + pm[0].length, pm[0], 'path');
+    }
+
+    const nixPathRe =
+      /\/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)\/[a-zA-Z0-9._\/+-]+/g;
+    while ((pm = nixPathRe.exec(refanged)) !== null) {
+      push(pm.index, pm.index + pm[0].length, pm[0], 'path');
+    }
+
+    const arnRe = /\barn:aws:[a-z0-9-]+:[a-z0-9-]*:\d*:[^\s"'<>]+/gi;
+    let arm;
+    while ((arm = arnRe.exec(refanged)) !== null) {
+      push(arm.index, arm.index + arm[0].length, arm[0], 'arn');
+    }
+
+    const uuidRe =
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
+    let um2;
+    while ((um2 = uuidRe.exec(refanged)) !== null) {
+      push(um2.index, um2.index + um2[0].length, um2[0].toLowerCase(), 'uuid');
     }
 
     const btcRe = /\b(?:bc1[a-z0-9]{20,70}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b/g;
@@ -506,6 +896,130 @@
     return 'unknown';
   }
 
+  function defang(value) {
+    return String(value || '')
+      .replace(/:\/\//g, '[://]')
+      .replace(/@/g, '[@]')
+      .replace(/\./g, '[.]');
+  }
+
+  function canonicalize(type, value) {
+    const refanged = refang(String(value || '').trim());
+    const t = type || detectIOCType(refanged);
+    if (t === 'cve' || t === 'asn') return refanged.toUpperCase();
+    if (t === 'email' || t === 'domain' || t === 'hash') return refanged.toLowerCase();
+    return refanged;
+  }
+
+  function normalizeTags(tags) {
+    if (!Array.isArray(tags)) return [];
+    const seen = new Set();
+    const out = [];
+    tags.forEach((tag) => {
+      const t = String(tag || '').trim().toLowerCase();
+      if (t && !seen.has(t)) {
+        seen.add(t);
+        out.push(t);
+      }
+    });
+    return out;
+  }
+
+  function isPrivateOrLocalIp(ioc) {
+    const v = refang(String(ioc || '').trim());
+    const ipv4 = v.split('.');
+    if (ipv4.length === 4 && ipv4.every((x) => /^\d+$/.test(x))) {
+      const info = ipv4Scope(ipv4.map(Number));
+      return info.scope !== 'public';
+    }
+    const info = ipv6Scope(v.toLowerCase());
+    return info.scope !== 'public';
+  }
+
+  function stixPatternFor(type, ioc) {
+    const v = String(ioc || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const t = type || detectIOCType(ioc);
+    if (t === 'ip') return "[ipv4-addr:value = '" + v + "']";
+    if (t === 'domain') return "[domain-name:value = '" + v + "']";
+    if (t === 'url') return "[url:value = '" + v + "']";
+    if (t === 'email') return "[email-addr:value = '" + v + "']";
+    if (t === 'hash') {
+      const algo = hashAlgo(v);
+      const key = algo === 'SHA-256' || algo === 'SHA-1' ? "'" + algo + "'" : algo;
+      return '[file:hashes.' + key + " = '" + v + "']";
+    }
+    if (t === 'cve') return "[vulnerability:name = '" + v + "']";
+    return "[x-aperture-ioc:value = '" + v + "']";
+  }
+
+  function clipboardPack(format, entries) {
+    const list = Array.isArray(entries) ? entries : [];
+    const fmt = String(format || 'raw').toLowerCase();
+
+    if (fmt === 'raw') {
+      return list.map((e) => e.ioc).join('\n');
+    }
+    if (fmt === 'defang') {
+      return list.map((e) => defang(e.ioc)).join('\n');
+    }
+    if (fmt === 'markdown') {
+      return list
+        .map((e) => {
+          const line =
+            '- `' +
+            e.ioc +
+            '` (' +
+            typeLabel(e.type || detectIOCType(e.ioc)) +
+            ')' +
+            (e.verdict ? ' — **' + e.verdict + '**' : '');
+          const extras = [];
+          if (e.notes) extras.push('  - Notes: ' + e.notes);
+          if (e.tags && e.tags.length) extras.push('  - Tags: ' + e.tags.join(', '));
+          return extras.length ? line + '\n' + extras.join('\n') : line;
+        })
+        .join('\n');
+    }
+    if (fmt === 'csv') {
+      const esc = (c) => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"';
+      const rows = [['ioc', 'type', 'verdict', 'notes', 'tags'].map(esc).join(',')];
+      list.forEach((e) => {
+        rows.push(
+          [
+            e.ioc,
+            e.type || detectIOCType(e.ioc),
+            e.verdict || '',
+            e.notes || '',
+            (e.tags || []).join(';')
+          ]
+            .map(esc)
+            .join(',')
+        );
+      });
+      return rows.join('\n');
+    }
+    if (fmt === 'stix') {
+      const now = new Date().toISOString();
+      const objects = list.map((e, i) => ({
+        type: 'indicator',
+        spec_version: '2.1',
+        id: 'indicator--aperture-' + i + '-' + Date.now(),
+        created: now,
+        modified: now,
+        pattern: stixPatternFor(e.type, e.ioc),
+        pattern_type: 'stix',
+        valid_from: now,
+        labels: normalizeTags(e.tags || []),
+        description: e.notes || ''
+      }));
+      return JSON.stringify(
+        { type: 'bundle', id: 'bundle--aperture-' + Date.now(), objects },
+        null,
+        2
+      );
+    }
+    return list.map((e) => e.ioc).join('\n');
+  }
+
   global.IOCUtils = {
     detectIOCType,
     findIOCMatches,
@@ -513,6 +1027,7 @@
     refangMapped,
     parse,
     enrich,
+    enrichFacts,
     typeLabel,
     toolsFor,
     isValidDomain,
@@ -522,7 +1037,12 @@
     defaultPlaybooks,
     playbookForType,
     normalizeVerdict,
-    stripUrlTrailingPunct
+    stripUrlTrailingPunct,
+    canonicalize,
+    defang,
+    clipboardPack,
+    normalizeTags,
+    isPrivateOrLocalIp
   };
 
 })(typeof self !== 'undefined' ? self : this);

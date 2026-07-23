@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aperture DevTools</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 12px; font-size: 12px; }
+    textarea { width: 100%; height: 120px; }
+    pre { background: #111; color: #ddd; padding: 8px; overflow: auto; max-height: 240px; }
+  </style>
+</head>
+<body>
+  <h3>HAR / text IoC extract</h3>
+  <p>Paste HAR JSON or raw text. Feature flag <code>devtoolsPanel</code> recommended.</p>
+  <textarea id="raw" placeholder="Paste HAR or logs…"></textarea>
+  <p><button id="go">Extract</button></p>
+  <pre id="out"></pre>
+  <script src="ioc-utils.js"></script>
+  <script src="devtools-panel.js"></script>
+</body>
+</html>

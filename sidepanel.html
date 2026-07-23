@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aperture Side Panel</title>
+  <link rel="stylesheet" href="aperture.css" />
+  <style>
+    body { margin: 0; min-width: 280px; }
+    .sp { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+    .sp h1 { font-size: 14px; margin: 0; }
+    .sp-meta { font-size: 11px; color: var(--text-dim); }
+    .sp-list { max-height: 240px; overflow: auto; }
+    .sp-row { padding: 8px; border-bottom: 1px solid var(--stroke); cursor: pointer; }
+    .sp-row:hover { background: var(--bg-elev); }
+  </style>
+</head>
+<body>
+  <div class="sp">
+    <div>
+      <h1>Aperture</h1>
+      <div class="sp-meta" id="sp-chip">Local · side panel</div>
+    </div>
+    <div class="ap-panel" style="padding:10px">
+      <div class="ap-pivot-label" style="margin-bottom:6px">Active session</div>
+      <select id="sp-case" style="width:100%;margin-bottom:8px"></select>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="sp-start">Start</button>
+        <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="sp-pause">Pause</button>
+        <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="sp-clear">Clear</button>
+      </div>
+      <div class="sp-meta" id="sp-session" style="margin-top:8px"></div>
+    </div>
+    <div>
+      <input id="sp-ioc" placeholder="Paste indicator…" style="width:100%;margin-bottom:8px" />
+      <button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="sp-run" style="width:100%">Detect &amp; run playbook</button>
+    </div>
+    <div class="ap-panel">
+      <div class="panel-head"><span class="panel-title">Recent</span></div>
+      <div class="sp-list" id="sp-recent"></div>
+    </div>
+    <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="sp-dash">Open workbench</button>
+  </div>
+  <script src="ioc-utils.js"></script>
+  <script src="palette.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
