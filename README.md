@@ -1,7 +1,7 @@
 # Aperture — OSINT Workbench
 
 <p align="center">
-  <img src="icon512.png" alt="Aperture logo" width="128" height="128" />
+  <img src="extension/icons/icon512.png" alt="Aperture logo" width="128" height="128" />
 </p>
 
 **Local-first browser extension** for SOC, DFIR, and CTI analysts.
@@ -65,12 +65,12 @@ VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM
 Install from [Firefox Browser Add-ons](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/), or load temporarily:
 
 1. `about:debugging` → This Firefox → **Load Temporary Add-on**
-2. Select [`manifest.json`](manifest.json)
+2. Select [`extension/manifest.json`](extension/manifest.json)
 
 ### Chrome / Chromium
 
 1. `chrome://extensions` → enable **Developer mode**
-2. **Load unpacked** → select this repository folder
+2. **Load unpacked** → select the [`extension/`](extension/) folder
 
 ---
 
@@ -96,7 +96,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 
 | Path | Purpose |
 |---|---|
-| `/` (root) | Extension runtime — load this folder as the unpacked add-on |
+| [`extension/`](extension/) | Extension runtime — load this folder as the unpacked add-on |
 | [`docs/`](docs/) | Guides, store checklists, [release notes](docs/releases/) |
 | [`test/`](test/) | Detection corpus and manual test pages |
 | [`preview/`](preview/) | README / social-preview demo dashboard (not shipped) |
@@ -108,15 +108,15 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 
 | Surface | Files |
 |---|---|
-| Manifest | [`manifest.json`](manifest.json) |
-| Background | [`background.js`](background.js), [`ioc-utils.js`](ioc-utils.js) |
-| Popup | [`popup.html`](popup.html), [`popup.js`](popup.js) |
-| Dashboard | [`dashboard.html`](dashboard.html), [`dashboard.js`](dashboard.js) |
-| On-page | [`content.js`](content.js), [`content.css`](content.css) |
-| Side panel | [`sidepanel.html`](sidepanel.html), [`sidepanel.js`](sidepanel.js) |
-| Shared UI | [`aperture.css`](aperture.css), [`palette.js`](palette.js), `fonts/` |
-| Offline packs / flags / IDB | [`aperture-packs.js`](aperture-packs.js), [`aperture-features.js`](aperture-features.js), [`aperture-store.js`](aperture-store.js) |
-| DevTools (experimental) | [`devtools.html`](devtools.html) |
+| Manifest | [`extension/manifest.json`](extension/manifest.json) |
+| Background | [`extension/background.js`](extension/background.js), [`extension/ioc-utils.js`](extension/ioc-utils.js) |
+| Popup | [`extension/popup.html`](extension/popup.html) |
+| Dashboard | [`extension/dashboard.html`](extension/dashboard.html) |
+| On-page | [`extension/content.js`](extension/content.js), [`extension/content.css`](extension/content.css) |
+| Side panel | [`extension/sidepanel.html`](extension/sidepanel.html) |
+| Shared UI | [`extension/aperture.css`](extension/aperture.css), [`extension/palette.js`](extension/palette.js), `extension/fonts/` |
+| Offline packs / flags / IDB | `extension/aperture-packs.js`, `aperture-features.js`, `aperture-store.js` |
+| DevTools (experimental) | [`extension/devtools.html`](extension/devtools.html) |
 
 ### Package a release zip
 
@@ -144,10 +144,10 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 Common fork points:
 
-- **New OSINT site** — add URL template in `background.js` (`serviceUrls`) and map it in `IOCUtils.toolsFor()`
-- **New IoC type** — extend detection in `ioc-utils.js` and cover it in `test/test-ioc-utils.js`
+- **New OSINT site** — add URL template in `extension/background.js` (`serviceUrls`) and map it in `IOCUtils.toolsFor()`
+- **New IoC type** — extend detection in `extension/ioc-utils.js` and cover it in `test/test-ioc-utils.js`
 - **New playbook** — create in the UI or import an `APX|…` share code
-- **Labs / experimental behaviour** — feature flags via the dashboard **Labs** screen (`aperture-features.js`)
+- **Labs / experimental behaviour** — feature flags via the dashboard **Labs** screen (`extension/aperture-features.js`)
 
 Keep the privacy model: network only on explicit user action; keys never in `storage.sync`; experimental features default off.
 

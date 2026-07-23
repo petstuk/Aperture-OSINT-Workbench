@@ -1,5 +1,5 @@
 chrome.devtools.panels.create(
   'Aperture',
-  'icon16.png',
+  'icons/icon16.png',
   'devtools-panel.html'
 );

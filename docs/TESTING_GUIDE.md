@@ -2,7 +2,7 @@
 
 ## Load unpacked
 1. Chrome: `chrome://extensions` → Developer mode → Load unpacked
-2. Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → `manifest.json`
+2. Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → `extension/manifest.json`
 
 ## Smoke
 1. Open popup — brand APERTURE, detect field, playbooks, recent

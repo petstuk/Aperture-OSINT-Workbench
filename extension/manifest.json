@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Aperture — OSINT Workbench",
+  "name": "Aperture \u2014 OSINT Workbench",
   "version": "4.0.0",
   "description": "Local OSINT workbench for SOC analysts: IoC pivot, playbooks, cases, offline packs, and right-click search. No API keys by default. Formerly SOC OSINT Search.",
   "permissions": [
@@ -32,10 +32,10 @@
     "default_popup": "popup.html",
     "default_title": "Aperture",
     "default_icon": {
-      "16": "icon16.png",
-      "32": "icon32.png",
-      "48": "icon48.png",
-      "128": "icon128.png"
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
     }
   },
   "background": {
@@ -51,24 +51,35 @@
   "devtools_page": "devtools.html",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["ioc-utils.js", "palette.js", "content.js"],
-      "css": ["aperture.css", "content.css"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "ioc-utils.js",
+        "palette.js",
+        "content.js"
+      ],
+      "css": [
+        "aperture.css",
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ],
   "icons": {
-    "16": "icon16.png",
-    "32": "icon32.png",
-    "48": "icon48.png",
-    "128": "icon128.png"
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
   },
   "browser_specific_settings": {
     "gecko": {
       "id": "soc-osint-search@example.com",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     },
     "gecko_android": {
@@ -91,7 +102,9 @@
         "aperture-store.js",
         "ioc-scan-worker.js"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

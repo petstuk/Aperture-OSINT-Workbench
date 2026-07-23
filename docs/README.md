@@ -8,4 +8,4 @@
 | [STORAGE_LOCAL_MIGRATION.md](STORAGE_LOCAL_MIGRATION.md) | v2 → v3 storage migration notes |
 | [../.github/SOCIAL_PREVIEW.md](../.github/SOCIAL_PREVIEW.md) | GitHub Open Graph image |
 
-Extension source stays at the **repository root** so “Load unpacked” / temporary add-on keeps working with `manifest.json` paths unchanged.
+Extension runtime lives in [`extension/`](../extension/) — load that folder as the unpacked / temporary add-on.

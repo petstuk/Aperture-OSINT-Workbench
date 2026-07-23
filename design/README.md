@@ -271,7 +271,7 @@ MalwareBazaar, GreyNoise, Spur — each is just a URL template opened in a new t
 
 ## Assets
 - Logo is CSS-drawn (rounded square + glowing dot) — no image needed, but the extension can keep
-  using `icon512.png` for the toolbar icon.
+  using `extension/icons/icon512.png` for the toolbar icon.
 - Fonts: IBM Plex Sans + IBM Plex Mono (Google Fonts). Bundle locally for a keyless/offline build.
 - No other images; all iconography is Unicode glyphs (▤ ⧉ ▷ ◱ ❖ ⤢ ⇄ ⌕ ◇ →).
 

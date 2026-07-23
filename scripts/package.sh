@@ -3,9 +3,10 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+EXT="$ROOT/extension"
 cd "$ROOT"
 
-VERSION="$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")"
+VERSION="$(python3 -c "import json; print(json.load(open('$EXT/manifest.json'))['version'])")"
 OUTPUT_FILE="aperture-osint-v${VERSION}.zip"
 
 echo "Aperture — OSINT Workbench packaging"
@@ -22,44 +23,18 @@ if [ -f "$OUTPUT_FILE" ]; then
   rm "$OUTPUT_FILE"
 fi
 
-echo "Creating $OUTPUT_FILE"
+echo "Creating $OUTPUT_FILE from extension/"
 
-# Extension runtime only — no docs/, test/, preview/, design/, or release zips
-zip -r "$OUTPUT_FILE" \
-  manifest.json \
-  LICENSE \
-  README.md \
-  ioc-utils.js \
-  background.js \
-  content.js \
-  content.css \
-  aperture.css \
-  aperture-features.js \
-  aperture-packs.js \
-  aperture-store.js \
-  ioc-scan-worker.js \
-  palette.js \
-  popup.html \
-  popup.js \
-  dashboard.html \
-  dashboard.js \
-  sidepanel.html \
-  sidepanel.js \
-  archive.html \
-  archive-redirect.js \
-  devtools.html \
-  devtools.js \
-  devtools-panel.html \
-  devtools-panel.js \
-  fonts \
-  icon16.png \
-  icon32.png \
-  icon48.png \
-  icon128.png \
-  icon512.png \
-  -x "*.git*" \
-  -x "*~" \
-  -x ".DS_Store"
+# Store zip must have manifest.json at the archive root (not under extension/)
+(
+  cd "$EXT"
+  zip -r "$ROOT/$OUTPUT_FILE" . \
+    -x "*.git*" \
+    -x "*~" \
+    -x ".DS_Store"
+)
+# License + README at zip root for reviewers
+zip -u "$OUTPUT_FILE" LICENSE README.md
 
 echo ""
 echo "Package created:"
