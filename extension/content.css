@@ -73,7 +73,7 @@
 .ap-pivot {
   position: fixed;
   z-index: 2147483646;
-  width: 300px;
+  width: 320px;
   max-width: calc(100vw - 16px);
   background: #0d1017;
   border: 1px solid #2f3745;
@@ -101,26 +101,47 @@
 }
 .ap-pivot-head {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   padding: 12px 14px;
   border-bottom: 1px solid #1a2029;
-  align-items: flex-start;
+  min-width: 0;
+}
+.ap-pivot-head-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+.ap-pivot-head-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
 }
 .ap-pivot-head-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
-  align-items: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .ap-pivot-value {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   font-weight: 500;
   color: #e6e9ef;
-  word-break: break-all;
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 .ap-pivot-close,
 .ap-pivot-copy,
@@ -267,7 +288,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   display: inline-block;
-  margin-top: 6px;
+  flex-shrink: 0;
   border: 1px solid;
 }
 .ap-pivot-pack {

@@ -421,22 +421,28 @@
 
       const head = document.createElement('div');
       head.className = 'ap-pivot-head';
-      const valWrap = document.createElement('div');
-      valWrap.style.flex = '1';
-      valWrap.style.minWidth = '0';
+
+      const headTop = document.createElement('div');
+      headTop.className = 'ap-pivot-head-top';
       const val = document.createElement('div');
       val.className = 'ap-pivot-value';
       val.textContent = ioc;
+      val.title = ioc;
+      headTop.appendChild(val);
+
+      const headMeta = document.createElement('div');
+      headMeta.className = 'ap-pivot-head-meta';
       const typePill = document.createElement('span');
       typePill.className = 'ap-pivot-pill';
       typePill.style.cssText = pill(typeColor);
       typePill.textContent = IOCUtils.typeLabel(type, ioc);
-      valWrap.appendChild(val);
-      valWrap.appendChild(typePill);
-      head.appendChild(valWrap);
+      headMeta.appendChild(typePill);
 
       const headActions = document.createElement('div');
       headActions.className = 'ap-pivot-head-actions';
+      headMeta.appendChild(headActions);
+      headTop.appendChild(headMeta);
+      head.appendChild(headTop);
 
       const navUrl = resolvePivotNavUrl(span, type, ioc);
       if (navUrl) {
@@ -497,7 +503,6 @@
       closeBtn.addEventListener('click', hidePivot);
       headActions.appendChild(closeBtn);
 
-      head.appendChild(headActions);
       tip.appendChild(head);
 
       const enrichSec = document.createElement('div');
