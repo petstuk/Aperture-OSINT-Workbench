@@ -23,7 +23,7 @@ Include in detailed description (naturally): OSINT, IoC, SOC, threat intelligenc
 - [ ] Dashboard triage overview
 - [ ] Bulk extract results
 - [ ] Playbooks grid
-- [ ] On-page pivot card on `test-history.html`
+- [ ] On-page pivot card on `test/test-history.html`
 
 ## Privacy
 - [ ] Privacy policy URL (README Privacy section is fine if hosted)

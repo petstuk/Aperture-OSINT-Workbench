@@ -9,4 +9,4 @@ On install/update, `background.js` `migrateStorage()`:
 3. Seeds default playbooks on fresh install
 4. Initializes `local.cases` to `[]`
 
-See `RELEASE_NOTES_v3.0.0.md`.
+See `docs/releases/RELEASE_NOTES_v3.0.0.md`.

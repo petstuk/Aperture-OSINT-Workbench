@@ -21,3 +21,5 @@ node_modules/
 debug-*.log
 .env
 .env.*
+.github/dashboard-shot.png
+dist/

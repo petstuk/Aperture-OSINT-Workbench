@@ -1,5 +1,9 @@
 # Aperture — OSINT Workbench
 
+<p align="center">
+  <img src="icon512.png" alt="Aperture logo" width="128" height="128" />
+</p>
+
 **Local-first browser extension** for SOC, DFIR, and CTI analysts.
 
 Aperture detects indicators of compromise in the browser, orchestrates pivots to public OSINT sites, and keeps cases, history, and playbooks on-device. Core use requires **no API keys, no accounts, and no telemetry**.
@@ -11,6 +15,12 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **License** | [MIT](LICENSE) |
 | **Formerly** | SOC OSINT Search |
+
+<p align="center">
+  <img src=".github/social-preview.png" alt="Aperture dashboard — triage overview" width="100%" />
+</p>
+
+<p align="center"><em>Dashboard triage overview (demo data for illustration)</em></p>
 
 ---
 
@@ -82,9 +92,21 @@ This project is intentionally **zero-build** so reviewers and contributors can r
 
 Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit a file, reload the extension.
 
-### Layout
+### Repository layout
 
-| Surface | Entry points |
+| Path | Purpose |
+|---|---|
+| `/` (root) | Extension runtime — load this folder as the unpacked add-on |
+| [`docs/`](docs/) | Guides, store checklists, [release notes](docs/releases/) |
+| [`test/`](test/) | Detection corpus and manual test pages |
+| [`preview/`](preview/) | README / social-preview demo dashboard (not shipped) |
+| [`design/`](design/) | Design prototypes (not shipped) |
+| [`scripts/`](scripts/) | Packaging (`scripts/package.sh`) |
+| [`.github/`](.github/) | Social preview asset |
+
+### Extension entry points
+
+| Surface | Files |
 |---|---|
 | Manifest | [`manifest.json`](manifest.json) |
 | Background | [`background.js`](background.js), [`ioc-utils.js`](ioc-utils.js) |
@@ -93,29 +115,37 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 | On-page | [`content.js`](content.js), [`content.css`](content.css) |
 | Side panel | [`sidepanel.html`](sidepanel.html), [`sidepanel.js`](sidepanel.js) |
 | Shared UI | [`aperture.css`](aperture.css), [`palette.js`](palette.js), `fonts/` |
-| Offline packs / flags / IDB helpers | [`aperture-packs.js`](aperture-packs.js), [`aperture-features.js`](aperture-features.js), [`aperture-store.js`](aperture-store.js) |
+| Offline packs / flags / IDB | [`aperture-packs.js`](aperture-packs.js), [`aperture-features.js`](aperture-features.js), [`aperture-store.js`](aperture-store.js) |
 | DevTools (experimental) | [`devtools.html`](devtools.html) |
-
-Design prototypes under [`design/`](design/) are **not** shipped in the store package.
 
 ### Package a release zip
 
 ```bash
-./package-for-firefox.sh
-# → aperture-osint-v4.0.0.zip
+./scripts/package.sh
+# or: ./package-for-firefox.sh
+# → aperture-osint-v4.0.0.zip (extension runtime only)
 ```
 
-### Tests
+### Tests & preview
 
-Open [`test-ioc-utils.html`](test-ioc-utils.html) in a browser (detection / refang corpus).  
-Manual checklist: [`TESTING_GUIDE.md`](TESTING_GUIDE.md).
+```bash
+# Detection corpus
+open test/test-ioc-utils.html
+
+# Manual checklist
+# docs/TESTING_GUIDE.md
+
+# Dashboard screenshot fixture (demo data)
+python3 -m http.server 8765 --bind 127.0.0.1
+# → http://127.0.0.1:8765/preview/dashboard-preview.html
+```
 
 ### Extending
 
 Common fork points:
 
 - **New OSINT site** — add URL template in `background.js` (`serviceUrls`) and map it in `IOCUtils.toolsFor()`
-- **New IoC type** — extend detection in `ioc-utils.js` (`detectIOCType`, `collectFromRefanged`) and cover it in `test-ioc-utils.js`
+- **New IoC type** — extend detection in `ioc-utils.js` and cover it in `test/test-ioc-utils.js`
 - **New playbook** — create in the UI or import an `APX|…` share code
 - **Labs / experimental behaviour** — feature flags via the dashboard **Labs** screen (`aperture-features.js`)
 
@@ -127,9 +157,9 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
-| [4.0.0](RELEASE_NOTES_v4.0.0.md) | Workbench expansion: cases/inbox depth, session capture, graph, offline packs, Labs, broader detection |
-| [3.1.x](RELEASE_NOTES_v3.1.1.md) | Detection accuracy, playbook delete, always-refang |
-| [3.0.0](RELEASE_NOTES_v3.0.0.md) | Aperture rebrand, MV3, playbooks, cases, palette |
+| [4.0.0](docs/releases/RELEASE_NOTES_v4.0.0.md) | Workbench expansion: cases/inbox depth, session capture, graph, offline packs, Labs, broader detection |
+| [3.1.x](docs/releases/RELEASE_NOTES_v3.1.1.md) | Detection accuracy, playbook delete, always-refang |
+| [3.0.0](docs/releases/RELEASE_NOTES_v3.0.0.md) | Aperture rebrand, MV3, playbooks, cases, palette |
 
 ---
 
@@ -139,7 +169,7 @@ Issues and pull requests are welcome.
 
 1. Fork the repository and create a focused branch
 2. Prefer small, reviewable diffs that match existing vanilla JS style
-3. Add or extend tests in `test-ioc-utils.js` when changing detection
+3. Add or extend tests in `test/test-ioc-utils.js` when changing detection
 4. Do not add a bundler, telemetry, or mandatory cloud dependency without discussion
 
 If you are adapting Aperture for an organisation (MISP, OpenCTI, custom tools), keep org-specific connectors behind explicit opt-in flags.

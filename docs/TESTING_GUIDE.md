@@ -12,7 +12,7 @@
 5. Bulk extract sample text with IP + URL + hash
 6. Create case, add indicators, export report
 7. Playbooks: run IP Triage / Email Breach Check; import `APX|Test|ip|VirusTotal,Shodan`
-8. Enable on-page detect → open `test-history.html` → click highlight → pivot card
+8. Enable on-page detect → open `test/test-history.html` → click highlight → pivot card
 9. ⌘K / Ctrl-K from popup and dashboard
 
 ## Regression (Bugbot)

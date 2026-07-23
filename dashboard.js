@@ -1490,7 +1490,7 @@
       '<div class="screen-head"><div><h1>On-page detection</h1>' +
       '<p>Enable IoC highlights from the popup Settings. Click any highlighted indicator to open the pivot card — local enrichment, verdicts, tools, playbooks, and cases. No network calls beyond opening OSINT tabs you choose.</p></div></div>' +
       '<div class="ap-panel" style="padding:20px">' +
-      '<p style="margin:0 0 12px;color:var(--text-muted);font-size:13px">Toggle <strong style="color:var(--text-2)">On-page IoC detect</strong> in the extension popup. Then visit any page (or the included test-history.html) to see dashed underlines on IPs, domains, hashes, URLs, emails, CVEs, and more.</p>' +
+      '<p style="margin:0 0 12px;color:var(--text-muted);font-size:13px">Toggle <strong style="color:var(--text-2)">On-page IoC detect</strong> in the extension popup. Then visit any page (or <code>test/test-history.html</code> from the repo) to see dashed underlines on IPs, domains, hashes, URLs, emails, CVEs, and more.</p>' +
       '<button type="button" class="ap-btn ap-btn-primary" id="help-overlay">Enable on-page detect now</button>' +
       '</div>';
     screens['onpage-help'].querySelector('#help-overlay').addEventListener('click', async () => {

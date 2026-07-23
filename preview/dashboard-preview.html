@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aperture — Preview (demo data)</title>
+  <link rel="stylesheet" href="../aperture.css">
+  <style>
+    html, body { height: 100%; }
+    body.aperture {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: 52px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--divider);
+      background: var(--top-bar);
+    }
+    .topbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .cmd-trigger {
+      flex: 1;
+      max-width: 520px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 32px;
+      padding: 0 12px;
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      font-size: 12.5px;
+      transition: 0.15s;
+    }
+    .cmd-trigger:hover {
+      border-color: var(--border-3);
+      background: var(--surface-2);
+    }
+    .seg {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 7px;
+      padding: 3px;
+    }
+    .seg button {
+      height: 26px;
+      padding: 0 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: 0.15s;
+      background: transparent;
+      color: var(--text-muted);
+    }
+    .seg button.active {
+      background: #1e242f;
+      color: var(--text-hi);
+    }
+    .local-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+    .local-chip .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--benign);
+      box-shadow: 0 0 8px var(--benign);
+    }
+    .shell {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 216px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--divider);
+      background: var(--sidebar);
+      padding: 16px 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .sidebar.hidden { display: none; }
+    .nav-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 600;
+      padding: 0 8px 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .nav-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      height: 34px;
+      padding: 0 8px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius);
+      transition: 0.12s;
+      color: var(--text-muted);
+      text-align: left;
+    }
+    .nav-btn:hover { color: var(--text); }
+    .nav-btn.active {
+      background: var(--surface-3);
+      color: var(--text-hi);
+    }
+    .case-nav {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 8px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      border-radius: var(--radius);
+      transition: 0.12s;
+      text-align: left;
+      color: inherit;
+    }
+    .case-nav:hover, .case-nav.active { background: var(--surface-2); }
+    .case-nav-name {
+      display: block;
+      font-size: 12.5px;
+      color: var(--text-2);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .case-nav-meta {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+    }
+    .screen {
+      display: none;
+      padding: 28px 32px;
+      max-width: 1280px;
+      animation: fadeIn 0.2s ease;
+    }
+    .screen.active { display: block; }
+    .screen-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 22px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .screen-head h1 {
+      font-size: 21px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text-hi);
+      margin: 0;
+    }
+    .screen-head p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 3px 0 0;
+    }
+    .head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .body-grid, .extract-grid, .case-grid, .pb-grid { grid-template-columns: 1fr !important; }
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 16px 18px;
+    }
+    .stat-label {
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .stat-sub { font-size: 11px; color: var(--text-dim); margin-left: 8px; }
+    .body-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .panel-title { font-size: 13px; font-weight: 600; color: var(--text-hi); }
+    .panel-meta {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .col-head {
+      display: grid;
+      grid-template-columns: 1fr 92px 32px;
+      gap: 10px;
+      padding: 9px 18px;
+      border-bottom: 1px solid var(--divider);
+      font-size: 9.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 600;
+    }
+    .triage-row {
+      display: grid;
+      grid-template-columns: 1fr 92px 32px;
+      gap: 10px;
+      align-items: center;
+      padding: 11px 18px;
+      border-bottom: 1px solid var(--divider-faint);
+      transition: 0.12s;
+    }
+    .triage-row:hover { background: var(--surface-2); }
+    .ioc-cell {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .ioc-val {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ioc-meta {
+      font-size: 10.5px;
+      color: var(--text-dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border: 1px solid var(--border-2);
+      background: var(--surface-2);
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: 0.12s;
+    }
+    .icon-btn:hover {
+      background: #1e242f;
+      color: var(--accent);
+    }
+    .case-row {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 12px 16px;
+      border: none;
+      border-bottom: 1px solid var(--divider-faint);
+      background: none;
+      color: inherit;
+      transition: 0.12s;
+    }
+    .case-row:hover { background: var(--surface-2); }
+    .case-row-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .extract-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    textarea.raw {
+      width: 100%;
+      height: 320px;
+      background: var(--inset);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+    }
+    textarea.raw:focus { border-color: var(--accent); }
+    .panel-foot {
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid var(--divider);
+      flex-wrap: wrap;
+    }
+    .extract-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--divider-faint);
+    }
+    .extract-row input { accent-color: var(--accent); }
+    .pb-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+    .pb-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pb-chain {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+    }
+    .pb-chip {
+      font-family: var(--font-mono);
+      padding: 4px 8px;
+      background: var(--surface-2);
+      border: 1px solid var(--border-2);
+      border-radius: 4px;
+      color: var(--text-2);
+    }
+    .pb-prompt {
+      border-left: 2px solid var(--accent);
+      padding: 8px 10px;
+      background: var(--inset);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .case-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 20px;
+      align-items: start;
+    }
+    .timeline {
+      position: relative;
+      padding: 8px 0 8px 18px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 12px;
+      bottom: 12px;
+      width: 1px;
+      background: var(--border);
+    }
+    .tl-item {
+      position: relative;
+      padding: 0 0 16px 14px;
+    }
+    .tl-dot {
+      position: absolute;
+      left: -18px;
+      top: 4px;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+    .tl-time {
+      font-family: var(--font-mono);
+      font-size: 10.5px;
+      color: var(--text-dim);
+      margin-bottom: 2px;
+    }
+    .tl-text { font-size: 12.5px; color: var(--text-2); }
+    .notes-box {
+      margin-top: 16px;
+      padding: 14px;
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-height: 100px;
+    }
+    .notes-box textarea {
+      width: 100%;
+      min-height: 80px;
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 13px;
+      resize: vertical;
+      outline: none;
+    }
+    .modal-scrim {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 10, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 900;
+    }
+    .modal-scrim.open { display: flex; }
+    .modal {
+      width: 420px;
+      max-width: 92vw;
+      background: var(--top-bar);
+      border: 1px solid var(--border-3);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-float);
+    }
+    .modal h2 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      color: var(--text-hi);
+    }
+    .modal label {
+      display: block;
+      font-size: 10.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin: 10px 0 6px;
+    }
+    .modal input, .modal select, .modal textarea {
+      width: 100%;
+      height: 34px;
+      padding: 0 10px;
+      background: var(--inset);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      color: var(--text);
+      outline: none;
+    }
+    .modal textarea { height: 80px; padding: 10px; }
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 16px;
+    }
+    .back-link {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 12.5px;
+      padding: 0;
+      margin-bottom: 10px;
+    }
+    .inbox-toolbar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--divider);
+      align-items: center;
+    }
+    .inbox-search {
+      flex: 1;
+      height: 32px;
+      padding: 0 10px;
+      background: var(--inset);
+      border: 1px solid var(--border-2);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .inbox-search:focus { border-color: var(--accent); }
+    .inbox-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .inbox-tag-chip {
+      height: 24px;
+      padding: 0 10px;
+      border: 1px solid var(--border-2);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      transition: 0.12s;
+    }
+    .inbox-tag-chip:hover,
+    .inbox-tag-chip.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(97, 175, 239, 0.1);
+    }
+    .inbox-row:hover { background: var(--surface-2); }
+    .case-ioc-block {
+      border-bottom: 1px solid var(--divider-faint);
+      padding-bottom: 10px;
+    }
+    .case-ioc-notes-label {
+      font-size: 9.5px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      font-weight: 600;
+      padding: 6px 14px 4px;
+    }
+    .case-ioc-notes {
+      width: calc(100% - 28px);
+      min-height: 52px;
+      margin: 0 14px 8px;
+      padding: 8px 10px;
+      background: var(--inset);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+    }
+    .case-ioc-notes:focus { border-color: var(--accent); }
+    .modal.modal-wide { width: 520px; }
+  </style>
+</head>
+<body class="aperture">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="ap-logo"><div class="ap-logo-dot"></div></div>
+      <div class="ap-wordmark">
+        <span class="ap-wordmark-title">APERTURE</span>
+        <span class="ap-wordmark-sub">osint workbench</span>
+      </div>
+    </div>
+    <button type="button" class="cmd-trigger" id="cmd-trigger">
+      <span>⌕</span>
+      <span style="flex:1;text-align:left">Search tools, IoCs, playbooks, cases…</span>
+      <span class="ap-keycap">⌘K</span>
+    </button>
+    <div class="seg" id="surface-seg">
+      <button type="button" data-screen="overview" class="active">Dashboard</button>
+      <button type="button" data-open="popup">Popup</button>
+      <button type="button" data-screen="onpage-help">On-page</button>
+    </div>
+    <div class="local-chip"><span class="dot"></span>Local · no keys</div>
+  </header>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <div>
+        <div class="nav-label">Workspace</div>
+        <button type="button" class="nav-btn active" data-nav="overview"><span>▤</span>Overview</button>
+        <button type="button" class="nav-btn" data-nav="extract"><span>⧉</span>Bulk extract</button>
+        <button type="button" class="nav-btn" data-nav="playbooks"><span>▷</span>Playbooks</button>
+        <button type="button" class="nav-btn" data-nav="graph"><span>◈</span>Graph</button>
+        <button type="button" class="nav-btn" data-nav="packs"><span>▣</span>Offline packs</button>
+        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs</button>
+      </div>
+      <div>
+        <div class="nav-label"><span>Cases</span><span id="case-count">0</span></div>
+        <div id="case-nav-list"></div>
+      </div>
+      <div style="margin-top:auto">
+        <div class="nav-label">Surfaces</div>
+        <button type="button" class="nav-btn" id="nav-popup"><span>◱</span>Popup launcher</button>
+        <button type="button" class="nav-btn" id="nav-sidepanel"><span>▥</span>Side panel</button>
+        <button type="button" class="nav-btn" data-nav="onpage-help"><span>❖</span>On-page detect</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="screen active" id="screen-overview"></section>
+      <section class="screen" id="screen-extract"></section>
+      <section class="screen" id="screen-playbooks"></section>
+      <section class="screen" id="screen-case"></section>
+      <section class="screen" id="screen-graph"></section>
+      <section class="screen" id="screen-packs"></section>
+      <section class="screen" id="screen-labs"></section>
+      <section class="screen" id="screen-onpage-help"></section>
+    </main>
+  </div>
+
+  <div class="modal-scrim" id="modal-scrim">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <script src="../ioc-utils.js"></script>
+  <script src="../aperture-features.js"></script>
+  <script src="../aperture-packs.js"></script>
+  <script src="../palette.js"></script>
+  <script src="preview-demo.js"></script>
+  <script src="../dashboard.js"></script>
+</body>
+</html>
