@@ -218,6 +218,47 @@
     )
   );
 
+  // --- file paths require extension; must not swallow trailing sentence ---
+  assert(
+    'win path stops at extension',
+    (() => {
+      const page =
+        'The file is at C:\\Users\\bob\\Desktop\\payload.dll and then more text.';
+      const m = IOCUtils.findIOCMatches(page).filter((x) => x.type === 'path');
+      return (
+        m.length === 1 &&
+        m[0].value.toLowerCase() === 'c:\\users\\bob\\desktop\\payload.dll' &&
+        page.slice(m[0].start, m[0].end).toLowerCase() ===
+          'c:\\users\\bob\\desktop\\payload.dll'
+      );
+    })()
+  );
+  assert(
+    'nix path with extension',
+    hasTypeValue(
+      'see /usr/bin/malware.exe in the report',
+      'path',
+      '/usr/bin/malware.exe'
+    )
+  );
+  assert(
+    'nix directory without extension ignored',
+    IOCUtils.findIOCMatches('look at /tmp/foo without extension here').every(
+      (x) => x.type !== 'path'
+    )
+  );
+  assert(
+    'passwd without ext ignored',
+    IOCUtils.findIOCMatches('Check /etc/passwd carefully').every(
+      (x) => x.type !== 'path'
+    )
+  );
+  assert(
+    'detectIOCType path needs ext',
+    IOCUtils.detectIOCType('C:\\Windows\\System32\\cmd.exe') === 'path' &&
+      IOCUtils.detectIOCType('C:\\Windows\\System32') === 'unknown'
+  );
+
   assert(
     'ipv6',
     IOCUtils.detectIOCType('2001:4860:4860::8888') === 'ip'

@@ -2,6 +2,11 @@
 (function (global) {
   const VALID_TLDS = new Set(["ac","ad","ae","aero","af","ag","agency","ai","al","am","amazon","ao","app","apple","aq","ar","as","at","au","aw","aws","ax","az","azure","ba","bb","bd","be","bf","bg","bh","bi","bit","biz","bj","blog","bm","bn","bo","br","bs","bt","bv","bw","by","bz","ca","cc","cd","cf","cg","ch","ci","ck","cl","click","cloud","club","cm","cn","co","com","company","consulting","coop","corp","cr","crypto","cu","cv","cw","cx","cy","cz","dao","de","defi","dev","dj","dk","dm","do","download","dz","ec","edu","ee","eg","eh","er","es","et","eu","example","exchange","fi","firm","fj","fk","fm","fo","fr","ga","gb","gd","ge","gen","gf","gg","gh","gi","github","gitlab","gl","gm","gn","google","gov","gp","gq","gr","group","gs","gt","gu","gw","gy","hk","hm","hn","hr","ht","hu","id","ie","il","im","in","inc","ind","info","int","international","invalid","io","iq","ir","is","it","je","jm","jo","jp","ke","kg","kh","ki","km","kn","kp","kr","kw","ky","kz","la","lb","lc","li","limited","link","lk","llc","local","localhost","lr","ls","lt","ltd","lu","lv","ly","ma","mc","md","me","media","mg","mh","microsoft","mil","mk","ml","mm","mn","mo","mod","mp","mq","mr","ms","mt","mu","museum","mv","mw","mx","my","mz","na","name","nc","ne","net","network","news","nf","nft","ng","ni","nl","no","np","nr","nu","nz","om","onion","online","or","org","pa","page","pe","pf","pg","ph","pk","pl","pm","pn","pr","press","pro","ps","pt","pw","py","qa","re","ro","rs","ru","rw","sa","sb","sc","sd","se","security","services","sg","sh","shop","si","site","sj","sk","sl","sm","sn","so","software","solutions","sr","ss","st","store","stream","su","sv","sx","sy","systems","sz","tc","td","tech","test","tf","tg","th","tj","tk","tl","tm","tn","to","top","tr","tt","tv","tw","tz","ua","ug","uk","um","us","uy","uz","va","vc","ve","vg","vi","vip","vn","vu","wallet","website","wf","win","ws","xyz","ye","yt","za","zm","zw"]);
   const FILE_EXTS = new Set(["7z","a","ai","apk","ascx","asmx","asp","aspx","avi","avif","bak","bash","bat","bib","bin","bmp","bz2","c","cc","cer","cfg","cgi","cjs","class","cmake","cmd","coffee","conf","cpp","crt","cs","csproj","css","csv","cxx","dat","db","deb","dll","dllconfig","dmg","doc","dockerfile","dockerignore","docx","dump","dylib","ear","editorconfig","env","eot","eps","eslintignore","exe","exp","fish","flac","fs","fsproj","gif","gitattributes","gitignore","go","gradle","gz","h","hh","hpp","htm","html","ico","ilk","img","ini","ipynb","iso","jar","java","jpeg","jpg","js","json","jsp","jspa","jsx","key","kt","kts","less","lib","lockb","log","lua","m","makefile","manifest","markdown","md","mjs","mkv","mm","mov","mp2","mp3","mp4","notebook","npmrc","o","obj","odp","ods","odt","otf","p12","pdb","pdf","pem","perl","pfx","php","pkg","pl","pm","png","pom","ppt","pptx","prettierignore","ps1","psd","pub","pyo","pypyc","r","rar","rb","reg","rpm","rs","rst","rtf","sass","scss","sh","sln","so","sql","sqlite","styl","svelte","svg","swift","tar","tex","tif","tiff","toml","ts","tsbuildinfo","tsv","tsx","ttf","txt","vb","vbproj","vbs","vcxproj","vue","war","wasm","wav","webm","webp","woff","woff2","xls","xml","xxlsx","xz","yaml","yarnrc","yml","zip","zsh","zst"]);
+  const FILE_EXT_ALT = Array.from(FILE_EXTS)
+    .sort((a, b) => b.length - a.length)
+    .map((e) => e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|');
+
   const COMPOUND_TLDS = new Set(["ac.cn","ac.id","ac.il","ac.jp","ac.nz","ac.th","ac.uk","ac.vn","asn.au","av.tr","biz.id","biz.tr","biz.vn","club.tw","co.id","co.il","co.in","co.jp","co.kr","co.nz","co.th","co.uk","co.za","com.ar","com.au","com.br","com.cn","com.eg","com.hk","com.mx","com.my","com.ng","com.pe","com.ph","com.sa","com.sg","com.tr","com.tw","com.vn","dr.tr","ebiz.tw","ed.jp","edu.au","edu.cn","edu.eg","edu.hk","edu.mx","edu.my","edu.ng","edu.pe","edu.sa","edu.sg","edu.vn","eng.br","esp.br","etc.br","eun.eg","firm.in","game.tw","geek.nz","gen.in","gen.nz","gen.tr","go.id","go.jp","go.kr","go.th","gob.mx","gob.pe","gov.ar","gov.au","gov.br","gov.cn","gov.eg","gov.hk","gov.il","gov.my","gov.ng","gov.ph","gov.sa","gov.sg","gov.uk","gov.vn","gov.za","govt.nz","gr.jp","health.vn","id.au","idv.hk","idv.tw","ind.in","info.tr","int.vn","k12.il","kiwi.nz","lg.jp","ltd.uk","maori.nz","me.uk","med.sa","mi.th","mil.eg","mil.id","mil.my","mil.ng","mil.pe","mil.ph","mod.uk","muni.il","my.id","name.eg","name.my","name.vn","ne.jp","ne.kr","net.ar","net.au","net.br","net.cn","net.eg","net.hk","net.il","net.in","net.my","net.ng","net.nz","net.pe","net.ph","net.sa","net.sg","net.th","net.tr","net.uk","net.vn","net.za","ngo.ph","nhs.uk","or.id","or.jp","or.kr","or.th","org.ar","org.au","org.br","org.cn","org.eg","org.hk","org.il","org.in","org.mx","org.my","org.ng","org.nz","org.pe","org.ph","org.sa","org.sg","org.tr","org.tw","org.uk","org.vn","org.za","pe.kr","per.sg","plc.uk","police.uk","pub.sa","re.kr","sch.id","sch.sa","school.nz","sci.eg","web.id","web.za"]);
 
   const IPV4 =
@@ -195,6 +200,7 @@
     const m = {
       ip: [
         ['AB', 'AbuseIPDB'],
+        ['SP', 'Spur'],
         ['GN', 'GreyNoise'],
         ['SH', 'Shodan'],
         ['VT', 'VirusTotal'],
@@ -626,6 +632,17 @@
     return v;
   }
 
+  /** True when the last path segment ends with a known file extension. */
+  function pathHasKnownExt(p) {
+    const base = String(p || '')
+      .replace(/[\\/]+$/, '')
+      .split(/[/\\]/)
+      .pop() || '';
+    const dot = base.lastIndexOf('.');
+    if (dot <= 0 || dot === base.length - 1) return false;
+    return FILE_EXTS.has(base.slice(dot + 1).toLowerCase());
+  }
+
   function isValidDomain(domain) {
     const d = String(domain || '')
       .toLowerCase()
@@ -709,12 +726,14 @@
       return 'onion';
     }
 
-    if (/^[A-Za-z]:\\/.test(t) || /^\\\\[^\\]+\\/.test(t)) return 'path';
+    // File paths must end with a known extension (not bare directories)
     if (
-      /^\/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)(?:\/|$)/i.test(t) ||
-      /\.(?:exe|dll|ps1|bat|cmd|sh|dylib|so)$/i.test(t)
+      pathHasKnownExt(t) &&
+      (/^[A-Za-z]:\\/.test(t) ||
+        /^\\\\[^\\\s]+\\/.test(t) ||
+        /^\/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)\//i.test(t))
     ) {
-      if (t.includes('/') || t.includes('\\')) return 'path';
+      return 'path';
     }
 
     if (/^arn:aws:[a-z0-9-]+:/i.test(t)) return 'arn';
@@ -744,6 +763,12 @@
         if (!/^https?:\/\//i.test(v)) {
           v = 'https://' + v;
         }
+      }
+      if (type === 'path') {
+        const cleaned = stripUrlTrailingPunct(v);
+        e = start + cleaned.length;
+        v = cleaned;
+        if (!pathHasKnownExt(v)) return;
       }
       found.push({ start, end: e, value: v, type });
     }
@@ -833,14 +858,35 @@
       push(om.index, om.index + om[0].length, om[0].toLowerCase(), 'onion');
     }
 
-    const winPathRe = /\b[A-Za-z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*\b/g;
+    // Windows / UNC paths ending in a known file extension (no spaces in segments)
+    const winPathRe = new RegExp(
+      '\\b[A-Za-z]:\\\\(?:[^\\\\\\s/:*?"<>|\\r\\n]+\\\\)+[^\\\\\\s/:*?"<>|\\r\\n]+\\.(?:' +
+        FILE_EXT_ALT +
+        ')\\b',
+      'gi'
+    );
     let pm;
     while ((pm = winPathRe.exec(refanged)) !== null) {
-      if (pm[0].length > 4) push(pm.index, pm.index + pm[0].length, pm[0], 'path');
+      push(pm.index, pm.index + pm[0].length, pm[0], 'path');
     }
 
-    const nixPathRe =
-      /\/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)\/[a-zA-Z0-9._\/+-]+/g;
+    const uncPathRe = new RegExp(
+      '\\\\\\\\[^\\\\\\s/:*?"<>|\\r\\n]+\\\\(?:[^\\\\\\s/:*?"<>|\\r\\n]+\\\\)+[^\\\\\\s/:*?"<>|\\r\\n]+\\.(?:' +
+        FILE_EXT_ALT +
+        ')\\b',
+      'gi'
+    );
+    while ((pm = uncPathRe.exec(refanged)) !== null) {
+      push(pm.index, pm.index + pm[0].length, pm[0], 'path');
+    }
+
+    // Unix-style absolute paths under common roots, ending in a known extension
+    const nixPathRe = new RegExp(
+      '/(?:bin|usr|etc|tmp|home|var|opt|private|Users|System)/(?:[^\\s/]+/)*[^\\s/]+\\.(?:' +
+        FILE_EXT_ALT +
+        ')\\b',
+      'g'
+    );
     while ((pm = nixPathRe.exec(refanged)) !== null) {
       push(pm.index, pm.index + pm[0].length, pm[0], 'path');
     }
