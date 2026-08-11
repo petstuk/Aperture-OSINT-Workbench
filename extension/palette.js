@@ -152,6 +152,7 @@
       if (e.key === 'Escape') {
         e.preventDefault();
         close();
+        if (options.onEscape) options.onEscape();
         return;
       }
       if (e.key === 'ArrowDown') {

@@ -9,14 +9,29 @@
   const PRE_MAX_CHARS = 800;
   const MAX_HIGHLIGHTS = 500;
 
-  let overlayEnabled = false;
+  let overlaySetting = false;
+  let disabledDomains = [];
+  let overlayEnabled = false; // effective: setting on && host not disabled
   let highlightCount = 0;
   let observer = null;
   let pivotEl = null;
+  let pivotScrim = null;
   let toastEl = null;
-  let hidePivotTimer = null;
-  let activeIocSpan = null;
+  let activePivotKey = null;
   let overlayLoadGen = 0;
+
+  function pageHostname() {
+    try {
+      return String(location.hostname || '').toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function isPageDomainDisabled() {
+    if (typeof IOCUtils === 'undefined' || !IOCUtils.hostMatchesDisabled) return false;
+    return IOCUtils.hostMatchesDisabled(pageHostname(), disabledDomains);
+  }
 
   function sendMessage(message) {
     try {
@@ -85,39 +100,18 @@
     toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
   }
 
-  function defangIoc(ioc) {
-    if (typeof IOCUtils.defang === 'function') return IOCUtils.defang(ioc);
-    return String(ioc)
-      .replace(/\./g, '[.]')
-      .replace(/https:\/\//gi, 'hxxps://')
-      .replace(/http:\/\//gi, 'hxxp://')
-      .replace(/@/g, '[at]');
-  }
-
   function packText(format, items) {
-    if (typeof IOCUtils.clipboardPack === 'function') {
-      return IOCUtils.clipboardPack(format, items);
-    }
-    const rows = items.map((h) => (typeof h === 'string' ? { ioc: h } : h));
-    if (format === 'defang') return rows.map((r) => defangIoc(r.ioc)).join('\n');
-    if (format === 'md') {
-      return rows
-        .map(
-          (r) =>
-            '- `' +
-            r.ioc +
-            '` · ' +
-            IOCUtils.typeLabel(r.type || IOCUtils.detectIOCType(r.ioc))
-        )
-        .join('\n');
-    }
-    if (format === 'csv') {
-      const lines = rows.map(
-        (r) => '"' + r.ioc + '","' + (r.type || IOCUtils.detectIOCType(r.ioc)) + '"'
-      );
-      return 'ioc,type\n' + lines.join('\n');
-    }
-    return rows.map((r) => r.ioc).join('\n');
+    const rows = (items || []).map((h) => {
+      if (typeof h === 'string') return { ioc: h };
+      return {
+        ioc: h.ioc || h.value,
+        type: h.type,
+        verdict: h.verdict || h.status,
+        notes: h.notes,
+        tags: h.tags
+      };
+    });
+    return IOCUtils.clipboardPack(format, rows);
   }
 
   function shouldSkipNode(node) {
@@ -130,7 +124,12 @@
       }
       if (el.isContentEditable) return true;
       if (el.classList && el.classList.contains('soc-ioc')) return true;
-      if (el.classList && (el.classList.contains('ap-pivot') || el.classList.contains('ap-pivot-toast'))) {
+      if (
+        el.classList &&
+        (el.classList.contains('ap-pivot') ||
+          el.classList.contains('ap-pivot-scrim') ||
+          el.classList.contains('ap-pivot-toast'))
+      ) {
         return true;
       }
       el = el.parentElement;
@@ -318,90 +317,64 @@
   }
 
   function ensurePivot() {
+    if (!pivotScrim) {
+      pivotScrim = document.createElement('div');
+      pivotScrim.className = 'ap-pivot-scrim';
+      pivotScrim.addEventListener('click', hidePivot);
+      document.documentElement.appendChild(pivotScrim);
+    }
     if (!pivotEl) {
       pivotEl = document.createElement('div');
       pivotEl.className = 'ap-pivot';
-      pivotEl.addEventListener('mouseenter', () => clearTimeout(hidePivotTimer));
-      pivotEl.addEventListener('mouseleave', scheduleHidePivot);
       document.documentElement.appendChild(pivotEl);
     }
     return pivotEl;
   }
 
-  /** Prefer page <a href>; else URL-typed IoC value. */
-  function resolvePivotNavUrl(span, type, ioc) {
-    const anchor = span && span.closest && span.closest('a[href]');
-    if (anchor) {
-      try {
-        const href = anchor.href;
-        if (href && /^https?:\/\//i.test(href)) return href;
-      } catch (_) {
-        /* ignore */
-      }
-    }
-    const raw = String(ioc || '').trim();
-    if (type === 'url' || /^https?:\/\//i.test(raw)) {
-      const withScheme = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
-      try {
-        const u = new URL(withScheme);
-        if (u.protocol === 'http:' || u.protocol === 'https:') return u.href;
-      } catch (_) {
-        return null;
-      }
-    }
-    return null;
-  }
-
-  function scheduleHidePivot() {
-    clearTimeout(hidePivotTimer);
-    hidePivotTimer = setTimeout(hidePivot, 280);
-  }
-
   function hidePivot() {
-    clearTimeout(hidePivotTimer);
     if (pivotEl) {
       pivotEl.classList.remove('open');
       pivotEl.innerHTML = '';
     }
-    activeIocSpan = null;
+    if (pivotScrim) pivotScrim.classList.remove('open');
+    activePivotKey = null;
   }
 
-  function positionPivot(span) {
-    const rect = span.getBoundingClientRect();
+  function showPivotShell() {
     const tip = ensurePivot();
     tip.classList.add('open');
+    if (pivotScrim) pivotScrim.classList.add('open');
+    return tip;
+  }
 
-    const tipRect = tip.getBoundingClientRect();
-    let top = rect.bottom + 8;
-    let left = Math.min(rect.left, window.innerWidth - tipRect.width - 12);
-
-    if (top + tipRect.height > window.innerHeight - 12) {
-      top = Math.max(12, rect.top - tipRect.height - 8);
+  async function copyText(text, okMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(okMsg || 'Copied');
+    } catch (_) {
+      showToast('Copy failed');
     }
-    if (left < 12) left = 12;
-
-    tip.style.top = top + 'px';
-    tip.style.left = left + 'px';
   }
 
-  async function openPivot(span) {
-    activeIocSpan = span;
-    clearTimeout(hidePivotTimer);
+  function openPivot(span) {
+    return openPivotFor(span.dataset.ioc, span.dataset.type, span);
+  }
 
-    const ioc = span.dataset.ioc;
-    const type = span.dataset.type;
-    const tip = ensurePivot();
-    tip.innerHTML = '<div style="padding:14px;color:#5a6273;font-size:11px;">Loading…</div>';
-    tip.classList.add('open');
-    positionPivot(span);
+  async function openPivotFor(ioc, type, span) {
+    const key = ioc + '\0' + type;
+    activePivotKey = key;
+    const tip = showPivotShell();
+    tip.innerHTML =
+      '<div class="ap-pivot-body"><div style="padding:14px;color:#5a6273;font-size:11px;">Loading…</div></div>';
 
     try {
-      const [config, archive] = await Promise.all([
+      const [config, archive, rel] = await Promise.all([
         sendMessage({ action: 'getOverlayConfig' }),
-        sendMessage({ action: 'getArchiveEntry', ioc })
+        sendMessage({ action: 'getArchiveEntry', ioc }),
+        sendMessage({ action: 'getRelatedIocs', ioc }).catch(() => ({ related: [] }))
       ]);
 
-      if (activeIocSpan !== span) return;
+      if (activePivotKey !== key) return;
 
       const typeColor = (IOCUtils.TYPE_COLORS && IOCUtils.TYPE_COLORS[type]) || '#8b93a3';
       const playbooks = (config && (config.playbooks || config.customCombinations)) || [];
@@ -410,6 +383,10 @@
       const enabled = (config && config.enabledServices) || {};
       const filteredTools = tools.filter((t) => enabled[t.name] !== false);
       const facts = IOCUtils.enrichFacts(type, ioc);
+      const related = (rel && rel.related) || [];
+      const currentVerdict = IOCUtils.normalizeVerdict(
+        (archive && (archive.verdict || archive.status)) || 'unknown'
+      );
       const verdicts = [
         ['benign', 'B'],
         ['suspicious', 'S'],
@@ -421,7 +398,6 @@
 
       const head = document.createElement('div');
       head.className = 'ap-pivot-head';
-
       const headTop = document.createElement('div');
       headTop.className = 'ap-pivot-head-top';
       const val = document.createElement('div');
@@ -429,7 +405,6 @@
       val.textContent = ioc;
       val.title = ioc;
       headTop.appendChild(val);
-
       const headMeta = document.createElement('div');
       headMeta.className = 'ap-pivot-head-meta';
       const typePill = document.createElement('span');
@@ -437,78 +412,24 @@
       typePill.style.cssText = pill(typeColor);
       typePill.textContent = IOCUtils.typeLabel(type, ioc);
       headMeta.appendChild(typePill);
-
-      const headActions = document.createElement('div');
-      headActions.className = 'ap-pivot-head-actions';
-      headMeta.appendChild(headActions);
-      headTop.appendChild(headMeta);
-      head.appendChild(headTop);
-
-      const navUrl = resolvePivotNavUrl(span, type, ioc);
-      if (navUrl) {
-        const gotoBtn = document.createElement('button');
-        gotoBtn.type = 'button';
-        gotoBtn.className = 'ap-pivot-goto';
-        gotoBtn.textContent = 'Open link';
-        gotoBtn.title = 'Open ' + navUrl;
-        gotoBtn.addEventListener('click', () => {
-          window.open(navUrl, '_blank', 'noopener,noreferrer');
-          hidePivot();
-        });
-        headActions.appendChild(gotoBtn);
-      }
-
-      const copyBtn = document.createElement('button');
-      copyBtn.type = 'button';
-      copyBtn.className = 'ap-pivot-copy';
-      copyBtn.textContent = 'Copy';
-      copyBtn.title = 'Copy indicator';
-      copyBtn.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(ioc);
-          showToast('Copied ' + ioc);
-        } catch (_) {
-          showToast('Copy failed');
-        }
-      });
-      headActions.appendChild(copyBtn);
-
-      const packWrap = document.createElement('div');
-      packWrap.className = 'ap-pivot-pack';
-      packWrap.title = 'Clipboard pack';
-      ['defang', 'md', 'csv'].forEach((fmt) => {
-        const packBtn = document.createElement('button');
-        packBtn.type = 'button';
-        packBtn.className = 'ap-pivot-pack-btn';
-        packBtn.textContent = fmt === 'defang' ? 'D' : fmt.toUpperCase();
-        packBtn.title = fmt === 'defang' ? 'Copy defanged' : 'Copy ' + fmt.toUpperCase();
-        packBtn.addEventListener('click', async () => {
-          try {
-            const text = packText(fmt, [{ ioc, type }]);
-            await navigator.clipboard.writeText(text);
-            showToast('Copied ' + (fmt === 'defang' ? 'defanged' : fmt.toUpperCase()));
-          } catch (_) {
-            showToast('Copy failed');
-          }
-        });
-        packWrap.appendChild(packBtn);
-      });
-      headActions.appendChild(packWrap);
-
       const closeBtn = document.createElement('button');
       closeBtn.type = 'button';
       closeBtn.className = 'ap-pivot-close';
       closeBtn.textContent = '×';
       closeBtn.title = 'Close';
       closeBtn.addEventListener('click', hidePivot);
-      headActions.appendChild(closeBtn);
-
+      headMeta.appendChild(closeBtn);
+      headTop.appendChild(headMeta);
+      head.appendChild(headTop);
       tip.appendChild(head);
+
+      const body = document.createElement('div');
+      body.className = 'ap-pivot-body';
 
       const enrichSec = document.createElement('div');
       enrichSec.className = 'ap-pivot-section';
       enrichSec.innerHTML =
-        '<div class="ap-pivot-label">Local OSINT · offline</div><div class="ap-pivot-facts"></div>';
+        '<div class="ap-pivot-label">Local enrichment · no network</div><div class="ap-pivot-facts"></div>';
       const factsEl = enrichSec.querySelector('.ap-pivot-facts');
       facts.forEach(([k, v]) => {
         const row = document.createElement('div');
@@ -537,121 +458,36 @@
         row.querySelector('.ap-pivot-fact-v').textContent = archive.toolsUsed.join(', ');
         factsEl.appendChild(row);
       }
-      tip.appendChild(enrichSec);
-
-      const notesSec = document.createElement('div');
-      notesSec.className = 'ap-pivot-section';
-      const notesLab = document.createElement('div');
-      notesLab.className = 'ap-pivot-label';
-      notesLab.textContent = 'Notes';
-      const notesArea = document.createElement('textarea');
-      notesArea.className = 'ap-pivot-notes';
-      notesArea.value = (archive && archive.notes) || '';
-      notesArea.placeholder = 'Analyst notes…';
-      notesArea.addEventListener('blur', async () => {
-        try {
-          const res = await sendMessage({
-            action: 'updateNotes',
-            ioc,
-            notes: notesArea.value
-          });
-          if (res && res.success !== false) showToast('Notes saved');
-          else showToast((res && res.error) || 'Failed to save notes');
-        } catch (err) {
-          showToast(err.message || 'Failed to save notes');
-        }
-      });
-      notesSec.appendChild(notesLab);
-      notesSec.appendChild(notesArea);
-      tip.appendChild(notesSec);
-
-      const tagsSec = document.createElement('div');
-      tagsSec.className = 'ap-pivot-section';
-      const tagsLab = document.createElement('div');
-      tagsLab.className = 'ap-pivot-label';
-      tagsLab.textContent = 'Tags';
-      const tagsInput = document.createElement('input');
-      tagsInput.className = 'ap-pivot-tags';
-      tagsInput.type = 'text';
-      tagsInput.placeholder = 'comma-separated';
-      tagsInput.value =
-        archive && archive.tags && archive.tags.length ? archive.tags.join(', ') : '';
-      tagsInput.addEventListener('blur', async () => {
-        try {
-          const res = await sendMessage({
-            action: 'setTags',
-            ioc,
-            tags: tagsInput.value
-          });
-          if (res && res.success !== false) showToast('Tags saved');
-          else showToast((res && res.error) || 'Failed to save tags');
-        } catch (err) {
-          showToast(err.message || 'Failed to save tags');
-        }
-      });
-      tagsSec.appendChild(tagsLab);
-      tagsSec.appendChild(tagsInput);
-      tip.appendChild(tagsSec);
-
-      try {
-        const rel = await sendMessage({ action: 'getRelatedIocs', ioc });
-        const related = (rel && rel.related) || [];
-        if (related.length) {
-          const relSec = document.createElement('div');
-          relSec.className = 'ap-pivot-section';
-          const relLab = document.createElement('div');
-          relLab.className = 'ap-pivot-label';
-          relLab.textContent = 'Related';
-          relSec.appendChild(relLab);
-          const toolsWrap = document.createElement('div');
-          toolsWrap.className = 'ap-pivot-tools';
-          related.forEach((r) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'ap-pivot-tool';
-            btn.textContent = (r.ioc || '').slice(0, 18);
-            btn.title = r.ioc + ' · ' + (r.reason || '');
-            btn.addEventListener('click', async () => {
-              try {
-                await navigator.clipboard.writeText(r.ioc);
-                showToast('Copied related IoC');
-              } catch (_) {
-                showToast(r.ioc);
-              }
-            });
-            toolsWrap.appendChild(btn);
-          });
-          relSec.appendChild(toolsWrap);
-          tip.appendChild(relSec);
-        }
-      } catch (_) {
-        /* related is optional */
-      }
+      body.appendChild(enrichSec);
 
       const verdSec = document.createElement('div');
       verdSec.className = 'ap-pivot-section';
-      verdSec.innerHTML = '<div class="ap-pivot-label">Set verdict</div><div class="ap-pivot-verdicts"></div>';
+      verdSec.innerHTML =
+        '<div class="ap-pivot-label">Set verdict</div><div class="ap-pivot-verdicts"></div>';
       const verdGrid = verdSec.querySelector('.ap-pivot-verdicts');
-      verdicts.forEach(([key, short]) => {
-        const color = IOCUtils.VERDICT_COLORS[key];
+      verdicts.forEach(([vKey, short]) => {
+        const color = IOCUtils.VERDICT_COLORS[vKey];
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'ap-pivot-verdict';
+        btn.className = 'ap-pivot-verdict' + (currentVerdict === vKey ? ' active' : '');
         btn.textContent = short;
-        btn.title = key;
+        btn.title = vKey;
         btn.style.color = color;
         btn.style.borderColor = hexA(color, 0.35);
+        btn.style.background = hexA(color, currentVerdict === vKey ? 0.18 : 0.08);
         btn.addEventListener('click', async () => {
-          await sendMessage({ action: 'setVerdict', ioc, verdict: key });
-          showToast('Verdict set: ' + key);
+          await sendMessage({ action: 'setVerdict', ioc, verdict: vKey });
+          showToast('Verdict set: ' + vKey);
+          openPivotFor(ioc, type, span);
         });
         verdGrid.appendChild(btn);
       });
-      tip.appendChild(verdSec);
+      body.appendChild(verdSec);
 
       const openSec = document.createElement('div');
       openSec.className = 'ap-pivot-section';
-      openSec.innerHTML = '<div class="ap-pivot-label">Open in</div><div class="ap-pivot-tools"></div><div class="ap-pivot-actions"></div>';
+      openSec.innerHTML =
+        '<div class="ap-pivot-label">Open in</div><div class="ap-pivot-tools"></div>';
       const toolsEl = openSec.querySelector('.ap-pivot-tools');
       filteredTools.forEach((t) => {
         const btn = document.createElement('button');
@@ -666,8 +502,88 @@
         });
         toolsEl.appendChild(btn);
       });
+      body.appendChild(openSec);
 
-      const actions = openSec.querySelector('.ap-pivot-actions');
+      const relSec = document.createElement('div');
+      relSec.className = 'ap-pivot-section';
+      const relLab = document.createElement('div');
+      relLab.className = 'ap-pivot-label';
+      relLab.textContent = 'Related · shared case';
+      relSec.appendChild(relLab);
+      if (!related.length) {
+        const empty = document.createElement('div');
+        empty.className = 'ap-pivot-empty';
+        empty.textContent = 'No related indicators in a shared case';
+        relSec.appendChild(empty);
+      } else {
+        const toolsWrap = document.createElement('div');
+        toolsWrap.className = 'ap-pivot-tools';
+        related.forEach((r) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'ap-pivot-tool';
+          const label = r.ioc || '';
+          btn.textContent = label.length > 22 ? label.slice(0, 22) + '…' : label;
+          btn.title = label + (r.reason ? ' · ' + r.reason : '');
+          btn.addEventListener('click', () => {
+            const rType = r.type || IOCUtils.detectIOCType(r.ioc);
+            openPivotFor(r.ioc, rType, null);
+          });
+          toolsWrap.appendChild(btn);
+        });
+        relSec.appendChild(toolsWrap);
+      }
+      body.appendChild(relSec);
+
+      const xfSec = document.createElement('div');
+      xfSec.className = 'ap-pivot-section';
+      xfSec.innerHTML =
+        '<div class="ap-pivot-label">Transforms & packs · local</div><div class="ap-pivot-tools"></div>';
+      const xfTools = xfSec.querySelector('.ap-pivot-tools');
+      const transforms = [
+        {
+          label: 'Defang',
+          run: () => copyText(IOCUtils.defang(ioc), 'Copied defanged')
+        },
+        {
+          label: 'Copy',
+          run: () => copyText(ioc, 'Copied ' + ioc)
+        },
+        {
+          label: 'Copy STIX',
+          run: () => copyText(packText('stix', [{ ioc, type }]), 'Copied STIX 2.1')
+        },
+        {
+          label: 'Base64',
+          run: () => {
+            const out = IOCUtils.toBase64(ioc);
+            if (out == null) showToast('Base64 failed');
+            else copyText(out, 'Copied Base64');
+          }
+        },
+        {
+          label: 'Hex→ascii',
+          run: () => {
+            const out = IOCUtils.hexToAscii(ioc);
+            if (out == null) showToast('Not valid hex');
+            else copyText(out, 'Copied ascii');
+          }
+        }
+      ];
+      transforms.forEach((t) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ap-pivot-tool';
+        btn.textContent = t.label;
+        btn.addEventListener('click', t.run);
+        xfTools.appendChild(btn);
+      });
+      body.appendChild(xfSec);
+
+      tip.appendChild(body);
+
+      const foot = document.createElement('div');
+      foot.className = 'ap-pivot-foot';
       const playBtn = document.createElement('button');
       playBtn.type = 'button';
       playBtn.className = 'ap-pivot-play';
@@ -680,7 +596,6 @@
           playbookId: play.id
         });
         if (res && res.success) {
-          hidePivot();
           showToast('Ran ' + play.name + ' — opened ' + (res.opened || 0) + ' tabs');
         }
       });
@@ -696,20 +611,16 @@
           caseName: 'Quick case'
         });
         if (res && res.success) {
-          hidePivot();
           showToast('Added ' + ioc + ' to ' + res.case.id);
         }
       });
-      actions.appendChild(playBtn);
-      actions.appendChild(caseBtn);
-      tip.appendChild(openSec);
-
-      positionPivot(span);
+      foot.appendChild(playBtn);
+      foot.appendChild(caseBtn);
+      tip.appendChild(foot);
     } catch (error) {
-      if (activeIocSpan !== span) return;
+      if (activePivotKey !== key) return;
       tip.innerHTML =
-        '<div style="padding:14px;color:#e06c75;font-size:11px;">Could not load actions</div>';
-      positionPivot(span);
+        '<div class="ap-pivot-body"><div style="padding:14px;color:#e06c75;font-size:11px;">Could not load actions</div></div>';
     }
   }
 
@@ -719,17 +630,14 @@
     openPivot(event.currentTarget);
   }
 
-  function onIocMouseEnter(event) {
-    // Keep hover affordance; click opens pivot (design)
-    clearTimeout(hidePivotTimer);
-  }
+  function onIocMouseEnter() {}
 
-  function onIocMouseLeave() {
-    scheduleHidePivot();
-  }
+  function onIocMouseLeave() {}
 
-  function applyOverlayEnabled(enabled) {
-    overlayEnabled = !!enabled;
+  function applyEffectiveOverlay() {
+    const next = !!overlaySetting && !isPageDomainDisabled();
+    if (next === overlayEnabled) return;
+    overlayEnabled = next;
     if (overlayEnabled) {
       enableOverlays();
       refreshOverlayConfig();
@@ -753,29 +661,42 @@
 
   function loadOverlaySetting() {
     const gen = ++overlayLoadGen;
-    const apply = (enabled) => {
+    const apply = (data) => {
       // Ignore stale async storage results after a newer onChanged or load
       if (gen !== overlayLoadGen) return;
-      applyOverlayEnabled(enabled);
+      overlaySetting = !!(data && data.overlayEnabled);
+      disabledDomains = Array.isArray(data && data.disabledDomains)
+        ? data.disabledDomains
+        : [];
+      applyEffectiveOverlay();
     };
 
     if (browserAPI.storage.sync.get.length > 1) {
-      browserAPI.storage.sync.get('overlayEnabled', (data) => {
-        apply(data && data.overlayEnabled);
+      browserAPI.storage.sync.get(['overlayEnabled', 'disabledDomains'], (data) => {
+        apply(data);
       });
     } else {
       browserAPI.storage.sync
-        .get('overlayEnabled')
-        .then((data) => apply(data.overlayEnabled))
-        .catch(() => apply(false));
+        .get(['overlayEnabled', 'disabledDomains'])
+        .then((data) => apply(data))
+        .catch(() => apply({ overlayEnabled: false, disabledDomains: [] }));
     }
   }
 
   browserAPI.storage.onChanged.addListener((changes, area) => {
-    if (area !== 'sync' || !changes.overlayEnabled) return;
+    if (area !== 'sync') return;
+    if (!changes.overlayEnabled && !changes.disabledDomains) return;
     // Bump generation so in-flight get cannot overwrite this toggle
     overlayLoadGen++;
-    applyOverlayEnabled(changes.overlayEnabled.newValue);
+    if (changes.overlayEnabled) {
+      overlaySetting = !!changes.overlayEnabled.newValue;
+    }
+    if (changes.disabledDomains) {
+      disabledDomains = Array.isArray(changes.disabledDomains.newValue)
+        ? changes.disabledDomains.newValue
+        : [];
+    }
+    applyEffectiveOverlay();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -787,6 +708,7 @@
   function initPagePalette() {
     if (typeof ApertureUI === 'undefined' || pagePalette) return;
     pagePalette = ApertureUI.createPalette({
+      onEscape: hidePivot,
       getGroups() {
         const cfg = window.__apertureOverlayConfig || {};
         const enabled = cfg.enabledServices || {};
@@ -854,6 +776,10 @@
   browserAPI.runtime.onMessage.addListener((message) => {
     if (!message) return;
     if (message.action === 'openPalette') {
+      if (isPageDomainDisabled()) {
+        showToast('Disabled on this site');
+        return;
+      }
       initPagePalette();
       if (pagePalette) pagePalette.open();
       else showToast('Palette unavailable');

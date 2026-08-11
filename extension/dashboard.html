@@ -249,7 +249,7 @@
     }
     .col-head {
       display: grid;
-      grid-template-columns: 1fr 92px 32px;
+      grid-template-columns: minmax(160px, 1.4fr) minmax(120px, 1fr) 92px 72px 72px;
       gap: 10px;
       padding: 9px 18px;
       border-bottom: 1px solid var(--divider);
@@ -261,12 +261,46 @@
     }
     .triage-row {
       display: grid;
-      grid-template-columns: 1fr 92px 32px;
+      grid-template-columns: minmax(160px, 1.4fr) minmax(120px, 1fr) 92px 72px 72px;
       gap: 10px;
       align-items: center;
       padding: 11px 18px;
       border-bottom: 1px solid var(--divider-faint);
       transition: 0.12s;
+    }
+    .triage-enrich {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .triage-seen {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+    .triage-actions {
+      display: flex;
+      gap: 4px;
+      justify-content: flex-end;
+    }
+    .labs-banner {
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      background: rgba(217, 161, 91, 0.1);
+      border: 1px solid rgba(217, 161, 91, 0.35);
+      border-radius: var(--radius);
+      color: var(--email);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .copy-as-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
     }
     .triage-row:hover { background: var(--surface-2); }
     .ioc-cell {
@@ -582,7 +616,7 @@
 <body class="aperture">
   <header class="topbar">
     <div class="topbar-brand">
-      <div class="ap-logo"><div class="ap-logo-dot"></div></div>
+      <img class="ap-brand-icon" src="icons/icon128.png" width="22" height="22" alt="">
       <div class="ap-wordmark">
         <span class="ap-wordmark-title">APERTURE</span>
         <span class="ap-wordmark-sub">osint workbench</span>
@@ -593,11 +627,6 @@
       <span style="flex:1;text-align:left">Search tools, IoCs, playbooks, cases…</span>
       <span class="ap-keycap">⌘K</span>
     </button>
-    <div class="seg" id="surface-seg">
-      <button type="button" data-screen="overview" class="active">Dashboard</button>
-      <button type="button" data-open="popup">Popup</button>
-      <button type="button" data-screen="onpage-help">On-page</button>
-    </div>
     <div class="local-chip"><span class="dot"></span>Local · no keys</div>
   </header>
 
@@ -612,15 +641,9 @@
         <button type="button" class="nav-btn" data-nav="packs"><span>▣</span>Offline packs</button>
         <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs</button>
       </div>
-      <div>
+      <div style="margin-top:auto">
         <div class="nav-label"><span>Cases</span><span id="case-count">0</span></div>
         <div id="case-nav-list"></div>
-      </div>
-      <div style="margin-top:auto">
-        <div class="nav-label">Surfaces</div>
-        <button type="button" class="nav-btn" id="nav-popup"><span>◱</span>Popup launcher</button>
-        <button type="button" class="nav-btn" id="nav-sidepanel"><span>▥</span>Side panel</button>
-        <button type="button" class="nav-btn" data-nav="onpage-help"><span>❖</span>On-page detect</button>
       </div>
     </aside>
 
@@ -639,6 +662,9 @@
   <div class="modal-scrim" id="modal-scrim">
     <div class="modal" id="modal"></div>
   </div>
+
+  <div class="ap-pivot-scrim" id="pivot-scrim"></div>
+  <div class="ap-pivot ap-pivot-drawer" id="pivot-drawer"></div>
 
   <script src="ioc-utils.js"></script>
   <script src="aperture-features.js"></script>

@@ -200,13 +200,81 @@
       transition: 0.15s;
     }
     .toggle.on::after { left: 19px; }
+    .disabled-domains {
+      margin-top: 8px;
+    }
+    .disabled-domains-hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin: 4px 0 8px;
+      line-height: 1.35;
+    }
+    .disabled-domains-status {
+      font-size: 11px;
+      color: var(--text-2);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .disabled-domains-status[hidden] { display: none; }
+    .disabled-domain-add {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .disabled-domain-add input {
+      flex: 1;
+      min-width: 0;
+      background: var(--bg-2, rgba(255,255,255,0.04));
+      border: 1px solid var(--divider);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 6px 8px;
+    }
+    .disabled-domain-add input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .disabled-domain-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 5px 0;
+      font-size: 12px;
+      color: var(--text-2);
+      border-bottom: 1px solid var(--divider-faint);
+    }
+    .disabled-domain-row span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .disabled-domain-row button {
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+    .disabled-domain-row button:hover { color: var(--text); }
+    .disabled-domains-empty {
+      font-size: 11px;
+      color: var(--text-dim);
+      padding: 4px 0 2px;
+    }
   </style>
 </head>
 <body class="aperture">
   <div class="popup-card">
     <div class="popup-head">
       <div class="popup-brand">
-        <div class="ap-logo"><div class="ap-logo-dot"></div></div>
+        <img class="ap-brand-icon" src="icons/icon128.png" width="22" height="22" alt="">
         <div class="ap-wordmark">
           <span class="ap-wordmark-title">APERTURE</span>
           <span class="ap-wordmark-sub">osint workbench</span>
@@ -246,6 +314,20 @@
       <div class="svc-row">
         <span>On-page IoC detect</span>
         <button type="button" class="toggle" id="overlay-toggle" aria-label="Toggle overlays"></button>
+      </div>
+      <div class="disabled-domains" id="disabled-domains">
+        <div class="section-label" style="margin-top:10px">Disabled domains</div>
+        <div class="disabled-domains-hint">Suffix match — crowdstrike.com covers subdomains too.</div>
+        <div class="disabled-domains-status" id="disabled-domains-status" hidden>
+          <span id="disabled-domains-status-text">Disabled on this site</span>
+          <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-enable-site">Enable</button>
+        </div>
+        <div class="disabled-domain-add">
+          <input id="disabled-domain-input" type="text" placeholder="e.g. splunk.company.com" spellcheck="false" autocomplete="off" />
+          <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-disabled-domain">Add</button>
+        </div>
+        <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-disable-site" style="width:100%;margin-bottom:8px">Disable on this site</button>
+        <div id="disabled-domains-list"></div>
       </div>
       <div class="section-label" style="margin-top:12px">Services</div>
       <div id="services-list"></div>

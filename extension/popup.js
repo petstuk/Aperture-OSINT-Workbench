@@ -7,6 +7,8 @@
     playbooks: [],
     enabledServices: {},
     overlayEnabled: false,
+    disabledDomains: [],
+    activeHost: '',
     services: [],
     current: null
   };
@@ -22,6 +24,24 @@
   const settingsPanel = document.getElementById('settings-panel');
   const overlayToggle = document.getElementById('overlay-toggle');
   const servicesList = document.getElementById('services-list');
+  const disabledDomainsList = document.getElementById('disabled-domains-list');
+  const disabledDomainInput = document.getElementById('disabled-domain-input');
+  const disabledDomainsStatus = document.getElementById('disabled-domains-status');
+  const disabledDomainsStatusText = document.getElementById('disabled-domains-status-text');
+  const btnDisableSite = document.getElementById('btn-disable-site');
+  const btnEnableSite = document.getElementById('btn-enable-site');
+  const btnAddDisabledDomain = document.getElementById('btn-add-disabled-domain');
+
+  async function getActiveTabHost() {
+    try {
+      const tabs = await browserAPI.tabs.query({ active: true, currentWindow: true });
+      const url = tabs && tabs[0] && tabs[0].url;
+      if (!url) return '';
+      return new URL(url).hostname.toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
 
   async function load() {
     let data = {};
@@ -48,6 +68,8 @@
     state.playbooks = data.playbooks || [];
     state.enabledServices = data.enabledServices || {};
     state.overlayEnabled = !!data.overlayEnabled;
+    state.disabledDomains = Array.isArray(data.disabledDomains) ? data.disabledDomains : [];
+    state.activeHost = await getActiveTabHost();
     state.services =
       data.services && data.services.length
         ? data.services
@@ -140,8 +162,62 @@
     });
   }
 
+  function siteIsDisabled() {
+    return (
+      !!state.activeHost &&
+      IOCUtils.hostMatchesDisabled(state.activeHost, state.disabledDomains)
+    );
+  }
+
+  function renderDisabledDomains() {
+    const disabled = siteIsDisabled();
+    if (disabledDomainsStatus) {
+      disabledDomainsStatus.hidden = !disabled;
+      if (disabled && disabledDomainsStatusText) {
+        disabledDomainsStatusText.textContent =
+          'Disabled on ' + state.activeHost;
+      }
+    }
+    if (btnDisableSite) {
+      btnDisableSite.disabled = !state.activeHost || disabled;
+      btnDisableSite.textContent = state.activeHost
+        ? 'Disable on this site'
+        : 'Disable on this site (no tab host)';
+    }
+
+    if (!disabledDomainsList) return;
+    disabledDomainsList.innerHTML = '';
+    if (!state.disabledDomains.length) {
+      disabledDomainsList.innerHTML =
+        '<div class="disabled-domains-empty">No domains disabled</div>';
+      return;
+    }
+    state.disabledDomains.forEach((domain) => {
+      const row = document.createElement('div');
+      row.className = 'disabled-domain-row';
+      row.innerHTML = '<span></span><button type="button" aria-label="Remove">Remove</button>';
+      row.querySelector('span').textContent = domain;
+      row.querySelector('span').title = domain;
+      row.querySelector('button').addEventListener('click', async () => {
+        const res = await sendMessage({
+          action: 'removeDisabledDomain',
+          domain
+        });
+        if (res && res.success) {
+          state.disabledDomains = res.disabledDomains || [];
+          renderDisabledDomains();
+          showToast('Removed ' + domain);
+        } else {
+          showToast((res && res.error) || 'Could not remove');
+        }
+      });
+      disabledDomainsList.appendChild(row);
+    });
+  }
+
   function renderSettings() {
     overlayToggle.classList.toggle('on', state.overlayEnabled);
+    renderDisabledDomains();
     servicesList.innerHTML = '';
     if (!state.services.length) {
       servicesList.innerHTML =
@@ -167,6 +243,23 @@
       });
       servicesList.appendChild(row);
     });
+  }
+
+  async function addDisabledDomain(raw) {
+    const domain = IOCUtils.normalizeDisabledDomain(raw);
+    if (!domain) {
+      showToast('Enter a valid domain');
+      return;
+    }
+    const res = await sendMessage({ action: 'addDisabledDomain', domain });
+    if (res && res.success) {
+      state.disabledDomains = res.disabledDomains || [];
+      if (disabledDomainInput) disabledDomainInput.value = '';
+      renderDisabledDomains();
+      showToast('Disabled on ' + domain);
+    } else {
+      showToast((res && res.error) || 'Could not add domain');
+    }
   }
 
   function updateDetect(raw) {
@@ -205,7 +298,6 @@
     quickTools.innerHTML = '';
     IOCUtils.toolsFor(item.type)
       .filter((t) => state.enabledServices[t.name] !== false)
-      .slice(0, 4)
       .forEach((t) => {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -257,6 +349,50 @@
     overlayToggle.classList.toggle('on', state.overlayEnabled);
     showToast(state.overlayEnabled ? 'On-page detect enabled' : 'On-page detect disabled');
   });
+
+  if (btnAddDisabledDomain) {
+    btnAddDisabledDomain.addEventListener('click', () => {
+      addDisabledDomain(disabledDomainInput && disabledDomainInput.value);
+    });
+  }
+  if (disabledDomainInput) {
+    disabledDomainInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addDisabledDomain(disabledDomainInput.value);
+      }
+    });
+  }
+  if (btnDisableSite) {
+    btnDisableSite.addEventListener('click', async () => {
+      state.activeHost = (await getActiveTabHost()) || state.activeHost;
+      if (!state.activeHost) {
+        showToast('No site host for this tab');
+        return;
+      }
+      await addDisabledDomain(state.activeHost);
+    });
+  }
+  if (btnEnableSite) {
+    btnEnableSite.addEventListener('click', async () => {
+      state.activeHost = (await getActiveTabHost()) || state.activeHost;
+      if (!state.activeHost) return;
+      const next = state.disabledDomains.filter(
+        (rule) => !IOCUtils.hostMatchesDisabled(state.activeHost, [rule])
+      );
+      const res = await sendMessage({
+        action: 'setDisabledDomains',
+        domains: next
+      });
+      if (res && res.success) {
+        state.disabledDomains = res.disabledDomains || next;
+        renderDisabledDomains();
+        showToast('Enabled on this site');
+      } else {
+        showToast((res && res.error) || 'Could not enable');
+      }
+    });
+  }
 
   const palette = createPalette({
     getGroups() {

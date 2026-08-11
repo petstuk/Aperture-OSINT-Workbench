@@ -314,6 +314,34 @@
     factMap('asn', 'AS65000').scope.indexOf('private') >= 0
   );
 
+  // --- disabled domains ---
+  assert(
+    'disabled suffix match subdomain',
+    IOCUtils.hostMatchesDisabled('falcon.crowdstrike.com', ['crowdstrike.com'])
+  );
+  assert(
+    'disabled suffix match exact',
+    IOCUtils.hostMatchesDisabled('crowdstrike.com', ['crowdstrike.com'])
+  );
+  assert(
+    'disabled suffix no false prefix',
+    !IOCUtils.hostMatchesDisabled('evilcrowdstrike.com', ['crowdstrike.com'])
+  );
+  assert(
+    'normalize disabled strips url',
+    IOCUtils.normalizeDisabledDomain('https://Falcon.CrowdStrike.com/path') ===
+      'falcon.crowdstrike.com'
+  );
+  assert(
+    'normalize disabled strips wildcard',
+    IOCUtils.normalizeDisabledDomain('*.crowdstrike.com') === 'crowdstrike.com'
+  );
+  assert(
+    'normalize disabled allows internal tld',
+    IOCUtils.normalizeDisabledDomain('splunk.acme.internal') ===
+      'splunk.acme.internal'
+  );
+
   const summary = document.getElementById('summary');
   const out = document.getElementById('out');
   if (summary) {

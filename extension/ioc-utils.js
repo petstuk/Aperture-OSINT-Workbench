@@ -677,6 +677,47 @@
     return VALID_TLDS.has(last);
   }
 
+  /** Normalize a user-entered host/domain for the on-page disable list (allows internal TLDs). */
+  function normalizeDisabledDomain(input) {
+    let s = String(input || '').trim().toLowerCase();
+    if (!s) return '';
+    try {
+      if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {
+        s = new URL(s).hostname;
+      } else if (/[/?#]/.test(s)) {
+        s = new URL('http://' + s).hostname;
+      }
+    } catch (_) {
+      return '';
+    }
+    s = s
+      .replace(/^\*\./, '')
+      .replace(/\.$/, '')
+      .replace(/:\d+$/, '');
+    if (!s || s.length > 253) return '';
+    if (s === 'localhost') return s;
+    if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i.test(s)) {
+      return '';
+    }
+    return s;
+  }
+
+  /** Suffix match: rule "example.com" matches example.com and *.example.com */
+  function hostMatchesDisabled(hostname, rules) {
+    const host = String(hostname || '')
+      .toLowerCase()
+      .replace(/\.$/, '');
+    if (!host || !Array.isArray(rules) || !rules.length) return false;
+    for (let i = 0; i < rules.length; i++) {
+      const rule = String(rules[i] || '')
+        .toLowerCase()
+        .replace(/\.$/, '');
+      if (!rule) continue;
+      if (host === rule || host.endsWith('.' + rule)) return true;
+    }
+    return false;
+  }
+
   function isExactHash(hex) {
     return hex.length === 32 || hex.length === 40 || hex.length === 64;
   }
@@ -1081,6 +1122,56 @@
       .replace(/\./g, '[.]');
   }
 
+  function toBase64(value) {
+    const s = String(value || '');
+    try {
+      if (typeof btoa === 'function') {
+        return btoa(unescape(encodeURIComponent(s)));
+      }
+    } catch (_) {
+      /* fall through */
+    }
+    try {
+      if (typeof TextEncoder !== 'undefined') {
+        const bytes = new TextEncoder().encode(s);
+        let bin = '';
+        bytes.forEach((b) => {
+          bin += String.fromCharCode(b);
+        });
+        if (typeof btoa === 'function') return btoa(bin);
+        const alphabet =
+          'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+        let out = '';
+        for (let i = 0; i < bytes.length; i += 3) {
+          const a = bytes[i];
+          const b = i + 1 < bytes.length ? bytes[i + 1] : 0;
+          const c = i + 2 < bytes.length ? bytes[i + 2] : 0;
+          const triple = (a << 16) | (b << 8) | c;
+          out += alphabet[(triple >> 18) & 63];
+          out += alphabet[(triple >> 12) & 63];
+          out += i + 1 < bytes.length ? alphabet[(triple >> 6) & 63] : '=';
+          out += i + 2 < bytes.length ? alphabet[triple & 63] : '=';
+        }
+        return out;
+      }
+    } catch (_) {
+      /* fall through */
+    }
+    return null;
+  }
+
+  function hexToAscii(value) {
+    const raw = String(value || '').replace(/^(0x)/i, '').replace(/[\s:_-]/g, '');
+    if (!raw || raw.length % 2 !== 0 || /[^0-9a-f]/i.test(raw)) return null;
+    let out = '';
+    for (let i = 0; i < raw.length; i += 2) {
+      const code = parseInt(raw.slice(i, i + 2), 16);
+      if (Number.isNaN(code)) return null;
+      out += code >= 32 && code <= 126 ? String.fromCharCode(code) : '.';
+    }
+    return out;
+  }
+
   function canonicalize(type, value) {
     const refanged = refang(String(value || '').trim());
     const t = type || detectIOCType(refanged);
@@ -1142,7 +1233,8 @@
 
   function clipboardPack(format, entries) {
     const list = Array.isArray(entries) ? entries : [];
-    const fmt = String(format || 'raw').toLowerCase();
+    let fmt = String(format || 'raw').toLowerCase();
+    if (fmt === 'md') fmt = 'markdown';
 
     if (fmt === 'raw') {
       return list.map((e) => e.ioc).join('\n');
@@ -1219,6 +1311,8 @@
     typeLabel,
     toolsFor,
     isValidDomain,
+    normalizeDisabledDomain,
+    hostMatchesDisabled,
     TYPE_COLORS,
     VERDICT_COLORS,
     resolveServiceName,
@@ -1228,6 +1322,8 @@
     stripUrlTrailingPunct,
     canonicalize,
     defang,
+    toBase64,
+    hexToAscii,
     clipboardPack,
     normalizeTags,
     isPrivateOrLocalIp,

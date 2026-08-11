@@ -13,6 +13,7 @@
     extractSelected: new Set(),
     inboxFilter: '',
     inboxTagFilter: '',
+    inboxVerdictFilter: '',
     session: { caseId: null, paused: false, excludeDomains: [] },
     featureFlags: {},
     favorites: [],
@@ -20,41 +21,279 @@
     installedPacks: {}
   };
 
-  function defangIoc(ioc) {
-    if (typeof IOCUtils.defang === 'function') return IOCUtils.defang(ioc);
-    return String(ioc)
-      .replace(/\./g, '[.]')
-      .replace(/https:\/\//gi, 'hxxps://')
-      .replace(/http:\/\//gi, 'hxxp://')
-      .replace(/@/g, '[at]');
+  function packText(format, items) {
+    const rows = (items || []).map((h) => {
+      if (typeof h === 'string') return { ioc: h };
+      return {
+        ioc: h.ioc || h.value,
+        type: h.type,
+        verdict: h.verdict || h.status,
+        notes: h.notes,
+        tags: h.tags
+      };
+    });
+    return IOCUtils.clipboardPack(format, rows);
   }
 
-  function packText(format, items) {
-    if (typeof IOCUtils.clipboardPack === 'function') {
-      return IOCUtils.clipboardPack(format, items);
+  function hexA(h, a) {
+    const n = parseInt(String(h || '#8b93a3').slice(1), 16);
+    return (
+      'rgba(' +
+      ((n >> 16) & 255) +
+      ',' +
+      ((n >> 8) & 255) +
+      ',' +
+      (n & 255) +
+      ',' +
+      a +
+      ')'
+    );
+  }
+
+  function closeWorkbenchPivot() {
+    const tip = document.getElementById('pivot-drawer');
+    const scrim = document.getElementById('pivot-scrim');
+    if (tip) {
+      tip.classList.remove('open');
+      tip.innerHTML = '';
     }
-    const rows = items.map((h) => (typeof h === 'string' ? { ioc: h } : h));
-    if (format === 'defang') return rows.map((r) => defangIoc(r.ioc)).join('\n');
-    if (format === 'md') {
-      return rows
-        .map((r) => {
-          const type = r.type || IOCUtils.detectIOCType(r.ioc);
-          const v = IOCUtils.normalizeVerdict(r.verdict || r.status || 'unknown');
-          return '- `' + r.ioc + '` · ' + IOCUtils.typeLabel(type) + ' · ' + v;
-        })
-        .join('\n');
+    if (scrim) scrim.classList.remove('open');
+  }
+
+  async function openWorkbenchPivot(ioc, type) {
+    const tip = document.getElementById('pivot-drawer');
+    const scrim = document.getElementById('pivot-scrim');
+    if (!tip || !scrim) return;
+    const resolvedType = type || IOCUtils.detectIOCType(ioc);
+    tip.classList.add('open');
+    scrim.classList.add('open');
+    tip.innerHTML =
+      '<div class="ap-pivot-body"><div style="padding:14px;color:var(--text-dim);font-size:11px">Loading…</div></div>';
+
+    const archive = state.history.find((h) => h.ioc === ioc) || {};
+    let related = [];
+    try {
+      const rel = await sendMessage({ action: 'getRelatedIocs', ioc });
+      related = (rel && rel.related) || [];
+    } catch (_) {
+      related = [];
     }
-    if (format === 'csv') {
-      const lines = rows.map((r) => {
-        const type = r.type || IOCUtils.detectIOCType(r.ioc);
-        const v = IOCUtils.normalizeVerdict(r.verdict || r.status || 'unknown');
-        const tags = (r.tags || []).join(';');
-        const notes = String(r.notes || '').replace(/"/g, '""');
-        return '"' + r.ioc + '","' + type + '","' + v + '","' + tags + '","' + notes + '"';
+
+    const typeColor = IOCUtils.TYPE_COLORS[resolvedType] || '#8b93a3';
+    const play = IOCUtils.playbookForType(resolvedType, state.playbooks);
+    const filteredTools = IOCUtils.toolsFor(resolvedType).filter(
+      (t) => state.enabledServices[t.name] !== false
+    );
+    const facts = IOCUtils.enrichFacts(resolvedType, ioc);
+    const currentVerdict = IOCUtils.normalizeVerdict(archive.verdict || archive.status || 'unknown');
+    const verdicts = [
+      ['benign', 'B'],
+      ['suspicious', 'S'],
+      ['malicious', 'M'],
+      ['review', 'R']
+    ];
+
+    tip.innerHTML = '';
+    const head = document.createElement('div');
+    head.className = 'ap-pivot-head';
+    head.innerHTML =
+      '<div class="ap-pivot-head-top"><div class="ap-pivot-value"></div>' +
+      '<div class="ap-pivot-head-meta"><span class="ap-pivot-pill"></span>' +
+      '<button type="button" class="ap-pivot-close" title="Close">×</button></div></div>';
+    head.querySelector('.ap-pivot-value').textContent = ioc;
+    const typePill = head.querySelector('.ap-pivot-pill');
+    typePill.textContent = IOCUtils.typeLabel(resolvedType, ioc);
+    typePill.style.cssText = pillStyle(typeColor);
+    head.querySelector('.ap-pivot-close').addEventListener('click', closeWorkbenchPivot);
+    tip.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'ap-pivot-body';
+
+    const enrichSec = document.createElement('div');
+    enrichSec.className = 'ap-pivot-section';
+    enrichSec.innerHTML =
+      '<div class="ap-pivot-label">Local enrichment · no network</div><div class="ap-pivot-facts"></div>';
+    const factsEl = enrichSec.querySelector('.ap-pivot-facts');
+    facts.forEach(([k, v]) => {
+      const row = document.createElement('div');
+      row.className = 'ap-pivot-fact';
+      row.innerHTML =
+        '<span class="ap-pivot-fact-k"></span><span class="ap-pivot-fact-v"></span>';
+      row.querySelector('.ap-pivot-fact-k').textContent = k;
+      row.querySelector('.ap-pivot-fact-v').textContent = v;
+      factsEl.appendChild(row);
+    });
+    body.appendChild(enrichSec);
+
+    const verdSec = document.createElement('div');
+    verdSec.className = 'ap-pivot-section';
+    verdSec.innerHTML =
+      '<div class="ap-pivot-label">Set verdict</div><div class="ap-pivot-verdicts"></div>';
+    const verdGrid = verdSec.querySelector('.ap-pivot-verdicts');
+    verdicts.forEach(([vKey, short]) => {
+      const color = IOCUtils.VERDICT_COLORS[vKey];
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ap-pivot-verdict';
+      btn.textContent = short;
+      btn.title = vKey;
+      btn.style.color = color;
+      btn.style.borderColor = hexA(color, 0.35);
+      btn.style.background = hexA(color, currentVerdict === vKey ? 0.18 : 0.08);
+      btn.addEventListener('click', async () => {
+        await sendMessage({ action: 'setVerdict', ioc, verdict: vKey });
+        showToast('Verdict set: ' + vKey);
+        await load();
+        openWorkbenchPivot(ioc, resolvedType);
       });
-      return 'ioc,type,verdict,tags,notes\n' + lines.join('\n');
+      verdGrid.appendChild(btn);
+    });
+    body.appendChild(verdSec);
+
+    const openSec = document.createElement('div');
+    openSec.className = 'ap-pivot-section';
+    openSec.innerHTML =
+      '<div class="ap-pivot-label">Open in</div><div class="ap-pivot-tools"></div>';
+    const toolsEl = openSec.querySelector('.ap-pivot-tools');
+    filteredTools.forEach((t) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ap-pivot-tool';
+      btn.textContent = t.code;
+      btn.title = t.name;
+      btn.addEventListener('click', async () => {
+        const res = await sendMessage({ action: 'searchService', ioc, service: t.name });
+        showToast(res && res.success ? 'Opened ' + t.name : (res && res.error) || 'Failed');
+      });
+      toolsEl.appendChild(btn);
+    });
+    body.appendChild(openSec);
+
+    const relSec = document.createElement('div');
+    relSec.className = 'ap-pivot-section';
+    relSec.innerHTML = '<div class="ap-pivot-label">Related · shared case</div>';
+    if (!related.length) {
+      const empty = document.createElement('div');
+      empty.className = 'ap-pivot-empty';
+      empty.textContent = 'No related indicators in a shared case';
+      relSec.appendChild(empty);
+    } else {
+      const wrap = document.createElement('div');
+      wrap.className = 'ap-pivot-tools';
+      related.forEach((r) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ap-pivot-tool';
+        const label = r.ioc || '';
+        btn.textContent = label.length > 22 ? label.slice(0, 22) + '…' : label;
+        btn.title = label;
+        btn.addEventListener('click', () => {
+          openWorkbenchPivot(r.ioc, r.type || IOCUtils.detectIOCType(r.ioc));
+        });
+        wrap.appendChild(btn);
+      });
+      relSec.appendChild(wrap);
     }
-    return rows.map((r) => r.ioc).join('\n');
+    body.appendChild(relSec);
+
+    const xfSec = document.createElement('div');
+    xfSec.className = 'ap-pivot-section';
+    xfSec.innerHTML =
+      '<div class="ap-pivot-label">Transforms & packs · local</div><div class="ap-pivot-tools"></div>';
+    const xfTools = xfSec.querySelector('.ap-pivot-tools');
+    const transforms = [
+      {
+        label: 'Defang',
+        run: async () => {
+          await navigator.clipboard.writeText(IOCUtils.defang(ioc));
+          showToast('Copied defanged');
+        }
+      },
+      {
+        label: 'Copy',
+        run: async () => {
+          await navigator.clipboard.writeText(ioc);
+          showToast('Copied');
+        }
+      },
+      {
+        label: 'Copy STIX',
+        run: async () => {
+          await navigator.clipboard.writeText(
+            packText('stix', [{ ioc, type: resolvedType }])
+          );
+          showToast('Copied STIX 2.1');
+        }
+      },
+      {
+        label: 'Base64',
+        run: async () => {
+          const out = IOCUtils.toBase64(ioc);
+          if (out == null) showToast('Base64 failed');
+          else {
+            await navigator.clipboard.writeText(out);
+            showToast('Copied Base64');
+          }
+        }
+      },
+      {
+        label: 'Hex→ascii',
+        run: async () => {
+          const out = IOCUtils.hexToAscii(ioc);
+          if (out == null) showToast('Not valid hex');
+          else {
+            await navigator.clipboard.writeText(out);
+            showToast('Copied ascii');
+          }
+        }
+      }
+    ];
+    transforms.forEach((t) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ap-pivot-tool';
+      btn.textContent = t.label;
+      btn.addEventListener('click', () => t.run().catch(() => showToast('Copy failed')));
+      xfTools.appendChild(btn);
+    });
+    body.appendChild(xfSec);
+    tip.appendChild(body);
+
+    const foot = document.createElement('div');
+    foot.className = 'ap-pivot-foot';
+    const playBtn = document.createElement('button');
+    playBtn.type = 'button';
+    playBtn.className = 'ap-pivot-play';
+    playBtn.textContent = '▷ ' + (play ? play.name : 'Playbook');
+    playBtn.addEventListener('click', async () => {
+      if (!play) return;
+      const res = await sendMessage({
+        action: 'runPlaybook',
+        ioc,
+        playbookId: play.id
+      });
+      showToast(res && res.success ? 'Ran ' + play.name : 'Failed');
+    });
+    const caseBtn = document.createElement('button');
+    caseBtn.type = 'button';
+    caseBtn.className = 'ap-pivot-case';
+    caseBtn.textContent = '+ Case';
+    caseBtn.addEventListener('click', async () => {
+      const res = await sendMessage({
+        action: 'addToCase',
+        ioc,
+        create: true,
+        caseName: 'Quick case'
+      });
+      if (res && res.success) {
+        showToast('Added to ' + res.case.id);
+        await load();
+      }
+    });
+    foot.appendChild(playBtn);
+    foot.appendChild(caseBtn);
+    tip.appendChild(foot);
   }
 
   function downloadText(filename, text, mime) {
@@ -93,6 +332,12 @@
     }
     if (state.inboxTagFilter) {
       list = list.filter((h) => (h.tags || []).includes(state.inboxTagFilter));
+    }
+    if (state.inboxVerdictFilter) {
+      list = list.filter(
+        (h) =>
+          IOCUtils.normalizeVerdict(h.verdict || h.status) === state.inboxVerdictFilter
+      );
     }
     return list;
   }
@@ -167,15 +412,20 @@
         body.appendChild(packLab);
         const packRow = document.createElement('div');
         packRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
-        ['defang', 'md', 'csv'].forEach((fmt) => {
+        [
+          ['defang', 'Defang'],
+          ['markdown', 'Markdown'],
+          ['csv', 'CSV'],
+          ['stix', 'STIX']
+        ].forEach(([fmt, label]) => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-          btn.textContent = fmt === 'defang' ? 'Defang' : fmt.toUpperCase();
+          btn.textContent = label;
           btn.addEventListener('click', async () => {
             try {
               await navigator.clipboard.writeText(packText(fmt, [h]));
-              showToast('Copied ' + fmt.toUpperCase() + ' pack');
+              showToast('Copied ' + label);
             } catch (_) {
               showToast('Copy failed');
             }
@@ -227,11 +477,7 @@
   }
 
   function handleInboxRowClick(h) {
-    if (h.caseIds && h.caseIds[0]) {
-      go('case', h.caseIds[0]);
-      return;
-    }
-    openInboxDetailModal(h);
+    openWorkbenchPivot(h.ioc, h.type || IOCUtils.detectIOCType(h.ioc));
   }
 
   function buildPlaybookForm(body, pb) {
@@ -392,11 +638,6 @@
       btn.classList.toggle('active', btn.dataset.nav === state.screen);
     });
 
-    document.querySelectorAll('#surface-seg button').forEach((btn) => {
-      const s = btn.dataset.screen;
-      btn.classList.toggle('active', s === 'overview' && dashScreens.includes(state.screen));
-    });
-
     Object.keys(screens).forEach((key) => {
       screens[key].classList.toggle('active', key === state.screen);
     });
@@ -463,22 +704,14 @@
     root.innerHTML =
       '<div class="screen-head">' +
       '<div><h1>Triage overview</h1>' +
-      '<p>Everything detected across your sessions — grouped, enriched locally, ready to pivot.</p></div>' +
+      '<p>Everything detected across your sessions — enriched locally, ready to pivot.</p></div>' +
       '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="ov-side">Side panel</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="ov-extract">⧉ Bulk extract</button>' +
       '<button type="button" class="ap-btn ap-btn-primary" id="ov-new-case">+ New case</button>' +
       '</div></div>' +
       '<div id="ov-session" class="ap-panel" style="padding:10px 14px;margin-bottom:12px;display:none"></div>' +
       '<div class="stats" id="ov-stats"></div>' +
-      '<div class="ap-panel" id="ov-types" style="margin-bottom:12px;padding:12px"></div>' +
-      '<div class="body-grid">' +
-      '<div class="ap-panel" id="ov-inbox"></div>' +
-      '<div style="display:flex;flex-direction:column;gap:16px">' +
-      '<div class="ap-panel" id="ov-favs"></div>' +
-      '<div class="ap-panel" id="ov-cases"></div>' +
-      '<div class="ap-panel" id="ov-plays"></div>' +
-      '</div></div>';
+      '<div class="ap-panel" id="ov-inbox"></div>';
 
     const sessEl = root.querySelector('#ov-session');
     if (state.session && state.session.caseId) {
@@ -516,32 +749,6 @@
       sessEl.appendChild(clear);
     }
 
-    const typeCounts = {};
-    state.history.forEach((h) => {
-      typeCounts[h.type] = (typeCounts[h.type] || 0) + 1;
-    });
-    const typesEl = root.querySelector('#ov-types');
-    typesEl.textContent = '';
-    const typesTitle = document.createElement('div');
-    typesTitle.className = 'panel-title';
-    typesTitle.style.marginBottom = '8px';
-    typesTitle.textContent = 'Type distribution';
-    typesEl.appendChild(typesTitle);
-    const typesRow = document.createElement('div');
-    typesRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px';
-    Object.keys(typeCounts)
-      .sort()
-      .forEach((t) => {
-        const pill = document.createElement('span');
-        pill.className = 'ap-pill';
-        pill.textContent = IOCUtils.typeLabel(t) + ' · ' + typeCounts[t];
-        pill.style.cssText = pillStyle(IOCUtils.TYPE_COLORS[t] || '#8b93a3');
-        typesRow.appendChild(pill);
-      });
-    if (!Object.keys(typeCounts).length) {
-      typesRow.textContent = 'No indicators yet';
-    }
-    typesEl.appendChild(typesRow);
     const stats = [
       { label: 'Open cases', value: state.cases.length, sub: 'active', color: 'var(--text-hi)' },
       { label: 'Indicators today', value: todayCount, sub: 'local', color: 'var(--accent)' },
@@ -571,16 +778,37 @@
     inboxTitle.textContent = 'Detection inbox';
     const inboxMeta = document.createElement('span');
     inboxMeta.className = 'panel-meta';
-    inboxMeta.textContent = state.history.length + ' indicators';
     inboxHead.appendChild(inboxTitle);
     inboxHead.appendChild(inboxMeta);
+    inbox.appendChild(inboxHead);
+
+    const verdBar = document.createElement('div');
+    verdBar.className = 'inbox-tags';
+    [
+      ['', 'All'],
+      ['malicious', 'Malicious'],
+      ['suspicious', 'Suspicious'],
+      ['review', 'Review']
+    ].forEach(([key, label]) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className =
+        'inbox-tag-chip' + (state.inboxVerdictFilter === key ? ' active' : '');
+      chip.textContent = label;
+      chip.addEventListener('click', () => {
+        state.inboxVerdictFilter = key;
+        renderOverview();
+      });
+      verdBar.appendChild(chip);
+    });
+    inbox.appendChild(verdBar);
 
     const inboxToolbar = document.createElement('div');
     inboxToolbar.className = 'inbox-toolbar';
     const searchInput = document.createElement('input');
     searchInput.type = 'search';
     searchInput.className = 'inbox-search';
-    searchInput.placeholder = 'Filter by IoC, type, verdict, tags, notes…';
+    searchInput.placeholder = 'Filter by IoC, type, tags, notes…';
     searchInput.value = state.inboxFilter;
     searchInput.addEventListener('input', () => {
       state.inboxFilter = searchInput.value;
@@ -597,12 +825,12 @@
       if (res && res.success !== false) {
         state.inboxFilter = '';
         state.inboxTagFilter = '';
+        state.inboxVerdictFilter = '';
         await load();
       }
     });
     inboxToolbar.appendChild(searchInput);
     inboxToolbar.appendChild(clearBtn);
-    inbox.appendChild(inboxHead);
     inbox.appendChild(inboxToolbar);
 
     const tagList = allHistoryTags(state.history);
@@ -635,17 +863,16 @@
 
     const colHead = document.createElement('div');
     colHead.className = 'col-head';
-    ;['Indicator', 'Verdict', ''].forEach((t) => {
-      const s = document.createElement('span');
-      s.textContent = t;
-      colHead.appendChild(s);
-    });
+    colHead.innerHTML =
+      '<span>Indicator</span><span>Enrichment</span><span>Verdict</span><span>Seen</span><span></span>';
     const rows = document.createElement('div');
     rows.id = 'ov-inbox-rows';
     inbox.appendChild(colHead);
     inbox.appendChild(rows);
-    const filtered = filteredInboxHistory();
+
+    const filtered = filterHistory();
     inboxMeta.textContent = filtered.length + ' / ' + state.history.length + ' indicators';
+
     if (!state.history.length) {
       const empty = document.createElement('div');
       empty.className = 'ap-empty';
@@ -665,133 +892,64 @@
       empty.textContent = 'No indicators match the current filter.';
       rows.appendChild(empty);
     } else {
-      filtered.slice(0, 50).forEach((h) => {
+      filtered.slice(0, 80).forEach((h) => {
         const verdict = IOCUtils.normalizeVerdict(h.verdict || h.status);
         const typeColor = IOCUtils.TYPE_COLORS[h.type] || '#8b93a3';
         const vColor = IOCUtils.VERDICT_COLORS[verdict] || '#8b93a3';
+        const enrich = h.enrich || IOCUtils.enrich(h.type, h.ioc);
         const row = document.createElement('div');
         row.className = 'triage-row inbox-row';
-        row.style.cursor = 'pointer';
         row.innerHTML =
           '<div class="ioc-cell"><span class="ap-status-dot"></span><div style="min-width:0">' +
           '<div class="ioc-val"></div><div class="ioc-meta"></div></div></div>' +
+          '<div class="triage-enrich"></div>' +
           '<span class="ap-pill"></span>' +
-          '<button type="button" class="icon-btn" title="Open tools">⤢</button>';
+          '<div class="triage-seen"></div>' +
+          '<div class="triage-actions">' +
+          '<button type="button" class="icon-btn" data-act="copy" title="Copy">⎘</button>' +
+          '<button type="button" class="icon-btn" data-act="pivot" title="Pivot">⤢</button></div>';
         row.querySelector('.ap-status-dot').style.cssText =
           'background:' + typeColor + ';box-shadow:0 0 6px ' + typeColor;
         row.querySelector('.ioc-val').textContent = h.ioc;
-        let metaText =
-          IOCUtils.typeLabel(h.type) +
-          ' · ' +
-          (h.enrich || IOCUtils.enrich(h.type, h.ioc)) +
-          ' · ' +
-          timeAgo(h.timestamp);
-        if (h.tags && h.tags.length) metaText += ' · ' + h.tags.join(', ');
-        row.querySelector('.ioc-meta').textContent = metaText;
+        row.querySelector('.ioc-meta').textContent = IOCUtils.typeLabel(h.type);
+        row.querySelector('.triage-enrich').textContent = enrich;
+        row.querySelector('.triage-enrich').title = enrich;
         const pill = row.querySelector('.ap-pill');
         pill.textContent = verdict;
         pill.style.cssText = pillStyle(vColor);
-        row.querySelector('.icon-btn').addEventListener('click', (e) => {
+        row.querySelector('.triage-seen').textContent = timeAgo(h.timestamp);
+        row.querySelector('[data-act="copy"]').addEventListener('click', async (e) => {
           e.stopPropagation();
-          openFirstTool(h);
+          try {
+            await navigator.clipboard.writeText(h.ioc);
+            showToast('Copied');
+          } catch (_) {
+            showToast('Copy failed');
+          }
         });
-        row.addEventListener('click', () => handleInboxRowClick(h));
+        row.querySelector('[data-act="pivot"]').addEventListener('click', (e) => {
+          e.stopPropagation();
+          openWorkbenchPivot(h.ioc, h.type);
+        });
+        row.addEventListener('click', () => openWorkbenchPivot(h.ioc, h.type));
         rows.appendChild(row);
       });
     }
 
-    const casesPanel = root.querySelector('#ov-cases');
-    casesPanel.innerHTML =
-      '<div class="panel-head"><span class="panel-title">Open cases</span></div><div id="ov-case-rows"></div>';
-    const caseRows = casesPanel.querySelector('#ov-case-rows');
-    if (!state.cases.length) {
-      caseRows.innerHTML = '<div class="ap-empty">No open cases</div>';
-    } else {
-      state.cases.slice(0, 8).forEach((c) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'case-row';
-        const color = IOCUtils.VERDICT_COLORS[c.verdict] || '#8b93a3';
-        btn.innerHTML =
-          '<div class="case-row-top"><span class="ap-mono" style="font-size:11px;color:var(--text-dim)"></span>' +
-          '<span class="ap-pill"></span></div>' +
-          '<div style="font-size:13px;color:var(--text-2);font-weight:500"></div>' +
-          '<div style="font-size:11px;color:var(--text-dim);margin-top:4px"></div>';
-        btn.querySelector('.ap-mono').textContent = c.id;
-        const pill = btn.querySelector('.ap-pill');
-        pill.textContent = c.verdict;
-        pill.style.cssText = pillStyle(color);
-        btn.children[1].textContent = c.name;
-        btn.children[2].textContent =
-          (c.indicators || []).length +
-          ' indicators · updated ' +
-          timeAgo(c.updatedAt);
-        btn.addEventListener('click', () => go('case', c.id));
-        caseRows.appendChild(btn);
-      });
-    }
-
-    const plays = root.querySelector('#ov-plays');
-    plays.innerHTML =
-      '<div style="padding:14px 16px;font-size:12px;font-weight:600;color:var(--text-2)">Quick playbooks</div>' +
-      '<div id="ov-play-rows"></div>';
-    const playRows = plays.querySelector('#ov-play-rows');
-    state.playbooks.slice(0, 4).forEach((pb) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'row-btn';
-      btn.style.cssText = 'width:100%;padding:10px 16px;border:none;background:none;color:inherit;display:flex;gap:10px;align-items:center;text-align:left;cursor:pointer';
-      btn.innerHTML =
-        '<span>▷</span><span style="flex:1"></span><span class="ap-mono" style="font-size:10.5px;color:var(--text-dim)"></span>';
-      btn.children[1].textContent = pb.name;
-      btn.children[2].textContent = (pb.tools || []).length + ' tools';
-      btn.addEventListener('click', () => go('playbooks'));
-      playRows.appendChild(btn);
-    });
-
     root.querySelector('#ov-extract').addEventListener('click', () => go('extract'));
     root.querySelector('#ov-new-case').addEventListener('click', openNewCaseModal);
-    const sideBtn = root.querySelector('#ov-side');
-    if (sideBtn) {
-      sideBtn.addEventListener('click', async () => {
-        const res = await sendMessage({ action: 'openSidePanel' });
-        showToast(res && res.success ? 'Side panel opened' : (res && res.error) || 'Unsupported');
-      });
-    }
-
-    const favs = root.querySelector('#ov-favs');
-    if (favs) {
-      favs.innerHTML =
-        '<div class="panel-head"><span class="panel-title">Favorites</span></div><div id="ov-fav-rows"></div>';
-      const favRows = favs.querySelector('#ov-fav-rows');
-      if (!(state.favorites || []).length) {
-        favRows.innerHTML = '<div class="ap-empty">Star indicators from the detail modal</div>';
-      } else {
-        state.favorites.slice(0, 8).forEach((ioc) => {
-          const h = state.history.find((x) => x.ioc === ioc) || {
-            ioc,
-            type: IOCUtils.detectIOCType(ioc)
-          };
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'row-btn';
-          btn.style.cssText =
-            'width:100%;padding:8px 12px;border:none;background:none;text-align:left;cursor:pointer;color:inherit';
-          btn.textContent = ioc;
-          btn.addEventListener('click', () => handleInboxRowClick(h));
-          favRows.appendChild(btn);
-        });
-      }
-    }
   }
 
   function renderGraph() {
     const root = screens.graph;
     root.innerHTML =
       '<div class="screen-head"><div><h1>Relationship graph</h1>' +
-      '<p>Local co-occurrence from cases — no cloud graph database.</p></div>' +
+      '<p>Local co-occurrence from cases — no cloud graph database.</p>' +
+      '<div class="panel-meta" id="graph-meta" style="margin-top:6px"></div></div>' +
       '<button type="button" class="ap-btn ap-btn-primary" id="graph-refresh">Refresh</button></div>' +
-      '<div class="ap-panel" style="padding:12px"><svg id="graph-svg" width="100%" height="480"></svg></div>';
+      '<div class="ap-panel" style="padding:12px">' +
+      '<div id="graph-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>' +
+      '<svg id="graph-svg" width="100%" height="480"></svg></div>';
 
     async function paint() {
       const res = await sendMessage({ action: 'buildGraph' });
@@ -799,6 +957,19 @@
       while (svg.firstChild) svg.removeChild(svg.firstChild);
       const nodes = (res && res.nodes) || [];
       const edges = (res && res.edges) || [];
+      root.querySelector('#graph-meta').textContent =
+        nodes.length + ' nodes · ' + edges.length + ' edges';
+      const legend = root.querySelector('#graph-legend');
+      legend.innerHTML = '';
+      const types = [...new Set(nodes.map((n) => n.type))].sort();
+      types.forEach((t) => {
+        const color = IOCUtils.TYPE_COLORS[t] || '#8b93a3';
+        const chip = document.createElement('span');
+        chip.className = 'ap-pill';
+        chip.textContent = IOCUtils.typeLabel(t);
+        chip.style.cssText = pillStyle(color);
+        legend.appendChild(chip);
+      });
       const w = svg.clientWidth || 800;
       const h = 480;
       const cx = w / 2;
@@ -833,7 +1004,7 @@
         g.appendChild(title);
         g.appendChild(c);
         g.addEventListener('click', () => {
-          handleInboxRowClick({ ioc: n.id, type: n.type });
+          openWorkbenchPivot(n.id, n.type);
         });
         svg.appendChild(g);
       });
@@ -901,6 +1072,36 @@
   function renderLabs() {
     const root = screens.labs;
     const flags = state.featureFlags || {};
+    const defaults =
+      typeof ApertureFeatures !== 'undefined' ? ApertureFeatures.DEFAULTS : flags;
+    const p3Keys = [
+      'useIndexedDb',
+      'apiEnrichment',
+      'selfHostedConnectors',
+      'pluginSdk',
+      'localLlm',
+      'attackNavigator',
+      'vaultEncryption',
+      'scanWorker',
+      'detectionWave2',
+      'workspaces'
+    ];
+    const p4Keys = [
+      'emailParser',
+      'pageIocDiff',
+      'confidenceHints',
+      'vimMode',
+      'devtoolsPanel',
+      'geoMap',
+      'sigmaYaraAssist',
+      'localApi',
+      'crossTabMesh',
+      'evidenceLocker',
+      'airgapSync',
+      'huntAgent',
+      'multiMonitorLayouts'
+    ];
+
     root.innerHTML =
       '<div class="screen-head"><div><h1>Labs &amp; feature flags</h1>' +
       '<p>Experimental and platform features. All default off. Local-first.</p></div>' +
@@ -908,6 +1109,7 @@
       '<button type="button" class="ap-btn ap-btn-secondary" id="labs-export">Export workspace</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="labs-dedupe">Dedupe history</button>' +
       '</div></div>' +
+      '<div class="labs-banner">Some flags gate network adapters; keys never sync. Keep secrets out of storage.sync.</div>' +
       '<div class="ap-panel" id="labs-flags" style="padding:14px"></div>' +
       '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
       '<div class="panel-title">Email / header parser</div>' +
@@ -925,29 +1127,37 @@
       '<pre id="labs-sigma-out" style="margin-top:8px;font-size:11px;max-height:200px;overflow:auto"></pre></div>';
 
     const flagBox = root.querySelector('#labs-flags');
-    const keys = Object.keys(
-      typeof ApertureFeatures !== 'undefined' ? ApertureFeatures.DEFAULTS : flags
-    ).sort();
-    keys.forEach((key) => {
-      const row = document.createElement('label');
-      row.style.cssText =
-        'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--stroke)';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = !!flags[key];
-      cb.addEventListener('change', async () => {
-        const patch = {};
-        patch[key] = cb.checked;
-        await sendMessage({ action: 'setFeatureFlags', flags: patch });
-        showToast(key + (cb.checked ? ' enabled' : ' disabled'));
-        load();
+    function addGroup(title, keys) {
+      const h = document.createElement('div');
+      h.className = 'ap-pivot-label';
+      h.style.cssText =
+        'margin:12px 0 8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600';
+      h.textContent = title;
+      flagBox.appendChild(h);
+      keys.forEach((key) => {
+        if (!(key in defaults) && !(key in flags)) return;
+        const row = document.createElement('label');
+        row.style.cssText =
+          'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = !!flags[key];
+        cb.addEventListener('change', async () => {
+          const patch = {};
+          patch[key] = cb.checked;
+          await sendMessage({ action: 'setFeatureFlags', flags: patch });
+          showToast(key + (cb.checked ? ' enabled' : ' disabled'));
+          load();
+        });
+        const span = document.createElement('span');
+        span.textContent = key;
+        row.appendChild(cb);
+        row.appendChild(span);
+        flagBox.appendChild(row);
       });
-      const span = document.createElement('span');
-      span.textContent = key;
-      row.appendChild(cb);
-      row.appendChild(span);
-      flagBox.appendChild(row);
-    });
+    }
+    addGroup('P3', p3Keys);
+    addGroup('P4', p4Keys);
 
     root.querySelector('#labs-dedupe').addEventListener('click', async () => {
       const res = await sendMessage({ action: 'dedupeHistory' });
@@ -1014,11 +1224,18 @@
       '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Extracted</span>' +
       '<span class="panel-meta" id="extract-count">0 found</span></div>' +
       '<div id="extract-list" style="max-height:360px;overflow:auto"></div>' +
-      '<div class="panel-foot">' +
+      '<div class="panel-foot" style="flex-direction:column;align-items:stretch;gap:10px">' +
+      '<div class="copy-as-row"><span class="panel-meta" style="margin-right:4px">Copy as</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="raw">Raw</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="defang">Defanged</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="markdown">Markdown</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="csv">CSV</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="stix">STIX 2.1</button></div>' +
+      '<div class="copy-as-row">' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-sel-all">Select all</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-case">Add to case</button>' +
       '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="btn-run-pb">Run playbook</button>' +
-      '</div></div></div>';
+      '</div></div></div></div>';
 
     const raw = root.querySelector('#extract-raw');
     const list = root.querySelector('#extract-list');
@@ -1092,6 +1309,27 @@
         state.extractSelected = new Set(state.extractResults.map((_, i) => i));
       }
       paintResults();
+    });
+
+    root.querySelectorAll('[data-copy]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const selected = Array.from(state.extractSelected).map((i) => state.extractResults[i]);
+        const items = (selected.length ? selected : state.extractResults).map((r) => ({
+          ioc: r.value || r.ioc,
+          type: r.type,
+          verdict: r.verdict
+        }));
+        if (!items.length) {
+          showToast('Nothing to copy');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(packText(btn.dataset.copy, items));
+          showToast('Copied ' + btn.dataset.copy);
+        } catch (_) {
+          showToast('Copy failed');
+        }
+      });
     });
 
     root.querySelector('#btn-add-case').addEventListener('click', async () => {
@@ -1306,11 +1544,16 @@
       '<p></p></div>' +
       '<div class="head-actions">' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="case-run">▷ Run playbook</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-export-json">Export JSON</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-export-md">Export MD</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-export-csv">Export CSV</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="case-graph">View graph</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="case-delete">Delete case</button>' +
       '</div></div>' +
+      '<div class="copy-as-row" style="margin-bottom:14px">' +
+      '<span class="panel-meta">Export</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-json">JSON</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-md">Markdown</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-csv">CSV</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-stix">STIX</button></div>' +
+      '<div class="ap-panel" id="case-session" style="padding:14px;margin-bottom:16px"></div>' +
       '<div class="case-grid">' +
       '<div><div class="ap-panel" id="case-iocs"></div>' +
       '<div class="notes-box"><div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">Case tags</div>' +
@@ -1330,6 +1573,60 @@
       ' indicators · opened ' +
       timeAgo(c.createdAt) +
       ' · local';
+
+    const sessPanel = root.querySelector('#case-session');
+    const sessActive = state.session && state.session.caseId === c.id;
+    const exclude = ((state.session && state.session.excludeDomains) || []).join(', ');
+    sessPanel.innerHTML =
+      '<div class="panel-title" style="margin-bottom:8px">Session capture</div>' +
+      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="case-sess-state"></div>' +
+      '<label style="font-size:11px;color:var(--text-dim)">Exclude domains (comma-separated)</label>' +
+      '<input type="text" id="case-sess-exclude" style="width:100%;height:34px;margin:6px 0 10px;padding:0 10px;background:var(--inset);border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text)" />' +
+      '<div class="copy-as-row">' +
+      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="case-sess-start"></button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-pause"></button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-clear">Clear</button></div>';
+    sessPanel.querySelector('#case-sess-state').textContent = sessActive
+      ? state.session.paused
+        ? 'Recording paused for this case'
+        : 'Recording — capturing page IoCs into this case'
+      : 'Not recording';
+    const excludeInput = sessPanel.querySelector('#case-sess-exclude');
+    excludeInput.value = exclude;
+    const startBtn = sessPanel.querySelector('#case-sess-start');
+    startBtn.textContent = sessActive ? 'Update exclude list' : 'Start capture';
+    startBtn.addEventListener('click', async () => {
+      const domains = excludeInput.value
+        .split(',')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+      await sendMessage({
+        action: 'setSession',
+        caseId: c.id,
+        paused: sessActive ? !!state.session.paused : false,
+        excludeDomains: domains
+      });
+      showToast(sessActive ? 'Session updated' : 'Session capture started');
+      load();
+    });
+    const pauseBtn = sessPanel.querySelector('#case-sess-pause');
+    pauseBtn.textContent =
+      sessActive && state.session.paused ? 'Resume' : 'Pause';
+    pauseBtn.disabled = !sessActive;
+    pauseBtn.addEventListener('click', async () => {
+      await sendMessage({
+        action: 'setSession',
+        caseId: c.id,
+        paused: !state.session.paused,
+        excludeDomains: (state.session.excludeDomains || []).slice()
+      });
+      load();
+    });
+    sessPanel.querySelector('#case-sess-clear').addEventListener('click', async () => {
+      await sendMessage({ action: 'clearSession' });
+      showToast('Session cleared');
+      load();
+    });
 
     const iocPanel = root.querySelector('#case-iocs');
     iocPanel.innerHTML =
@@ -1463,7 +1760,7 @@
         showToast('Exported JSON report');
         return;
       }
-      if (format === 'md') {
+      if (format === 'md' || format === 'markdown') {
         const md =
           '# ' +
           c.name +
@@ -1473,9 +1770,18 @@
           '\n**Verdict:** ' +
           c.verdict +
           '\n\n## Indicators\n\n' +
-          packText('md', indicators);
+          packText('markdown', indicators);
         downloadText(c.id + '-report.md', md, 'text/markdown');
-        showToast('Exported MD report');
+        showToast('Exported Markdown report');
+        return;
+      }
+      if (format === 'stix') {
+        downloadText(
+          c.id + '-report.stix.json',
+          packText('stix', indicators),
+          'application/json'
+        );
+        showToast('Exported STIX 2.1');
         return;
       }
       downloadText(c.id + '-report.csv', packText('csv', indicators), 'text/csv');
@@ -1484,6 +1790,11 @@
     root.querySelector('#case-export-json').addEventListener('click', () => exportCaseReport('json'));
     root.querySelector('#case-export-md').addEventListener('click', () => exportCaseReport('md'));
     root.querySelector('#case-export-csv').addEventListener('click', () => exportCaseReport('csv'));
+    root.querySelector('#case-export-stix').addEventListener('click', () => exportCaseReport('stix'));
+    root.querySelector('#case-graph').addEventListener('click', () => {
+      go('graph');
+      showToast('Graph for case indicators');
+    });
   }
 
   function renderOnpageHelp() {
@@ -1591,44 +1902,27 @@
     btn.addEventListener('click', () => go(btn.dataset.nav));
   });
 
-  document.getElementById('nav-popup').addEventListener('click', () => {
-    showToast('Open Aperture from the toolbar for the popup launcher');
-  });
-  const navSide = document.getElementById('nav-sidepanel');
-  if (navSide) {
-    navSide.addEventListener('click', async () => {
-      const res = await sendMessage({ action: 'openSidePanel' });
-      showToast(res && res.success ? 'Side panel opened' : (res && res.error) || 'Unsupported');
-    });
+  const pivotScrimEl = document.getElementById('pivot-scrim');
+  if (pivotScrimEl) {
+    pivotScrimEl.addEventListener('click', closeWorkbenchPivot);
   }
 
-  document.querySelectorAll('#surface-seg button').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      if (btn.dataset.open === 'popup') {
-        showToast('Use the toolbar icon for the popup launcher');
-        return;
-      }
-      if (btn.dataset.screen) go(btn.dataset.screen);
-    });
-  });
-
   const palette = createPalette({
+    onEscape: closeWorkbenchPivot,
     getGroups() {
-      const tools = state.services
-        .filter((s) => state.enabledServices[s] !== false)
-        .map((s) => ({
-          icon: '◇',
-          label: s,
-          meta: 'tool',
-          onClick: () => {
-            const ioc = prompt('Indicator for ' + s + ':');
-            if (!ioc) return;
-            sendMessage({ action: 'searchService', ioc: ioc.trim(), service: s }).then((res) => {
-              showToast(res && res.success ? 'Opened ' + s : (res && res.error) || 'Failed');
-              load();
-            });
-          }
-        }));
+      const tools = (state.services || []).map((s) => ({
+        icon: '◇',
+        label: s,
+        meta: 'tool',
+        onClick: () => {
+          const ioc = prompt('Indicator for ' + s + ':');
+          if (!ioc) return;
+          sendMessage({ action: 'searchService', ioc: ioc.trim(), service: s }).then((res) => {
+            showToast(res && res.success ? 'Opened ' + s : (res && res.error) || 'Failed');
+            load();
+          });
+        }
+      }));
       const plays = state.playbooks.map((pb) => ({
         icon: '▷',
         label: pb.name,
@@ -1650,7 +1944,9 @@
         { icon: '▤', label: 'Overview', meta: 'navigate', onClick: () => go('overview') },
         { icon: '⧉', label: 'Bulk extract', meta: 'navigate', onClick: () => go('extract') },
         { icon: '▷', label: 'Playbooks', meta: 'navigate', onClick: () => go('playbooks') },
-        { icon: '❖', label: 'On-page help', meta: 'navigate', onClick: () => go('onpage-help') }
+        { icon: '◈', label: 'Graph', meta: 'navigate', onClick: () => go('graph') },
+        { icon: '▣', label: 'Offline packs', meta: 'navigate', onClick: () => go('packs') },
+        { icon: '⚗', label: 'Labs', meta: 'navigate', onClick: () => go('labs') }
       ];
       const cases = state.cases.map((c) => ({
         icon: '◇',
@@ -1697,7 +1993,9 @@
     if (hash.startsWith('case/')) {
       state.caseId = hash.slice(5);
       state.screen = 'case';
-    } else if (['overview', 'extract', 'playbooks', 'onpage-help'].includes(hash)) {
+    } else if (
+      ['overview', 'extract', 'playbooks', 'graph', 'packs', 'labs', 'onpage-help'].includes(hash)
+    ) {
       state.screen = hash;
     }
   }

@@ -115,23 +115,25 @@ background:rgba(<C>,.12); border:1px solid rgba(<C>,.28)`.
 ## Global Chrome
 
 ### Top bar (always visible, 52px, bg `#0d1017`, bottom border `#1a2029`)
-- **Left:** logo mark — 26px rounded square, `1.5px` accent border, 9px accent dot with glow —
-  then wordmark **APERTURE** (IBM Plex Mono, 14px/600, letter-spacing `.18em`) over the sub-label
-  `osint workbench` (9.5px, `.16em`, uppercase, `text-dim`).
+- **Left:** brand mark — `icons/icon128.png` at 22px — then wordmark **APERTURE** (IBM Plex Mono,
+  12px/600, letter-spacing `.14em`) over the sub-label `osint workbench` (9.5px, `.16em`,
+  uppercase, `text-dim`). Same treatment in the popup header.
 - **Center:** ⌘K search trigger — full-width (max 520px) pill, 32px, bg `#0f131a`, border
   `#232a36`; magnifier glyph, placeholder "Search tools, IoCs, playbooks, cases…", and a `⌘K`
   keycap chip on the right. Clicking opens the command palette.
-- **Right:** surface segmented control (Dashboard / Popup / On-page) — 3px-padded track bg
-  `#0f131a`, active segment bg `#1e242f`/`text-hi`, inactive `text-muted`. Then a "Local · no keys"
-  status chip (green glowing dot) and a 28px circular avatar (`AN`).
+- **Right:** "Local · no keys" status chip (green glowing dot). The old Dashboard/Popup/On-page
+  segmented control is removed; navigation lives in the sidebar.
 
 ### Sidebar (dashboard surfaces only, 216px, bg `#0c0f15`)
 Three grouped sections with uppercase micro-labels:
-- **WORKSPACE:** Overview (▤), Bulk extract (⧉), Playbooks (▷). Active item bg `#171c26`,
-  `text-hi`; inactive `text-muted`.
+- **WORKSPACE:** Overview (▤), Bulk extract (⧉), Playbooks (▷), **Graph** (◈), **Offline packs**
+  (▣), **Labs** (⚗). Active item bg `#171c26`, `text-hi`; inactive `text-muted`.
 - **CASES:** count on the right; list of case rows — verdict dot + name (12.5px) + `ID · N` meta.
-  Clicking opens Case detail.
-- **SURFACES** (pinned to bottom): Popup launcher (◱), On-page detect (❖).
+  Clicking opens Case detail. Popup is opened from the browser toolbar icon (no Surfaces nav).
+
+> Note: the interactive prototype HTML (`OSINT Workbench.dc.html`) may lag behind shipped
+> Workspace screens (Graph / Offline packs / Labs). Treat `extension/aperture.css` + this README
+> as the token source of truth; use the prototype for popup / overview / extract / case chrome.
 
 ---
 
@@ -144,15 +146,10 @@ Three grouped sections with uppercase micro-labels:
 - **Stat row:** 4 cards (`repeat(4,1fr)`, gap 12px), each bg `#0f131a`/border `#1e242f`, uppercase
   label + big mono number + tiny sub. Values: Open cases **3** (white), Indicators today **28**
   (accent), Malicious **6** (red), Under review **4** (violet).
-- **Body grid:** `1fr 340px`, gap 20px.
-  - **Left — Detection inbox:** panel with header ("Detection inbox" + "N indicators"), a column
-    header row, then rows. **Row grid is `1fr 92px 32px`** (indicator / verdict pill / pivot
-    button). Indicator cell = type-color dot (7px) + mono value (ellipsis) + meta line
-    `Type · enrichment · time` (ellipsis). Row hover bg `#12161f`. The ⤢ button opens the pivot
-    card (routes to the On-page surface with that indicator focused). **Note:** keep fixed tracks
-    small so the value never clips at ~283px panel width.
-  - **Right column:** "Open cases" panel (case rows: `ID` + verdict pill, name, `N indicators ·
-    updated X`) and a "Quick playbooks" card (rows: ▷ name + `N tools`, run on click).
+- **Full-width Detection inbox** (no right-hand panel): verdict filter chips
+  (All / Malicious / Suspicious / Review), then columns
+  **indicator** (type dot + value + type) · **enrichment** · **verdict** · **seen** · copy + pivot.
+  Pivot opens the docked right drawer (340px + scrim), same structure as on-page.
 
 Seed data (indicators): `45.83.24.19` (ip/malicious), `cdn-update-check.ru` (domain/suspicious),
 `9f2b4c1e…c9f04e17` (hash/malicious), `billing@microsoft-secure-login.com` (email/suspicious),
@@ -194,34 +191,38 @@ every step in sequence. Exportable as a share code.
 
 ### 5. Popup launcher (surface)
 **Purpose:** the toolbar popup — quick pivot without leaving the page. Rendered inside a faux
-browser bar; 380px card (bg `#0d1017`, border `#2f3745`, radius 10px).
-- Header: logo + APERTURE + ⌘K chip.
-- **Detect field** ("⌕ Paste or select an indicator…") + a live detected-indicator block:
-  mono value + type pill + local enrichment line + a row of 4 quick tool buttons
-  (hover → accent border/text).
+browser bar; 380px card (bg `#0d1017`, border `#2f3745`, radius 12px).
+- Header: `icon128.png` (22px) + APERTURE + ⌘K chip.
+- **Detect field** + detected-indicator block: mono value + type pill + local enrichment line +
+  **full per-type** quick tool buttons (wrap to multiple rows).
 - **Run a playbook:** compact rows (▷ name + tab count).
-- **Recent:** value + verdict pill rows.
+- **Recent:** value + verdict pill rows (click re-runs detect).
 - Footer: **Open full workbench ↗** (routes to Overview).
 
 ### 6. On-page detection (surface)
-**Purpose:** content script highlights IoCs in the live page; clicking one opens the pivot card.
-- Faux advisory article; detected tokens are inline mono spans, tinted by type, dashed underline,
-  hover brightens; the header shows "N detected". Tokens are shown **defanged as they appear on the
-  page** (`hxxps`, `[.]`) but the pivot operates on the refanged value.
-- **Pivot card** (300px, floats top-right, bg `#0d1017`/border `#2f3745`):
+**Purpose:** content script highlights IoCs in the live page; clicking one opens the pivot drawer.
+- Detected tokens are inline mono spans, tinted by type, dashed underline; the pivot operates on
+  the refanged value.
+- **Pivot drawer** (340px, docked right, dim scrim behind, bg `#0d1017`/border `#2f3745`):
   - Header: refanged value (mono, wraps) + type pill + close ×.
-  - **LOCAL ENRICHMENT · NO NETWORK:** key/value facts computed offline.
-  - **SET VERDICT:** 4 square buttons B/S/M/R (tinted per verdict).
-  - **OPEN IN:** wrap of tool buttons for that type; then **▷ <Playbook>** (primary) + **+ Case**.
+  - **Local enrichment · no network** → **Set verdict** → **Open in** → **Related · shared case**
+    → **Transforms & packs · local** (Defang, Copy, Copy STIX, Base64, Hex→ascii).
+  - Footer: **▷ &lt;default playbook&gt;** + **+ Case**.
+
+### 6b. Graph / Offline packs / Labs (shipped workbench; may be missing from the HTML prototype)
+- **Graph:** local case/history adjacency; circular SVG layout; legend + `N nodes · N edges`;
+  node click → pivot drawer.
+- **Offline packs:** install/installed cards for ATT&CK-lite / LOLBAS / GTFOBins + local lookup.
+- **Labs:** feature-flag toggles grouped P3/P4 (all default off) + warning that some flags gate
+  network adapters and keys never sync.
 
 ### 7. Command palette (⌘K, global overlay)
 **Purpose:** run any tool/playbook or jump anywhere from the keyboard.
 - Full-screen scrim (`rgba(5,7,10,.72)` + blur), centered 600px panel at 12vh, `fadeUp`.
-- Autofocused input + `esc` keycap. Grouped, live-filtered results: **Run OSINT tool** (all 11
-  services), **Playbooks**, **Navigate** (screens), **Recent indicators**. Each row = 24px icon
-  tile + label + right-aligned meta. Empty state when no matches. Footer hints (↑↓ / ↵ / esc) +
-  "Everything runs locally — opens tools in new tabs".
-- Opens/toggles on **⌘K / Ctrl-K**; **Esc** closes palette and any pivot card.
+- Autofocused input + `esc` keycap. Grouped, live-filtered results: **Run OSINT tool** (~20
+  services), **Playbooks** (5 defaults), **Navigate** (all Workspace screens), **Cases**,
+  **History / recent**. Each row = 24px icon tile + label + right-aligned meta.
+- Opens/toggles on **⌘K / Ctrl-K**; **Esc** closes palette and any pivot drawer.
 
 ### Toast
 Bottom-center, `#12161f`/border `#2f3745`, green dot + message, auto-dismiss ~2.4s. Fired by every

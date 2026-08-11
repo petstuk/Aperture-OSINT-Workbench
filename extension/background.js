@@ -325,6 +325,24 @@ function hostFromUrl(url) {
   }
 }
 
+function normalizeDisabledDomainsList(list) {
+  const out = [];
+  const seen = new Set();
+  (Array.isArray(list) ? list : []).forEach((item) => {
+    const d = IOCUtils.normalizeDisabledDomain(item);
+    if (d && !seen.has(d)) {
+      seen.add(d);
+      out.push(d);
+    }
+  });
+  return out;
+}
+
+async function getDisabledDomains() {
+  const data = await storageGet('sync', ['disabledDomains']);
+  return normalizeDisabledDomainsList(data.disabledDomains || []);
+}
+
 async function maybeSessionCapture(ioc, sourceUrl, toolLabel) {
   const session = await getSession();
   if (!session.caseId || session.paused) return null;
@@ -805,6 +823,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         try {
           const data = await storageGet('sync', [
             'overlayEnabled',
+            'disabledDomains',
             'enabledServices',
             'playbooks',
             'customCombinations'
@@ -815,6 +834,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
               : data.customCombinations || [];
           respond({
             overlayEnabled: !!data.overlayEnabled,
+            disabledDomains: normalizeDisabledDomainsList(data.disabledDomains || []),
             enabledServices: data.enabledServices || enabledServices || defaultServices,
             playbooks,
             customCombinations: playbooks
@@ -823,6 +843,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.error('Error loading overlay config:', error);
           respond({
             overlayEnabled: false,
+            disabledDomains: [],
             enabledServices: enabledServices || defaultServices,
             playbooks: [],
             customCombinations: []
@@ -919,7 +940,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             getHistory(),
             getCases(),
             getPlaybooks(),
-            storageGet('sync', ['enabledServices', 'overlayEnabled']),
+            storageGet('sync', ['enabledServices', 'overlayEnabled', 'disabledDomains']),
             storageGet('local', [
               'apertureFeatures',
               'apertureSession',
@@ -938,6 +959,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             playbooks,
             enabledServices: sync.enabledServices || enabledServices || defaultServices,
             overlayEnabled: !!sync.overlayEnabled,
+            disabledDomains: normalizeDisabledDomainsList(sync.disabledDomains || []),
             services: Object.keys(serviceUrls),
             featureFlags,
             session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
@@ -954,6 +976,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             playbooks: [],
             enabledServices: enabledServices || defaultServices,
             overlayEnabled: false,
+            disabledDomains: [],
             services: Object.keys(serviceUrls),
             featureFlags: {},
             session: { caseId: null, paused: false, excludeDomains: [] },
@@ -1235,6 +1258,38 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'setOverlayEnabled': {
         await storageSet('sync', { overlayEnabled: !!message.enabled });
         respond({ success: true });
+        break;
+      }
+
+      case 'setDisabledDomains': {
+        const domains = normalizeDisabledDomainsList(message.domains || message.disabledDomains);
+        await storageSet('sync', { disabledDomains: domains });
+        respond({ success: true, disabledDomains: domains });
+        break;
+      }
+
+      case 'addDisabledDomain': {
+        const domain = IOCUtils.normalizeDisabledDomain(message.domain || message.host);
+        if (!domain) {
+          respond({ success: false, error: 'Invalid domain' });
+          break;
+        }
+        const prev = await getDisabledDomains();
+        const domains = prev.includes(domain) ? prev : prev.concat([domain]);
+        await storageSet('sync', { disabledDomains: domains });
+        respond({ success: true, disabledDomains: domains, domain });
+        break;
+      }
+
+      case 'removeDisabledDomain': {
+        const domain = IOCUtils.normalizeDisabledDomain(message.domain || message.host);
+        if (!domain) {
+          respond({ success: false, error: 'Invalid domain' });
+          break;
+        }
+        const domains = (await getDisabledDomains()).filter((d) => d !== domain);
+        await storageSet('sync', { disabledDomains: domains });
+        respond({ success: true, disabledDomains: domains });
         break;
       }
 
