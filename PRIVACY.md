@@ -1,6 +1,6 @@
 # Privacy Policy — Aperture (OSINT Workbench)
 
-**Last updated:** 23 July 2026
+**Last updated:** 11 August 2026
 
 Aperture is a local-first browser extension for security analysts. This policy describes how the extension handles data.
 
@@ -23,7 +23,7 @@ This data stays in your browser profile unless you export it yourself.
 
 ## Website content
 
-If you enable **on-page IoC detect**, the extension reads text on pages you visit to find and highlight indicators of compromise and show a pivot card. That processing is local. Page content is not sent to the Aperture developers.
+If you enable **on-page IoC detect**, the extension reads text on pages you visit to find and highlight indicators of compromise and show a pivot card. That processing is local. Page content is not sent to the Aperture developers. You can turn detect off globally or exclude specific domains (and their subdomains) from popup Settings so those sites are not scanned.
 
 ## Third-party OSINT sites
 

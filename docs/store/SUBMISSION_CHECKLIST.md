@@ -1,11 +1,11 @@
-# AMO / Store Submission Checklist — Aperture v3.1.0
+# AMO / Store Submission Checklist — Aperture v4.1.0
 
 ## Pre-submit
-- [ ] Version `3.1.0` in `manifest.json`
-- [ ] `./package-for-firefox.sh` builds clean zip
+- [ ] Version `4.1.0` in `extension/manifest.json`
+- [ ] `./scripts/package.sh` builds clean zip (`aperture-osint-v4.1.0.zip`)
 - [ ] No remote code / no minified obfuscated bundles
-- [ ] Fonts bundled locally under `fonts/`
-- [ ] Release notes attached (`docs/releases/RELEASE_NOTES_v3.1.0.md`)
+- [ ] Fonts bundled locally under `extension/fonts/`
+- [ ] Release notes attached (`docs/releases/RELEASE_NOTES_v4.1.0.md`)
 - [ ] Open `test/test-ioc-utils.html` — all checks pass
 
 ## Functional
@@ -13,7 +13,8 @@
 - [ ] Popup detect + tools + playbooks
 - [ ] Dashboard overview / extract / cases / playbooks
 - [ ] Overlay default OFF; enable from popup Settings
-- [ ] Migration from 2.3.0 data
+- [ ] Disabled domains: add host → overlays off on that host/subdomains; remove restores
+- [ ] Migration from prior 4.0.x data
 
 ## Listing SEO tips
 - Keep “OSINT” and “SOC” in title/summary

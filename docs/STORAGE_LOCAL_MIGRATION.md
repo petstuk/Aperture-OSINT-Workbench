@@ -1,7 +1,7 @@
 # storage.local Migration — completed in v3.0.0
 
 History and cases live in `browser.storage.local`.  
-Settings (`enabledServices`, `overlayEnabled`, `playbooks`) stay in `browser.storage.sync`.
+Settings (`enabledServices`, `overlayEnabled`, `disabledDomains`, `playbooks`) stay in `browser.storage.sync`.
 
 On install/update, `background.js` `migrateStorage()`:
 1. Copies `sync.iocHistory` → `local.iocHistory` when local is empty, then removes sync history

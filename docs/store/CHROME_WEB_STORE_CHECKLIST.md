@@ -1,4 +1,4 @@
-# Chrome Web Store Prep — Aperture v3.0.1
+# Chrome Web Store Prep — Aperture v4.1.0
 
 ## Account
 - [ ] Chrome Web Store developer account
@@ -6,11 +6,11 @@
 
 ## Package
 ```bash
-./package-for-firefox.sh
-# Upload aperture-osint-v3.0.1.zip
+./scripts/package.sh
+# Upload aperture-osint-v4.1.0.zip
 ```
 - [ ] Load unpacked in Chrome (`chrome://extensions`) — Manifest V3
-- [ ] Popup, dashboard, overlay, context menu smoke test
+- [ ] Popup, dashboard, overlay, disabled domains, context menu smoke test
 
 ## Store listing
 **Name:** Aperture — OSINT Workbench  
@@ -27,7 +27,7 @@ Paste or select an indicator of compromise — such as an IP, domain, URL, email
 • Dashboard — triage inbox, bulk extract, cases, playbooks, relationship graph, offline packs
 • Playbooks — multi-tool workflows in one click (shareable APX codes)
 • Cases — verdicts, tags, notes, timeline, and JSON / Markdown / CSV export
-• On-page detect (opt-in) — highlight IoCs and open a pivot card
+• On-page detect (opt-in) — highlight IoCs and open a pivot card; disable on specific domains when needed
 • Context menu and command palette for fast lookup
 
 Core use requires no API keys, no accounts, and no telemetry. Parsing stays on-device; network use is limited to the public OSINT tabs you choose to open. Optional Labs features (local LLM / API enrichment) are off by default.
@@ -41,9 +41,10 @@ Formerly published as SOC OSINT Search.
 - [ ] Bulk extract results
 - [ ] Playbooks grid
 - [ ] On-page pivot card on `test/test-history.html`
+- [ ] Asset: `docs/store/chrome-store-1280x800.png` (promo / screenshot size)
 
 ## Privacy
-- [ ] Privacy policy URL (README Privacy section is fine if hosted)
+- [ ] Privacy policy URL ([PRIVACY.md](../../PRIVACY.md) hosted on the repo or site)
 - [ ] Single purpose: OSINT lookup / workbench for security professionals
 - [ ] Justify host permissions: context menu + optional page highlights
 

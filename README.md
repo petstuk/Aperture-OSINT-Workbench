@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.0.3 (Manifest V3) |
+| **Version** | 4.1.0 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **License** | [MIT](LICENSE) |
@@ -43,7 +43,7 @@ Optional **Labs** features (local LLM, API enrichment, experimental tools) are *
 - **Dashboard workbench** — triage inbox, bulk extract, cases, playbooks, relationship graph, offline packs, Labs
 - **Playbooks** — ordered multi-tool workflows; share codes (`APX|…`); delay / concurrency / skip-private-IP options
 - **Cases** — indicators, verdicts, tags, notes, timeline, session capture, JSON / Markdown / CSV export
-- **On-page detect** (opt-in) — highlight IoCs; pivot card with notes, tags, clipboard packs, related IoCs
+- **On-page detect** (opt-in) — highlight IoCs; pivot card with notes, tags, clipboard packs, related IoCs; disable per domain (e.g. Splunk, CrowdStrike) from popup Settings
 - **Side panel page** — compact investigation surface (tab everywhere; Chrome `sidePanel` API when available)
 - **Context menu** — right-click selection → playbooks and services
 - **Command palette** — ⌘/Ctrl+K on extension pages; Ctrl+Shift+K / Ctrl+Shift+O browser commands
@@ -123,7 +123,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.0.3.zip (extension runtime only)
+# → aperture-osint-v4.1.0.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -157,6 +157,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.1.0](docs/releases/RELEASE_NOTES_v4.1.0.md) | Per-domain on-page disable; workbench/pivot UI polish |
 | [4.0.3](docs/releases/RELEASE_NOTES_v4.0.3.md) | Full IPv6 detect, forum/code IoC highlights, dashboard favicon |
 | [4.0.2](docs/releases/RELEASE_NOTES_v4.0.2.md) | Fix migration crash that broke pivot tool opens (`normalize is not defined`) |
 | [4.0.1](docs/releases/RELEASE_NOTES_v4.0.1.md) | Popup workbench/services fixes; Open link on pivot; scheme-less URL highlights |
