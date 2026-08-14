@@ -57,6 +57,7 @@
       "js": [
         "ioc-utils.js",
         "palette.js",
+        "indicator-card.js",
         "content.js"
       ],
       "css": [
@@ -96,6 +97,7 @@
         "aperture.css",
         "ioc-utils.js",
         "palette.js",
+        "indicator-card.js",
         "content.css",
         "aperture-features.js",
         "aperture-packs.js",

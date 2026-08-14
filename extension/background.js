@@ -268,6 +268,26 @@ async function getPlaybooks() {
   return IOCUtils.defaultPlaybooks();
 }
 
+// A default that no longer matches an existing playbook of that type is dropped, so a
+// renamed trigger or deleted playbook can never leave the pivot pointing at nothing.
+function pruneDefaultPlaybooks(mapping, playbooks) {
+  const list = (playbooks || []).concat(IOCUtils.defaultPlaybooks());
+  const out = {};
+  Object.entries(mapping || {}).forEach(([type, id]) => {
+    if (!id) return;
+    if (list.some((p) => p.id === id && p.trigger === type)) out[type] = id;
+  });
+  return out;
+}
+
+async function getDefaultPlaybookByType() {
+  const [data, playbooks] = await Promise.all([
+    storageGet('sync', 'defaultPlaybookByType'),
+    getPlaybooks()
+  ]);
+  return pruneDefaultPlaybooks(data.defaultPlaybookByType, playbooks);
+}
+
 async function getHistory() {
   await ensureMigrated();
   const data = await storageGet('local', 'iocHistory');
@@ -706,6 +726,19 @@ async function createContextMenus() {
     contexts: ['selection']
   });
 
+  browserAPI.contextMenus.create({
+    id: 'playbook-default',
+    parentId: 'aperture-parent',
+    title: '▷ Run default playbook',
+    contexts: ['selection']
+  });
+  browserAPI.contextMenus.create({
+    id: 'separator-default',
+    parentId: 'aperture-parent',
+    type: 'separator',
+    contexts: ['selection']
+  });
+
   if (playbooks.length) {
     playbooks.forEach((pb, index) => {
       browserAPI.contextMenus.create({
@@ -777,7 +810,15 @@ browserAPI.contextMenus.onClicked.addListener(async (info) => {
   const selectedText = normalizeIoc(info.selectionText);
   if (!selectedText) return;
 
-  if (info.menuItemId.startsWith('playbook-')) {
+  if (info.menuItemId === 'playbook-default') {
+    const [playbooks, defaults] = await Promise.all([
+      getPlaybooks(),
+      getDefaultPlaybookByType()
+    ]);
+    const type = detectIOCType(selectedText);
+    const pb = IOCUtils.playbookForType(type, playbooks, defaults);
+    if (pb) await runPlaybook(pb, selectedText);
+  } else if (info.menuItemId.startsWith('playbook-')) {
     const idx = parseInt(info.menuItemId.replace('playbook-', ''), 10);
     const playbooks = await getPlaybooks();
     if (playbooks[idx]) await runPlaybook(playbooks[idx], selectedText);
@@ -826,7 +867,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             'disabledDomains',
             'enabledServices',
             'playbooks',
-            'customCombinations'
+            'customCombinations',
+            'defaultPlaybookByType'
           ]);
           const playbooks =
             data.playbooks && data.playbooks.length
@@ -837,7 +879,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             disabledDomains: normalizeDisabledDomainsList(data.disabledDomains || []),
             enabledServices: data.enabledServices || enabledServices || defaultServices,
             playbooks,
-            customCombinations: playbooks
+            customCombinations: playbooks,
+            defaultPlaybookByType: pruneDefaultPlaybooks(data.defaultPlaybookByType, playbooks)
           });
         } catch (error) {
           console.error('Error loading overlay config:', error);
@@ -867,6 +910,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
               notes: entry.notes || '',
               tags: entry.tags || [],
               toolsUsed: entry.toolsUsed || [],
+              caseIds: entry.caseIds || [],
+              timestamp: entry.timestamp || 0,
               enrich: entry.enrich || IOCUtils.enrich(entry.type, entry.ioc)
             });
           } else {
@@ -876,6 +921,23 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.error('Error loading archive entry:', error);
           respond({ found: false });
         }
+        break;
+      }
+
+      // Navigating to a page the analyst was already looking at — background tab, http(s) only
+      case 'openLink': {
+        let url = null;
+        try {
+          url = new URL(String(message.url || ''));
+        } catch (_) {
+          url = null;
+        }
+        if (!url || (url.protocol !== 'http:' && url.protocol !== 'https:')) {
+          respond({ success: false, error: 'Only http(s) links can be opened' });
+          break;
+        }
+        await browserAPI.tabs.create({ url: url.href, active: false });
+        respond({ success: true });
         break;
       }
 
@@ -900,7 +962,9 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const playbooks = await getPlaybooks();
           let pb = null;
           if (message.playbookId) {
-            pb = playbooks.find((p) => p.id === message.playbookId);
+            pb =
+              playbooks.find((p) => p.id === message.playbookId) ||
+              IOCUtils.defaultPlaybooks().find((p) => p.id === message.playbookId);
           } else if (typeof message.comboIndex === 'number') {
             pb = playbooks[message.comboIndex];
           } else if (typeof message.playbookIndex === 'number') {
@@ -940,7 +1004,12 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             getHistory(),
             getCases(),
             getPlaybooks(),
-            storageGet('sync', ['enabledServices', 'overlayEnabled', 'disabledDomains']),
+            storageGet('sync', [
+              'enabledServices',
+              'overlayEnabled',
+              'disabledDomains',
+              'defaultPlaybookByType'
+            ]),
             storageGet('local', [
               'apertureFeatures',
               'apertureSession',
@@ -960,6 +1029,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             enabledServices: sync.enabledServices || enabledServices || defaultServices,
             overlayEnabled: !!sync.overlayEnabled,
             disabledDomains: normalizeDisabledDomainsList(sync.disabledDomains || []),
+            defaultPlaybookByType: pruneDefaultPlaybooks(sync.defaultPlaybookByType, playbooks),
             services: Object.keys(serviceUrls),
             featureFlags,
             session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
@@ -977,6 +1047,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             enabledServices: enabledServices || defaultServices,
             overlayEnabled: false,
             disabledDomains: [],
+            defaultPlaybookByType: {},
             services: Object.keys(serviceUrls),
             featureFlags: {},
             session: { caseId: null, paused: false, excludeDomains: [] },
@@ -1212,9 +1283,23 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       }
 
       case 'savePlaybooks': {
-        await storageSet('sync', { playbooks: message.playbooks || [] });
+        const playbooks = message.playbooks || [];
+        const data = await storageGet('sync', 'defaultPlaybookByType');
+        const defaults = pruneDefaultPlaybooks(
+          message.defaultPlaybookByType || data.defaultPlaybookByType,
+          playbooks
+        );
+        await storageSet('sync', { playbooks, defaultPlaybookByType: defaults });
         await createContextMenus();
-        respond({ success: true });
+        respond({ success: true, defaultPlaybookByType: defaults });
+        break;
+      }
+
+      case 'setDefaultPlaybooks': {
+        const playbooks = await getPlaybooks();
+        const defaults = pruneDefaultPlaybooks(message.defaultPlaybookByType, playbooks);
+        await storageSet('sync', { defaultPlaybookByType: defaults });
+        respond({ success: true, defaultPlaybookByType: defaults });
         break;
       }
 

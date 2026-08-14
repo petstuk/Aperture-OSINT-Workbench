@@ -49,11 +49,11 @@
 
     function render() {
       const q = query.trim().toLowerCase();
-      const groups = (getGroups() || [])
+      const groups = (getGroups(query) || [])
         .map((g) => ({
           ...g,
           items: (g.items || []).filter((it) => {
-            if (!q) return true;
+            if (!q || g.pinned) return true;
             const hay = (it.label + ' ' + (it.meta || '') + ' ' + (it.kw || '')).toLowerCase();
             return hay.includes(q);
           })
@@ -183,6 +183,51 @@
     };
   }
 
+  // ⌘K is indicator-first: what is pasted decides the action, never a prompt() afterwards.
+  function parseIndicator(query) {
+    const raw = String(query || '').trim();
+    if (!raw) return null;
+    const value = IOCUtils.refang(raw);
+    const parsed = IOCUtils.parse(value)[0];
+    if (parsed) return { ioc: parsed.value, type: parsed.type, raw };
+    const type = IOCUtils.detectIOCType(value);
+    if (!type || type === 'unknown') return null;
+    return { ioc: value, type, raw };
+  }
+
+  function indicatorGroup(query, context) {
+    const found = parseIndicator(query);
+    if (!found) return null;
+    const { ioc, type } = found;
+    const play = IOCUtils.playbookForType(type, context.playbooks, context.defaultPlaybookByType);
+    const items = [];
+    if (play) {
+      const tabs = (play.tools || []).length;
+      items.push({
+        icon: '▷',
+        label: play.name + ' · ' + tabs + (tabs === 1 ? ' tab' : ' tabs'),
+        meta: ioc,
+        kw: found.raw + ' ' + ioc + ' ' + play.name,
+        onClick: () => context.onRunPlaybook(play, ioc, type)
+      });
+    }
+    if (context.onOpenIndicator) {
+      items.push({
+        icon: '◇',
+        label: 'Open pivot',
+        meta: IOCUtils.typeLabel(type, ioc),
+        kw: found.raw + ' ' + ioc,
+        onClick: () => context.onOpenIndicator(ioc, type)
+      });
+    }
+    if (!items.length) return null;
+    return {
+      label: IOCUtils.typeLabel(type, ioc) + ' · ' + ioc,
+      pinned: true,
+      items
+    };
+  }
+
   function pillStyle(color) {
     const n = parseInt(color.slice(1), 16);
     const r = (n >> 16) & 255;
@@ -255,6 +300,8 @@
 
   global.ApertureUI = {
     createPalette,
+    parseIndicator,
+    indicatorGroup,
     pillStyle,
     showToast,
     sendMessage

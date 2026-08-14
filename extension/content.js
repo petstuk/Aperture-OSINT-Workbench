@@ -15,7 +15,10 @@
   let highlightCount = 0;
   let observer = null;
   let pivotEl = null;
-  let pivotScrim = null;
+  let pivotAnchor = null;
+  let pivotReturnFocus = null;
+  let pivotFrame = 0;
+  let pivotListening = false;
   let toastEl = null;
   let activePivotKey = null;
   let overlayLoadGen = 0;
@@ -62,32 +65,6 @@
     });
   }
 
-  function hexA(h, a) {
-    const n = parseInt(h.slice(1), 16);
-    return (
-      'rgba(' +
-      ((n >> 16) & 255) +
-      ',' +
-      ((n >> 8) & 255) +
-      ',' +
-      (n & 255) +
-      ',' +
-      a +
-      ')'
-    );
-  }
-
-  function pill(color) {
-    return (
-      'color:' +
-      color +
-      ';background:' +
-      hexA(color, 0.12) +
-      ';border-color:' +
-      hexA(color, 0.28)
-    );
-  }
-
   function showToast(msg) {
     if (!toastEl) {
       toastEl = document.createElement('div');
@@ -98,20 +75,6 @@
     toastEl.classList.add('show');
     clearTimeout(toastEl._t);
     toastEl._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
-  }
-
-  function packText(format, items) {
-    const rows = (items || []).map((h) => {
-      if (typeof h === 'string') return { ioc: h };
-      return {
-        ioc: h.ioc || h.value,
-        type: h.type,
-        verdict: h.verdict || h.status,
-        notes: h.notes,
-        tags: h.tags
-      };
-    });
-    return IOCUtils.clipboardPack(format, rows);
   }
 
   function shouldSkipNode(node) {
@@ -126,9 +89,7 @@
       if (el.classList && el.classList.contains('soc-ioc')) return true;
       if (
         el.classList &&
-        (el.classList.contains('ap-pivot') ||
-          el.classList.contains('ap-pivot-scrim') ||
-          el.classList.contains('ap-pivot-toast'))
+        (el.classList.contains('ap-pivot') || el.classList.contains('ap-pivot-toast'))
       ) {
         return true;
       }
@@ -147,6 +108,18 @@
     highlightCount = 0;
   }
 
+  // Resolved once at highlight time: the anchor is gone by the time the pivot opens
+  function anchorHrefFor(node) {
+    let el = node.parentElement;
+    while (el) {
+      if (el.tagName === 'A' && el.hasAttribute('href')) {
+        return el.href || el.getAttribute('href') || '';
+      }
+      el = el.parentElement;
+    }
+    return '';
+  }
+
   function highlightTextNode(textNode) {
     if (shouldSkipNode(textNode) || highlightCount >= MAX_HIGHLIGHTS) return;
 
@@ -156,6 +129,7 @@
     const matches = IOCUtils.findIOCMatches(text);
     if (!matches.length) return;
 
+    const href = anchorHrefFor(textNode);
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
 
@@ -170,6 +144,7 @@
       span.className = 'soc-ioc soc-ioc-' + match.type;
       span.dataset.ioc = match.value;
       span.dataset.type = match.type;
+      if (href) span.dataset.href = href;
       // Keep page-visible (often defanged) text; actions use refanged dataset.ioc
       span.textContent =
         match.display != null
@@ -317,55 +292,124 @@
   }
 
   function ensurePivot() {
-    if (!pivotScrim) {
-      pivotScrim = document.createElement('div');
-      pivotScrim.className = 'ap-pivot-scrim';
-      pivotScrim.addEventListener('click', hidePivot);
-      document.documentElement.appendChild(pivotScrim);
-    }
     if (!pivotEl) {
       pivotEl = document.createElement('div');
       pivotEl.className = 'ap-pivot';
+      const caret = document.createElement('div');
+      caret.className = 'ap-pivot-caret ap-pivot-caret-top';
+      pivotEl.appendChild(caret);
       document.documentElement.appendChild(pivotEl);
     }
     return pivotEl;
   }
 
+  function repositionPivot() {
+    if (!pivotEl || !pivotEl.classList.contains('open')) return;
+    if (!pivotAnchor) {
+      ApertureIndicatorCard.position(pivotEl, null);
+      return;
+    }
+    if (!ApertureIndicatorCard.anchorVisible(pivotAnchor)) {
+      hidePivot();
+      return;
+    }
+    ApertureIndicatorCard.position(pivotEl, pivotAnchor);
+  }
+
+  function onPivotViewportChange() {
+    if (pivotFrame) return;
+    pivotFrame = requestAnimationFrame(() => {
+      pivotFrame = 0;
+      repositionPivot();
+    });
+  }
+
+  function onPivotOutsidePointerDown(event) {
+    if (!pivotEl || pivotEl.contains(event.target)) return;
+    hidePivot();
+  }
+
+  function onPivotKeyDown(event) {
+    if (event.key !== 'Tab' || !pivotEl) return;
+    const items = ApertureIndicatorCard.focusables(pivotEl);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  function addPivotListeners() {
+    if (pivotListening) return;
+    pivotListening = true;
+    window.addEventListener('scroll', onPivotViewportChange, true);
+    window.addEventListener('resize', onPivotViewportChange);
+    document.addEventListener('pointerdown', onPivotOutsidePointerDown, true);
+    pivotEl.addEventListener('keydown', onPivotKeyDown);
+  }
+
+  function removePivotListeners() {
+    if (!pivotListening) return;
+    pivotListening = false;
+    window.removeEventListener('scroll', onPivotViewportChange, true);
+    window.removeEventListener('resize', onPivotViewportChange);
+    document.removeEventListener('pointerdown', onPivotOutsidePointerDown, true);
+    if (pivotEl) pivotEl.removeEventListener('keydown', onPivotKeyDown);
+  }
+
   function hidePivot() {
+    if (pivotFrame) {
+      cancelAnimationFrame(pivotFrame);
+      pivotFrame = 0;
+    }
+    removePivotListeners();
     if (pivotEl) {
       pivotEl.classList.remove('open');
-      pivotEl.innerHTML = '';
+      ApertureIndicatorCard.clear(pivotEl);
     }
-    if (pivotScrim) pivotScrim.classList.remove('open');
     activePivotKey = null;
-  }
-
-  function showPivotShell() {
-    const tip = ensurePivot();
-    tip.classList.add('open');
-    if (pivotScrim) pivotScrim.classList.add('open');
-    return tip;
-  }
-
-  async function copyText(text, okMsg) {
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast(okMsg || 'Copied');
-    } catch (_) {
-      showToast('Copy failed');
+    pivotAnchor = null;
+    const restore = pivotReturnFocus;
+    pivotReturnFocus = null;
+    if (restore && restore.isConnected && typeof restore.focus === 'function') {
+      restore.focus();
     }
+  }
+
+  function focusPivot() {
+    if (!pivotEl) return;
+    const items = ApertureIndicatorCard.focusables(pivotEl);
+    if (items.length) items[0].focus();
   }
 
   function openPivot(span) {
-    return openPivotFor(span.dataset.ioc, span.dataset.type, span);
+    return openPivotFor(span.dataset.ioc, span.dataset.type, span, {
+      href: span.dataset.href || '',
+      linkText: span.textContent || ''
+    });
   }
 
-  async function openPivotFor(ioc, type, span) {
+  async function openPivotFor(ioc, type, anchorEl, context) {
     const key = ioc + '\0' + type;
+    const ctx = context || {};
+    const tip = ensurePivot();
+
+    if (anchorEl) {
+      pivotAnchor = anchorEl;
+      if (!pivotReturnFocus && document.activeElement !== anchorEl) {
+        pivotReturnFocus = anchorEl;
+      }
+    }
     activePivotKey = key;
-    const tip = showPivotShell();
-    tip.innerHTML =
-      '<div class="ap-pivot-body"><div style="padding:14px;color:#5a6273;font-size:11px;">Loading…</div></div>';
+    tip.classList.add('open');
+    ApertureIndicatorCard.renderMessage(tip, 'Loading…');
+    repositionPivot();
+    addPivotListeners();
 
     try {
       const [config, archive, rel] = await Promise.all([
@@ -376,251 +420,30 @@
 
       if (activePivotKey !== key) return;
 
-      const typeColor = (IOCUtils.TYPE_COLORS && IOCUtils.TYPE_COLORS[type]) || '#8b93a3';
-      const playbooks = (config && (config.playbooks || config.customCombinations)) || [];
-      const play = IOCUtils.playbookForType(type, playbooks);
-      const tools = IOCUtils.toolsFor(type);
-      const enabled = (config && config.enabledServices) || {};
-      const filteredTools = tools.filter((t) => enabled[t.name] !== false);
-      const facts = IOCUtils.enrichFacts(type, ioc);
-      const related = (rel && rel.related) || [];
-      const currentVerdict = IOCUtils.normalizeVerdict(
-        (archive && (archive.verdict || archive.status)) || 'unknown'
-      );
-      const verdicts = [
-        ['benign', 'B'],
-        ['suspicious', 'S'],
-        ['malicious', 'M'],
-        ['review', 'R']
-      ];
-
-      tip.innerHTML = '';
-
-      const head = document.createElement('div');
-      head.className = 'ap-pivot-head';
-      const headTop = document.createElement('div');
-      headTop.className = 'ap-pivot-head-top';
-      const val = document.createElement('div');
-      val.className = 'ap-pivot-value';
-      val.textContent = ioc;
-      val.title = ioc;
-      headTop.appendChild(val);
-      const headMeta = document.createElement('div');
-      headMeta.className = 'ap-pivot-head-meta';
-      const typePill = document.createElement('span');
-      typePill.className = 'ap-pivot-pill';
-      typePill.style.cssText = pill(typeColor);
-      typePill.textContent = IOCUtils.typeLabel(type, ioc);
-      headMeta.appendChild(typePill);
-      const closeBtn = document.createElement('button');
-      closeBtn.type = 'button';
-      closeBtn.className = 'ap-pivot-close';
-      closeBtn.textContent = '×';
-      closeBtn.title = 'Close';
-      closeBtn.addEventListener('click', hidePivot);
-      headMeta.appendChild(closeBtn);
-      headTop.appendChild(headMeta);
-      head.appendChild(headTop);
-      tip.appendChild(head);
-
-      const body = document.createElement('div');
-      body.className = 'ap-pivot-body';
-
-      const enrichSec = document.createElement('div');
-      enrichSec.className = 'ap-pivot-section';
-      enrichSec.innerHTML =
-        '<div class="ap-pivot-label">Local enrichment · no network</div><div class="ap-pivot-facts"></div>';
-      const factsEl = enrichSec.querySelector('.ap-pivot-facts');
-      facts.forEach(([k, v]) => {
-        const row = document.createElement('div');
-        row.className = 'ap-pivot-fact';
-        row.innerHTML =
-          '<span class="ap-pivot-fact-k"></span><span class="ap-pivot-fact-v"></span>';
-        row.querySelector('.ap-pivot-fact-k').textContent = k;
-        row.querySelector('.ap-pivot-fact-v').textContent = v;
-        factsEl.appendChild(row);
+      ApertureIndicatorCard.render(tip, {
+        ioc,
+        type,
+        mode: 'popover',
+        href: ctx.href || '',
+        linkText: ctx.linkText || '',
+        archive: archive || {},
+        related: (rel && rel.related) || [],
+        playbooks: (config && (config.playbooks || config.customCombinations)) || [],
+        defaultPlaybookByType: (config && config.defaultPlaybookByType) || {},
+        enabledServices: (config && config.enabledServices) || {},
+        sendMessage,
+        showToast,
+        onClose: hidePivot,
+        onChanged: () => openPivotFor(ioc, type, null, ctx),
+        onOpenRelated: (item) =>
+          openPivotFor(item.ioc, item.type || IOCUtils.detectIOCType(item.ioc), null, {})
       });
-      if (archive && archive.found) {
-        const row = document.createElement('div');
-        row.className = 'ap-pivot-fact';
-        row.innerHTML =
-          '<span class="ap-pivot-fact-k">archive</span><span class="ap-pivot-fact-v"></span>';
-        row.querySelector('.ap-pivot-fact-v').textContent =
-          (archive.verdict || archive.status || 'unknown') +
-          (archive.date ? ' · ' + archive.date : '');
-        factsEl.appendChild(row);
-      }
-      if (archive && archive.toolsUsed && archive.toolsUsed.length) {
-        const row = document.createElement('div');
-        row.className = 'ap-pivot-fact';
-        row.innerHTML =
-          '<span class="ap-pivot-fact-k">tools used</span><span class="ap-pivot-fact-v"></span>';
-        row.querySelector('.ap-pivot-fact-v').textContent = archive.toolsUsed.join(', ');
-        factsEl.appendChild(row);
-      }
-      body.appendChild(enrichSec);
-
-      const verdSec = document.createElement('div');
-      verdSec.className = 'ap-pivot-section';
-      verdSec.innerHTML =
-        '<div class="ap-pivot-label">Set verdict</div><div class="ap-pivot-verdicts"></div>';
-      const verdGrid = verdSec.querySelector('.ap-pivot-verdicts');
-      verdicts.forEach(([vKey, short]) => {
-        const color = IOCUtils.VERDICT_COLORS[vKey];
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ap-pivot-verdict' + (currentVerdict === vKey ? ' active' : '');
-        btn.textContent = short;
-        btn.title = vKey;
-        btn.style.color = color;
-        btn.style.borderColor = hexA(color, 0.35);
-        btn.style.background = hexA(color, currentVerdict === vKey ? 0.18 : 0.08);
-        btn.addEventListener('click', async () => {
-          await sendMessage({ action: 'setVerdict', ioc, verdict: vKey });
-          showToast('Verdict set: ' + vKey);
-          openPivotFor(ioc, type, span);
-        });
-        verdGrid.appendChild(btn);
-      });
-      body.appendChild(verdSec);
-
-      const openSec = document.createElement('div');
-      openSec.className = 'ap-pivot-section';
-      openSec.innerHTML =
-        '<div class="ap-pivot-label">Open in</div><div class="ap-pivot-tools"></div>';
-      const toolsEl = openSec.querySelector('.ap-pivot-tools');
-      filteredTools.forEach((t) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ap-pivot-tool';
-        btn.textContent = t.code;
-        btn.title = t.name;
-        btn.addEventListener('click', async () => {
-          const res = await sendMessage({ action: 'searchService', ioc, service: t.name });
-          if (res && res.success) showToast('Opened ' + t.name);
-          else showToast((res && res.error) || 'Failed');
-        });
-        toolsEl.appendChild(btn);
-      });
-      body.appendChild(openSec);
-
-      const relSec = document.createElement('div');
-      relSec.className = 'ap-pivot-section';
-      const relLab = document.createElement('div');
-      relLab.className = 'ap-pivot-label';
-      relLab.textContent = 'Related · shared case';
-      relSec.appendChild(relLab);
-      if (!related.length) {
-        const empty = document.createElement('div');
-        empty.className = 'ap-pivot-empty';
-        empty.textContent = 'No related indicators in a shared case';
-        relSec.appendChild(empty);
-      } else {
-        const toolsWrap = document.createElement('div');
-        toolsWrap.className = 'ap-pivot-tools';
-        related.forEach((r) => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'ap-pivot-tool';
-          const label = r.ioc || '';
-          btn.textContent = label.length > 22 ? label.slice(0, 22) + '…' : label;
-          btn.title = label + (r.reason ? ' · ' + r.reason : '');
-          btn.addEventListener('click', () => {
-            const rType = r.type || IOCUtils.detectIOCType(r.ioc);
-            openPivotFor(r.ioc, rType, null);
-          });
-          toolsWrap.appendChild(btn);
-        });
-        relSec.appendChild(toolsWrap);
-      }
-      body.appendChild(relSec);
-
-      const xfSec = document.createElement('div');
-      xfSec.className = 'ap-pivot-section';
-      xfSec.innerHTML =
-        '<div class="ap-pivot-label">Transforms & packs · local</div><div class="ap-pivot-tools"></div>';
-      const xfTools = xfSec.querySelector('.ap-pivot-tools');
-      const transforms = [
-        {
-          label: 'Defang',
-          run: () => copyText(IOCUtils.defang(ioc), 'Copied defanged')
-        },
-        {
-          label: 'Copy',
-          run: () => copyText(ioc, 'Copied ' + ioc)
-        },
-        {
-          label: 'Copy STIX',
-          run: () => copyText(packText('stix', [{ ioc, type }]), 'Copied STIX 2.1')
-        },
-        {
-          label: 'Base64',
-          run: () => {
-            const out = IOCUtils.toBase64(ioc);
-            if (out == null) showToast('Base64 failed');
-            else copyText(out, 'Copied Base64');
-          }
-        },
-        {
-          label: 'Hex→ascii',
-          run: () => {
-            const out = IOCUtils.hexToAscii(ioc);
-            if (out == null) showToast('Not valid hex');
-            else copyText(out, 'Copied ascii');
-          }
-        }
-      ];
-      transforms.forEach((t) => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'ap-pivot-tool';
-        btn.textContent = t.label;
-        btn.addEventListener('click', t.run);
-        xfTools.appendChild(btn);
-      });
-      body.appendChild(xfSec);
-
-      tip.appendChild(body);
-
-      const foot = document.createElement('div');
-      foot.className = 'ap-pivot-foot';
-      const playBtn = document.createElement('button');
-      playBtn.type = 'button';
-      playBtn.className = 'ap-pivot-play';
-      playBtn.textContent = '▷ ' + (play ? play.name : 'Playbook');
-      playBtn.addEventListener('click', async () => {
-        if (!play) return;
-        const res = await sendMessage({
-          action: 'runPlaybook',
-          ioc,
-          playbookId: play.id
-        });
-        if (res && res.success) {
-          showToast('Ran ' + play.name + ' — opened ' + (res.opened || 0) + ' tabs');
-        }
-      });
-      const caseBtn = document.createElement('button');
-      caseBtn.type = 'button';
-      caseBtn.className = 'ap-pivot-case';
-      caseBtn.textContent = '+ Case';
-      caseBtn.addEventListener('click', async () => {
-        const res = await sendMessage({
-          action: 'addToCase',
-          ioc,
-          create: true,
-          caseName: 'Quick case'
-        });
-        if (res && res.success) {
-          showToast('Added ' + ioc + ' to ' + res.case.id);
-        }
-      });
-      foot.appendChild(playBtn);
-      foot.appendChild(caseBtn);
-      tip.appendChild(foot);
+      repositionPivot();
+      focusPivot();
     } catch (error) {
       if (activePivotKey !== key) return;
-      tip.innerHTML =
-        '<div class="ap-pivot-body"><div style="padding:14px;color:#e06c75;font-size:11px;">Could not load actions</div></div>';
+      ApertureIndicatorCard.renderMessage(tip, 'Could not load actions', 'error');
+      repositionPivot();
     }
   }
 
@@ -709,10 +532,20 @@
     if (typeof ApertureUI === 'undefined' || pagePalette) return;
     pagePalette = ApertureUI.createPalette({
       onEscape: hidePivot,
-      getGroups() {
+      getGroups(query) {
         const cfg = window.__apertureOverlayConfig || {};
         const enabled = cfg.enabledServices || {};
         const playbooks = cfg.playbooks || cfg.customCombinations || [];
+        const found = ApertureUI.parseIndicator(query);
+        const runPlaybook = (pb, ioc) =>
+          sendMessage({ action: 'runPlaybook', ioc, playbookId: pb.id }).then((res) => {
+            showToast(
+              res && res.success
+                ? 'Ran ' + pb.name + ' — opened ' + (res.opened || 0) + ' tabs'
+                : (res && res.error) || 'Failed'
+            );
+          });
+
         const toolNames = new Set();
         ['ip', 'domain', 'url', 'hash', 'email', 'cve', 'btc', 'asn'].forEach((t) => {
           IOCUtils.toolsFor(t).forEach((tool) => {
@@ -722,13 +555,15 @@
         const tools = Array.from(toolNames).sort().map((name) => ({
           icon: '◇',
           label: name,
-          meta: 'tool',
+          meta: found ? found.ioc : 'paste an indicator',
           onClick: () => {
-            const iocVal = prompt('Indicator for ' + name + ':');
-            if (!iocVal) return;
+            if (!found) {
+              showToast('Paste an indicator into the palette first');
+              return;
+            }
             sendMessage({
               action: 'searchService',
-              ioc: iocVal.trim(),
+              ioc: found.ioc,
               service: name
             }).then((res) => {
               showToast(res && res.success ? 'Opened ' + name : (res && res.error) || 'Failed');
@@ -740,25 +575,23 @@
           label: pb.name,
           meta: pb.trigger,
           onClick: () => {
-            const iocVal = prompt('Indicator for ' + pb.name + ':');
-            if (!iocVal) return;
-            sendMessage({
-              action: 'runPlaybook',
-              ioc: iocVal.trim(),
-              playbookId: pb.id
-            }).then((res) => {
-              showToast(
-                res && res.success
-                  ? 'Ran ' + pb.name
-                  : (res && res.error) || 'Failed'
-              );
-            });
+            if (!found) {
+              showToast('Paste an indicator into the palette first');
+              return;
+            }
+            runPlaybook(pb, found.ioc);
           }
         }));
-        return [
+        const groups = [
           { label: 'Run OSINT tool', items: tools },
           { label: 'Playbooks', items: plays }
         ];
+        const first = ApertureUI.indicatorGroup(query, {
+          playbooks,
+          defaultPlaybookByType: cfg.defaultPlaybookByType || {},
+          onRunPlaybook: (pb, ioc) => runPlaybook(pb, ioc)
+        });
+        return first ? [first].concat(groups) : groups;
       }
     });
   }

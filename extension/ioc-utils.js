@@ -1096,13 +1096,23 @@
     ];
   }
 
-  function playbookForType(type, playbooks) {
+  // Assigned default first, then any playbook that actually matches the type — never an
+  // unrelated playbook, because this drives the pivot button, ⌘K and the context menu.
+  function playbookForType(type, playbooks, defaultPlaybookByType) {
     const list = playbooks || [];
+    const assignedId = (defaultPlaybookByType || {})[type];
+    if (assignedId) {
+      const assigned = list.find((p) => p.id === assignedId && p.trigger === type);
+      if (assigned) return assigned;
+      const builtInAssigned = defaultPlaybooks().find(
+        (p) => p.id === assignedId && p.trigger === type
+      );
+      if (builtInAssigned) return builtInAssigned;
+    }
     return (
       list.find((p) => p.trigger === type) ||
-      list[0] ||
       defaultPlaybooks().find((p) => p.trigger === type) ||
-      defaultPlaybooks()[0]
+      null
     );
   }
 
