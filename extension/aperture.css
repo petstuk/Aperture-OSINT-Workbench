@@ -68,12 +68,12 @@
   --border-3: #2f3745;
   --divider: #1a2029;
   --divider-faint: #14191f;
-  --text-hi: #e6e9ef;
-  --text: #d4d8e0;
-  --text-2: #c3cad6;
-  --text-muted: #8b93a3;
-  --text-dim: #828b9b;
-  --text-faint: #7b8494;
+  --text-hi: #eef1f6;
+  --text: #e2e6ee;
+  --text-2: #cfd6e2;
+  --text-muted: #a3acbc;
+  --text-dim: #969fb0;
+  --text-faint: #8a93a4;
   --accent: #61afef;
   --accent-hover: #4f96d6;
   --accent-ink: #07101a;
@@ -102,15 +102,9 @@
   --package: #61afef;
   --unknown: #8b93a3;
   --new: #8b93a3;
-  --radius-sm: 5px;
-  --radius: 6px;
-  --radius-panel: 8px;
-  --radius-float: 12px;
   --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.6);
   --shadow-palette: 0 30px 80px rgba(0, 0, 0, 0.7);
   --scrim: rgba(5, 7, 10, 0.72);
-  --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 }
 
 .ap-theme-light {
@@ -127,51 +121,68 @@
   --border-3: #b0b9c7;
   --divider: #e4e8ee;
   --divider-faint: #edf0f4;
-  --text-hi: #10151d;
-  --text: #1d2530;
-  --text-2: #2c3542;
-  --text-muted: #566073;
-  --text-dim: #5a6473;
-  --text-faint: #5f6979;
-  --accent: #1568b0;
-  --accent-hover: #0f5490;
+  --text-hi: #0c1016;
+  --text: #161d27;
+  --text-2: #24303c;
+  --text-muted: #3d4654;
+  --text-dim: #455060;
+  --text-faint: #4e5968;
+  --accent: #0f5a9c;
+  --accent-hover: #0c4a82;
   --accent-ink: #ffffff;
-  --benign: #2b7a2f;
-  --suspicious: #8a5300;
-  --malicious: #b32820;
-  --review: #7433a0;
-  --ip: #0f6f83;
-  --domain: #1568b0;
-  --url: #1568b0;
-  --hash: #7433a0;
-  --email: #8a5300;
-  --cve: #b32820;
-  --btc: #2b7a2f;
-  --asn: #566073;
-  --eth: #3b4fbe;
-  --attack: #b32820;
-  --ja3: #7433a0;
-  --path: #0f6f83;
-  --onion: #5b6472;
-  --telegram: #0a6a9e;
-  --discord: #3f4bc4;
-  --cwe: #b32820;
-  --uuid: #566073;
-  --arn: #8a5300;
-  --package: #1568b0;
-  --unknown: #566073;
-  --new: #566073;
+  --benign: #1f6b24;
+  --suspicious: #7a4800;
+  --malicious: #a31f18;
+  --review: #642c8c;
+  --ip: #0b6274;
+  --domain: #0f5a9c;
+  --url: #0f5a9c;
+  --hash: #642c8c;
+  --email: #7a4800;
+  --cve: #a31f18;
+  --btc: #1f6b24;
+  --asn: #3d4654;
+  --eth: #2f3fb0;
+  --attack: #a31f18;
+  --ja3: #642c8c;
+  --path: #0b6274;
+  --onion: #3d4654;
+  --telegram: #085a88;
+  --discord: #343fb8;
+  --cwe: #a31f18;
+  --uuid: #3d4654;
+  --arn: #7a4800;
+  --package: #0f5a9c;
+  --unknown: #3d4654;
+  --new: #3d4654;
   --shadow-float: 0 18px 48px rgba(16, 21, 29, 0.16);
   --shadow-palette: 0 26px 64px rgba(16, 21, 29, 0.22);
   --scrim: rgba(28, 36, 48, 0.38);
 }
 
+/* Fonts and radii are the same in both themes. They used to live only on the dark
+   block, so light mode dropped IBM Plex and fell back to the browser default. */
+.ap-theme-dark,
+.ap-theme-light,
+:where(html:not(.ap-theme-dark):not(.ap-theme-light))
+  :where(.ap-pivot, .ap-palette, .ap-palette-scrim, .ap-toast, .ap-pivot-toast) {
+  --radius-sm: 5px;
+  --radius: 6px;
+  --radius-panel: 8px;
+  --radius-float: 12px;
+  --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
 .ap-theme-dark {
   color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
 }
 
 .ap-theme-light {
   color-scheme: light;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
 }
 
 /* This sheet is injected into every page, so the resets are scoped to extension pages and to
@@ -190,7 +201,6 @@ body.aperture {
   font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
-  -webkit-font-smoothing: antialiased;
 }
 
 :where(body.aperture, .ap-pivot, .ap-palette) button,

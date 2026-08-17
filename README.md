@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.2.1 (Manifest V3) |
+| **Version** | 4.2.2 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **License** | [MIT](LICENSE) |
@@ -122,7 +122,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.2.1.zip (extension runtime only)
+# → aperture-osint-v4.2.2.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -156,6 +156,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.2.2](docs/releases/RELEASE_NOTES_v4.2.2.md) | Light theme uses IBM Plex; stronger text contrast in both themes |
 | [4.2.1](docs/releases/RELEASE_NOTES_v4.2.1.md) | Light theme; ordered playbook editor; workbench live refresh; side panel removed |
 | [4.2.0](docs/releases/RELEASE_NOTES_v4.2.0.md) | One shared indicator card; anchored pivot popovers; popup as launcher; playbook defaults per IoC type |
 | [4.1.0](docs/releases/RELEASE_NOTES_v4.1.0.md) | Per-domain on-page disable; workbench/pivot UI polish |

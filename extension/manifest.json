@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aperture \u2014 OSINT Workbench",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "Local-first OSINT workbench for SOC/DFIR: IoC pivot, playbooks, cases. No API keys by default. Formerly SOC OSINT Search.",
   "permissions": [
     "contextMenus",
