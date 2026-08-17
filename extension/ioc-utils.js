@@ -27,7 +27,7 @@
     path: '#56b6c2',
     onion: '#7c8490',
     telegram: '#2aabee',
-    discord: '#5865f2',
+    discord: '#6f7bf4',
     cwe: '#e06c75',
     uuid: '#8b93a3',
     arn: '#d9a15b',
@@ -43,6 +43,16 @@
     unknown: '#8b93a3',
     new: '#8b93a3'
   };
+
+  // The hex maps above are the dark values; surfaces that can be themed reference the matching
+  // CSS variable instead so a theme switch repaints without re-rendering.
+  function typeVar(type) {
+    return 'var(--' + (TYPE_COLORS[type] ? type : 'unknown') + ')';
+  }
+
+  function verdictVar(verdict) {
+    return 'var(--' + (VERDICT_COLORS[verdict] ? verdict : 'unknown') + ')';
+  }
 
   const SERVICE_ALIASES = {
     AlienVault: 'AlienVault OTX',
@@ -194,6 +204,18 @@
 
   function resolveServiceName(name) {
     return SERVICE_ALIASES[name] || name;
+  }
+
+  // Mirrors the URL templates the background can resolve. Playbooks can carry names from an
+  // import or an older build that no longer resolve, and those open no tab — so anything that
+  // promises "opens N tabs" counts with runnableTools rather than the raw list.
+  const KNOWN_SERVICES = Array.from(new Set(Object.values(SERVICE_ALIASES)));
+
+  function runnableTools(tools) {
+    const known = new Set(KNOWN_SERVICES);
+    return (Array.isArray(tools) ? tools : [])
+      .map(resolveServiceName)
+      .filter((name) => known.has(name));
   }
 
   function toolsFor(t) {
@@ -1325,7 +1347,11 @@
     hostMatchesDisabled,
     TYPE_COLORS,
     VERDICT_COLORS,
+    typeVar,
+    verdictVar,
     resolveServiceName,
+    KNOWN_SERVICES,
+    runnableTools,
     defaultPlaybooks,
     playbookForType,
     normalizeVerdict,

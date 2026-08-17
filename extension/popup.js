@@ -60,6 +60,7 @@
       ? config.disabledDomains
       : [];
     state.activeHost = host;
+    ApertureUI.applyTheme((config && config.theme) || 'system');
     render();
   }
 

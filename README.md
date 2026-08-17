@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.2.0 (Manifest V3) |
+| **Version** | 4.2.1 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **License** | [MIT](LICENSE) |
@@ -44,9 +44,9 @@ Optional **Labs** features (local LLM, API enrichment, experimental tools) are *
 - **Playbooks** — ordered multi-tool workflows; share codes (`APX|…`); delay / concurrency / skip-private-IP options
 - **Cases** — indicators, verdicts, tags, notes, timeline, session capture, JSON / Markdown / CSV export
 - **On-page detect** (opt-in) — highlight IoCs; anchored pivot card with verdicts, tools, clipboard packs, related IoCs; disable per domain (e.g. Splunk, CrowdStrike) from the popup or Workbench Settings
-- **Side panel page** — compact investigation surface (tab everywhere; Chrome `sidePanel` API when available)
 - **Context menu** — right-click selection → playbooks and services
 - **Command palette** — ⌘/Ctrl+K on extension pages; Ctrl+Shift+K / Ctrl+Shift+O browser commands
+- **Themes** — System, Dark or Light for every Aperture surface; page highlights adapt to the site you are reading
 
 ### Indicator types
 
@@ -113,7 +113,6 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 | Popup | [`extension/popup.html`](extension/popup.html) |
 | Dashboard | [`extension/dashboard.html`](extension/dashboard.html) |
 | On-page | [`extension/content.js`](extension/content.js), [`extension/content.css`](extension/content.css) |
-| Side panel | [`extension/sidepanel.html`](extension/sidepanel.html) |
 | Shared UI | [`extension/aperture.css`](extension/aperture.css), [`extension/indicator-card.js`](extension/indicator-card.js), [`extension/palette.js`](extension/palette.js), `extension/fonts/` |
 | Offline packs / flags / IDB | `extension/aperture-packs.js`, `aperture-features.js`, `aperture-store.js` |
 | DevTools (experimental) | [`extension/devtools.html`](extension/devtools.html) |
@@ -123,7 +122,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.2.0.zip (extension runtime only)
+# → aperture-osint-v4.2.1.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -157,6 +156,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.2.1](docs/releases/RELEASE_NOTES_v4.2.1.md) | Light theme; ordered playbook editor; workbench live refresh; side panel removed |
 | [4.2.0](docs/releases/RELEASE_NOTES_v4.2.0.md) | One shared indicator card; anchored pivot popovers; popup as launcher; playbook defaults per IoC type |
 | [4.1.0](docs/releases/RELEASE_NOTES_v4.1.0.md) | Per-domain on-page disable; workbench/pivot UI polish |
 | [4.0.3](docs/releases/RELEASE_NOTES_v4.0.3.md) | Full IPv6 detect, forum/code IoC highlights, dashboard favicon |

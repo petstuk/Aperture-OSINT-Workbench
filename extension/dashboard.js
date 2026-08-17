@@ -37,7 +37,8 @@
     featureFlags: {},
     favorites: [],
     packs: [],
-    installedPacks: {}
+    installedPacks: {},
+    theme: 'system'
   };
 
   function packText(format, items) {
@@ -58,6 +59,7 @@
   let pivotReturnFocus = null;
   let pivotFrame = 0;
   let pivotListening = false;
+  let pendingChange = false;
 
   function pivotNode() {
     return document.getElementById('pivot-drawer');
@@ -414,12 +416,172 @@
     openWorkbenchPivot(h.ioc, h.type || IOCUtils.detectIOCType(h.ioc));
   }
 
+  let playbookToolPicker = null;
+
+  // A playbook is an ordered chain, so the editor is a reorderable list. A native multi-select
+  // loses that order and drops the whole selection on a stray click.
+  function buildToolPicker(pb, triggerEl) {
+    const chosen = (pb && Array.isArray(pb.tools) ? pb.tools : []).map((t) =>
+      IOCUtils.resolveServiceName(t)
+    );
+
+    const el = document.createElement('div');
+    el.className = 'pb-tools';
+    const list = document.createElement('ol');
+    list.className = 'pb-tool-list';
+    const addRow = document.createElement('div');
+    addRow.className = 'pb-tool-add';
+    const select = document.createElement('select');
+    select.id = 'm-tool-add';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'ap-btn ap-btn-secondary ap-btn-sm';
+    addBtn.textContent = 'Add';
+    addRow.appendChild(select);
+    addRow.appendChild(addBtn);
+    el.appendChild(list);
+    el.appendChild(addRow);
+
+    function move(index, delta) {
+      const next = index + delta;
+      if (next < 0 || next >= chosen.length) return;
+      const [item] = chosen.splice(index, 1);
+      chosen.splice(next, 0, item);
+      render();
+    }
+
+    function renderList(suggested) {
+      list.innerHTML = '';
+      if (!chosen.length) {
+        const empty = document.createElement('li');
+        empty.className = 'pb-tool-empty';
+        empty.textContent = 'No services yet — add at least one below.';
+        list.appendChild(empty);
+        return;
+      }
+      chosen.forEach((name, index) => {
+        const row = document.createElement('li');
+        row.className = 'pb-tool-row';
+
+        const num = document.createElement('span');
+        num.className = 'pb-tool-index';
+        num.textContent = String(index + 1);
+        row.appendChild(num);
+
+        const label = document.createElement('span');
+        label.className = 'pb-tool-name';
+        label.textContent = name;
+        label.title = name;
+        row.appendChild(label);
+
+        if (state.services.length && !state.services.includes(name)) {
+          const note = document.createElement('span');
+          note.className = 'pb-tool-note';
+          note.textContent = 'unknown — skipped';
+          note.title = 'No URL template for this service, so a run opens no tab for it.';
+          row.appendChild(note);
+        } else if (suggested.size && !suggested.has(name)) {
+          const note = document.createElement('span');
+          note.className = 'pb-tool-note pb-tool-note-soft';
+          note.textContent = 'not suggested';
+          note.title = 'Still runs, but this service is not one of the usual pivots for this type.';
+          row.appendChild(note);
+        }
+
+        [
+          ['↑', 'Move earlier', () => move(index, -1), index === 0],
+          ['↓', 'Move later', () => move(index, 1), index === chosen.length - 1],
+          [
+            '✕',
+            'Remove ' + name,
+            () => {
+              chosen.splice(index, 1);
+              render();
+            },
+            false
+          ]
+        ].forEach(([glyph, title, onClick, disabled]) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'pb-tool-btn' + (glyph === '✕' ? ' pb-tool-remove' : '');
+          btn.textContent = glyph;
+          btn.title = title;
+          btn.setAttribute('aria-label', title);
+          btn.disabled = !!disabled;
+          btn.addEventListener('click', onClick);
+          row.appendChild(btn);
+        });
+
+        list.appendChild(row);
+      });
+    }
+
+    function renderPicker(suggested) {
+      const type = triggerEl.value;
+      const taken = new Set(chosen);
+      const rest = state.services.filter((s) => !taken.has(s) && !suggested.has(s));
+      const pool = Array.from(suggested).filter((s) => !taken.has(s));
+      select.innerHTML = '';
+      if (!pool.length && !rest.length) {
+        const opt = document.createElement('option');
+        opt.textContent = 'Every service is already in this playbook';
+        select.appendChild(opt);
+        select.disabled = true;
+        addBtn.disabled = true;
+        return;
+      }
+      select.disabled = false;
+      addBtn.disabled = false;
+      const group = (labelText, names) => {
+        if (!names.length) return;
+        const grp = document.createElement('optgroup');
+        grp.label = labelText;
+        names.forEach((name) => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          grp.appendChild(opt);
+        });
+        select.appendChild(grp);
+      };
+      group('Usual pivots for ' + IOCUtils.typeLabel(type), pool);
+      group('All other services', rest);
+    }
+
+    function render() {
+      const suggested = new Set(
+        IOCUtils.toolsFor(triggerEl.value).map((tool) => tool.name)
+      );
+      renderList(suggested);
+      renderPicker(suggested);
+    }
+
+    addBtn.addEventListener('click', () => {
+      const name = select.value;
+      if (!name || chosen.includes(name)) return;
+      chosen.push(name);
+      render();
+    });
+    triggerEl.addEventListener('change', render);
+    render();
+
+    return { el, getTools: () => chosen.slice() };
+  }
+
   function buildPlaybookForm(body, pb) {
     const addField = (labelText, el) => {
       const lab = document.createElement('label');
       lab.textContent = labelText;
       body.appendChild(lab);
       body.appendChild(el);
+    };
+    // Checkboxes read as a statement next to the box, not as a field under a caption.
+    const addCheckField = (labelText, el) => {
+      const lab = document.createElement('label');
+      lab.className = 'modal-check';
+      lab.appendChild(el);
+      lab.appendChild(document.createTextNode(labelText));
+      body.appendChild(lab);
     };
     const name = document.createElement('input');
     name.id = 'm-name';
@@ -435,18 +597,9 @@
       trigger.appendChild(opt);
     });
     addField('Trigger type', trigger);
-    const tools = document.createElement('select');
-    tools.id = 'm-tools';
-    tools.multiple = true;
-    tools.size = 6;
-    state.services.forEach((s) => {
-      const opt = document.createElement('option');
-      opt.value = s;
-      opt.textContent = s;
-      if (pb && (pb.tools || []).includes(s)) opt.selected = true;
-      tools.appendChild(opt);
-    });
-    addField('Tools (Ctrl/Cmd-click multi)', tools);
+    const picker = buildToolPicker(pb, trigger);
+    addField('Services (run in this order)', picker.el);
+    playbookToolPicker = picker;
     const promptEl = document.createElement('input');
     promptEl.id = 'm-prompt';
     promptEl.value = pb ? pb.prompt || '' : '';
@@ -468,21 +621,24 @@
     skipEl.id = 'm-skip-private';
     skipEl.type = 'checkbox';
     skipEl.checked = !!(pb && pb.skipPrivateIp);
-    addField('Skip private / local IPs', skipEl);
+    addCheckField('Skip private / local IPs', skipEl);
     const defaultEl = document.createElement('input');
     defaultEl.id = 'm-default';
     defaultEl.type = 'checkbox';
     defaultEl.checked = !!(pb && state.defaultPlaybookByType[pb.trigger] === pb.id);
-    addField('Default for this type (pivot ▷, ⌘K, context menu)', defaultEl);
+    addCheckField('Default for this type (pivot ▷, ⌘K, context menu)', defaultEl);
   }
 
   async function savePlaybookFromModal(existing) {
     const name = document.getElementById('m-name').value.trim();
     const trigger = document.getElementById('m-trigger').value;
-    const toolsSel = document.getElementById('m-tools');
-    const tools = Array.from(toolsSel.selectedOptions).map((o) => o.value);
-    if (!name || !tools.length) {
-      showToast('Name and tools required');
+    const tools = playbookToolPicker ? playbookToolPicker.getTools() : [];
+    if (!name) {
+      showToast('Name required');
+      return;
+    }
+    if (!tools.length) {
+      showToast('Add at least one service');
       return;
     }
     const entry = {
@@ -543,6 +699,8 @@
   }
 
   async function load() {
+    // Whatever prompted this read, it supersedes any change we were about to refresh for.
+    pendingChange = false;
     const data = await sendMessage({ action: 'getDashboardData' });
     state.history = data.history || [];
     state.cases = data.cases || [];
@@ -558,6 +716,8 @@
     state.favorites = data.favorites || [];
     state.packs = data.packs || [];
     state.installedPacks = data.installedPacks || {};
+    state.theme = data.theme || 'system';
+    ApertureUI.applyTheme(state.theme);
     render();
   }
 
@@ -621,7 +781,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'case-nav' + (state.screen === 'case' && state.caseId === c.id ? ' active' : '');
-      const color = IOCUtils.VERDICT_COLORS[c.verdict] || '#8b93a3';
+      const color = IOCUtils.verdictVar(c.verdict);
       const dot = document.createElement('span');
       dot.className = 'ap-status-dot';
       dot.style.background = color;
@@ -999,8 +1159,8 @@
 
     filtered.slice(0, 80).forEach((h) => {
       const verdict = IOCUtils.normalizeVerdict(h.verdict || h.status);
-      const typeColor = IOCUtils.TYPE_COLORS[h.type] || '#8b93a3';
-      const vColor = IOCUtils.VERDICT_COLORS[verdict] || '#8b93a3';
+      const typeColor = IOCUtils.typeVar(h.type);
+      const vColor = IOCUtils.verdictVar(verdict);
       const enrich = h.enrich || IOCUtils.enrich(h.type, h.ioc);
       const active = state.pivotIoc === h.ioc;
       const row = document.createElement('div');
@@ -1076,7 +1236,7 @@
       value.title = ioc;
       const pill = row.querySelector('.ap-pill');
       pill.textContent = verdict;
-      pill.style.cssText = pillStyle(IOCUtils.VERDICT_COLORS[verdict] || '#8b93a3');
+      pill.style.cssText = pillStyle(IOCUtils.verdictVar(verdict));
       row.querySelector('.rail-row-meta').textContent =
         IOCUtils.typeLabel(type) + (entry ? ' · ' + timeAgo(entry.timestamp) : ' · not in inbox');
       row.addEventListener('click', () => openWorkbenchPivot(ioc, type, row));
@@ -1109,7 +1269,7 @@
       value.textContent = c.id;
       const pill = row.querySelector('.ap-pill');
       pill.textContent = verdict;
-      pill.style.cssText = pillStyle(IOCUtils.VERDICT_COLORS[verdict] || '#8b93a3');
+      pill.style.cssText = pillStyle(IOCUtils.verdictVar(verdict));
       row.querySelector('.rail-row-meta').textContent =
         c.name +
         ' · ' +
@@ -1144,7 +1304,7 @@
       legend.innerHTML = '';
       const types = [...new Set(nodes.map((n) => n.type))].sort();
       types.forEach((t) => {
-        const color = IOCUtils.TYPE_COLORS[t] || '#8b93a3';
+        const color = IOCUtils.typeVar(t);
         const chip = document.createElement('span');
         chip.className = 'ap-pill';
         chip.textContent = IOCUtils.typeLabel(t);
@@ -1168,7 +1328,7 @@
         line.setAttribute('y1', pos[e.source].y);
         line.setAttribute('x2', pos[e.target].x);
         line.setAttribute('y2', pos[e.target].y);
-        line.setAttribute('stroke', '#3a4150');
+        line.style.stroke = 'var(--border-3)';
         line.setAttribute('stroke-width', '1');
         svg.appendChild(line);
       });
@@ -1179,7 +1339,7 @@
         c.setAttribute('cx', pos[n.id].x);
         c.setAttribute('cy', pos[n.id].y);
         c.setAttribute('r', 7);
-        c.setAttribute('fill', IOCUtils.TYPE_COLORS[n.type] || '#8b93a3');
+        c.style.fill = IOCUtils.typeVar(n.type);
         const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
         title.textContent = n.id + ' (' + n.type + ')';
         g.appendChild(title);
@@ -1272,10 +1432,38 @@
       '<div class="set-add"><input id="set-domain-input" type="text" placeholder="e.g. splunk.company.com" spellcheck="false" autocomplete="off" />' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-domain-add">Add</button></div>' +
       '<div id="set-domain-list"></div></div></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Appearance</span>' +
+      '<span class="panel-meta">every Aperture surface</span></div>' +
+      '<div class="set-body"><div class="set-hint">Applies to the workbench, the popup, and the ' +
+      'pivot and palette on pages. Page highlights follow the site you are reading.</div>' +
+      '<div class="seg" id="set-theme" role="group" aria-label="Theme"></div></div></div>' +
       '<div class="ap-panel"><div class="panel-head"><span class="panel-title">OSINT services</span>' +
       '<span class="panel-meta" id="set-service-count"></span></div>' +
       '<div class="set-body set-services" id="set-services"></div></div>' +
       '</div>';
+
+    const themeWrap = root.querySelector('#set-theme');
+    [
+      ['system', 'System'],
+      ['dark', 'Dark'],
+      ['light', 'Light']
+    ].forEach(([value, label]) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'seg-btn' + (state.theme === value ? ' active' : '');
+      btn.textContent = label;
+      btn.setAttribute('aria-pressed', String(state.theme === value));
+      btn.addEventListener('click', async () => {
+        if (state.theme === value) return;
+        const res = await callAction({ action: 'setTheme', theme: value }, null);
+        if (res && res.success !== false) {
+          state.theme = res.theme || value;
+          ApertureUI.applyTheme(state.theme);
+          renderSettings();
+        }
+      });
+      themeWrap.appendChild(btn);
+    });
 
     const overlayBtn = root.querySelector('#set-overlay');
     overlayBtn.classList.toggle('on', state.overlayEnabled);
@@ -1570,7 +1758,7 @@
       state.extractResults.forEach((r, idx) => {
         const row = document.createElement('div');
         row.className = 'extract-row';
-        const color = IOCUtils.TYPE_COLORS[r.type] || '#8b93a3';
+        const color = IOCUtils.typeVar(r.type);
         row.innerHTML =
           '<input type="checkbox" /><div style="flex:1;min-width:0">' +
           '<div class="ioc-val"></div><div class="ioc-meta"></div></div>' +
@@ -1729,7 +1917,7 @@
       state.playbooks.forEach((pb, index) => {
         const card = document.createElement('div');
         card.className = 'pb-card';
-        const trigColor = IOCUtils.TYPE_COLORS[pb.trigger] || '#8b93a3';
+        const trigColor = IOCUtils.typeVar(pb.trigger);
         card.innerHTML =
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
           '<div style="font-size:14px;font-weight:600;color:var(--text-hi)">▷ <span class="pb-name"></span></div>' +
@@ -1762,7 +1950,9 @@
         card.querySelector('.pb-prompt').textContent =
           'Prompt: ' + (pb.prompt || 'Record your finding after the run.');
         const runBtn = card.querySelector('.pb-run');
-        runBtn.textContent = 'Run · opens ' + (pb.tools || []).length + ' tabs';
+        const runnable = IOCUtils.runnableTools(pb.tools).length;
+        runBtn.textContent =
+          'Run · opens ' + runnable + (runnable === 1 ? ' tab' : ' tabs');
         runBtn.addEventListener('click', () => {
           const ioc = prompt('Indicator to run this playbook on:');
           if (!ioc) return;
@@ -1866,7 +2056,7 @@
       row.className = 'pb-default-row';
       const label = document.createElement('span');
       label.className = 'pb-default-type';
-      const color = IOCUtils.TYPE_COLORS[type] || '#8b93a3';
+      const color = IOCUtils.typeVar(type);
       label.textContent = IOCUtils.typeLabel(type);
       label.style.color = color;
       const select = document.createElement('select');
@@ -1880,7 +2070,8 @@
         .forEach((p) => {
           const opt = document.createElement('option');
           opt.value = p.id;
-          opt.textContent = p.name + ' · ' + (p.tools || []).length + ' tabs';
+          const count = IOCUtils.runnableTools(p.tools).length;
+          opt.textContent = p.name + ' · ' + count + (count === 1 ? ' tab' : ' tabs');
           if (state.defaultPlaybookByType[type] === p.id) opt.selected = true;
           select.appendChild(opt);
         });
@@ -1915,7 +2106,7 @@
         '<div class="ap-empty"><div class="ap-empty-glyph">◇</div>Select or create a case.</div>';
       return;
     }
-    const color = IOCUtils.VERDICT_COLORS[c.verdict] || '#8b93a3';
+    const color = IOCUtils.verdictVar(c.verdict);
     const indicators = (c.indicators || [])
       .map((ioc) => state.history.find((h) => h.ioc === ioc) || { ioc, type: IOCUtils.detectIOCType(ioc), verdict: 'unknown' });
 
@@ -2021,7 +2212,7 @@
       rows.innerHTML = '<div class="ap-empty">No indicators in this case</div>';
     } else {
       indicators.forEach((h) => {
-        const typeColor = IOCUtils.TYPE_COLORS[h.type] || '#8b93a3';
+        const typeColor = IOCUtils.typeVar(h.type);
         const v = IOCUtils.normalizeVerdict(h.verdict || h.status);
         const block = document.createElement('div');
         block.className = 'case-ioc-block';
@@ -2038,7 +2229,7 @@
           h.enrich || IOCUtils.enrich(h.type, h.ioc);
         const vp = block.querySelector('.v');
         vp.textContent = v;
-        vp.style.cssText = pillStyle(IOCUtils.VERDICT_COLORS[v] || '#8b93a3');
+        vp.style.cssText = pillStyle(IOCUtils.verdictVar(v));
 
         const notesLab = document.createElement('div');
         notesLab.className = 'case-ioc-notes-label';
@@ -2238,6 +2429,7 @@
     const scrim = document.getElementById('modal-scrim');
     const modal = document.getElementById('modal');
     while (modal.firstChild) modal.removeChild(modal.firstChild);
+    playbookToolPicker = null;
 
     const h2 = document.createElement('h2');
     h2.textContent = title;
@@ -2380,6 +2572,59 @@
     if (message && message.action === 'openPalette') {
       palette.open();
     }
+  });
+
+  // Indicators arrive from surfaces that never touch this page: the on-page pivot, the context
+  // menu, the palette on another tab. Every one of those lands in storage.local, so follow the
+  // write rather than making the analyst reload.
+  let refreshTimer = 0;
+
+  function refreshDeferred() {
+    if (document.hidden) return true;
+    if (document.getElementById('modal-scrim').classList.contains('open')) return true;
+    const el = document.activeElement;
+    if (!el) return false;
+    return (
+      el.tagName === 'INPUT' ||
+      el.tagName === 'TEXTAREA' ||
+      el.tagName === 'SELECT' ||
+      el.isContentEditable === true
+    );
+  }
+
+  async function refreshFromStorage() {
+    clearTimeout(refreshTimer);
+    // A load ran in the meantime — our own save handlers always do one — so there is nothing left.
+    if (!pendingChange) return;
+    if (refreshDeferred()) {
+      refreshTimer = setTimeout(refreshFromStorage, 1000);
+      return;
+    }
+
+    const main = document.querySelector('.main');
+    const scrollTop = main ? main.scrollTop : 0;
+    const openIoc = pivotNode() && pivotNode().classList.contains('open') ? state.pivotIoc : null;
+
+    await load();
+
+    if (main) main.scrollTop = scrollTop;
+    if (openIoc) {
+      pivotAnchor = pivotAnchorFor(openIoc) || pivotAnchor;
+      markPivotingRow();
+      repositionWorkbenchPivot();
+    }
+  }
+
+  browserAPI.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    if (!changes.iocHistory && !changes.cases) return;
+    pendingChange = true;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(refreshFromStorage, 300);
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && pendingChange) refreshFromStorage();
   });
 
   function applyHash() {

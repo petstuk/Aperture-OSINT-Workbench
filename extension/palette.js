@@ -202,7 +202,7 @@
     const play = IOCUtils.playbookForType(type, context.playbooks, context.defaultPlaybookByType);
     const items = [];
     if (play) {
-      const tabs = (play.tools || []).length;
+      const tabs = IOCUtils.runnableTools(play.tools).length;
       items.push({
         icon: '▷',
         label: play.name + ' · ' + tabs + (tabs === 1 ? ' tab' : ' tabs'),
@@ -228,27 +228,16 @@
     };
   }
 
+  // Takes a colour or a var() reference, so pills follow a theme switch without re-rendering.
   function pillStyle(color) {
-    const n = parseInt(color.slice(1), 16);
-    const r = (n >> 16) & 255;
-    const g = (n >> 8) & 255;
-    const b = n & 255;
     return (
       'color:' +
       color +
-      ';background:rgba(' +
-      r +
-      ',' +
-      g +
-      ',' +
-      b +
-      ',.12);border-color:rgba(' +
-      r +
-      ',' +
-      g +
-      ',' +
-      b +
-      ',.28)'
+      ';background:color-mix(in srgb, ' +
+      color +
+      ' 14%, transparent);border-color:color-mix(in srgb, ' +
+      color +
+      ' 32%, transparent)'
     );
   }
 
@@ -264,6 +253,46 @@
     el.classList.add('show');
     clearTimeout(el._t);
     el._t = setTimeout(() => el.classList.remove('show'), 2400);
+  }
+
+  const THEME_KEY = 'apertureTheme';
+  let themePref = 'system';
+  let themeWatching = false;
+
+  function resolveTheme(pref) {
+    if (pref === 'light' || pref === 'dark') return pref;
+    try {
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    } catch (_) {
+      return 'dark';
+    }
+  }
+
+  // Mirrors the synced preference into localStorage so theme-boot.js can apply it before paint.
+  function applyTheme(pref) {
+    themePref = pref === 'light' || pref === 'dark' ? pref : 'system';
+    try {
+      localStorage.setItem(THEME_KEY, themePref);
+    } catch (_) {
+      /* storage blocked: the class below still applies for this session */
+    }
+    const resolved = resolveTheme(themePref);
+    const root = document.documentElement;
+    root.classList.toggle('ap-theme-light', resolved === 'light');
+    root.classList.toggle('ap-theme-dark', resolved !== 'light');
+    if (!themeWatching) {
+      themeWatching = true;
+      try {
+        window
+          .matchMedia('(prefers-color-scheme: light)')
+          .addEventListener('change', () => {
+            if (themePref === 'system') applyTheme('system');
+          });
+      } catch (_) {
+        /* older engines: theme resolves on next load */
+      }
+    }
+    return resolved;
   }
 
   function sendMessage(message) {
@@ -304,6 +333,8 @@
     indicatorGroup,
     pillStyle,
     showToast,
-    sendMessage
+    sendMessage,
+    applyTheme,
+    resolveTheme
   };
 })(typeof window !== 'undefined' ? window : self);

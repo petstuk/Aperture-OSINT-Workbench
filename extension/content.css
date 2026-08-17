@@ -21,10 +21,15 @@
   src: url('fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
 }
 
+/* Highlights sit in the host's content, so they track the page's own background rather than the
+   Aperture theme: content.js adds .soc-ioc-onlight when the page reads as light. */
 .soc-ioc {
+  --hl: #8b93a3;
   font-family: 'IBM Plex Mono', ui-monospace, monospace;
   font-size: inherit;
-  border-bottom: 1.5px dashed;
+  color: var(--hl);
+  background: color-mix(in srgb, var(--hl) 12%, transparent);
+  border-bottom: 1.5px dashed color-mix(in srgb, var(--hl) 55%, transparent);
   border-radius: 2px;
   padding: 0 1px;
   cursor: pointer;
@@ -33,41 +38,25 @@
 .soc-ioc:hover {
   filter: brightness(1.15);
 }
-.soc-ioc-ip {
-  color: #56b6c2;
-  background: rgba(86, 182, 194, 0.1);
-  border-color: rgba(86, 182, 194, 0.55);
-}
+.soc-ioc-ip { --hl: #56b6c2; }
 .soc-ioc-domain,
-.soc-ioc-url {
-  color: #61afef;
-  background: rgba(97, 175, 239, 0.1);
-  border-color: rgba(97, 175, 239, 0.55);
-}
-.soc-ioc-hash {
-  color: #c678dd;
-  background: rgba(198, 120, 221, 0.1);
-  border-color: rgba(198, 120, 221, 0.55);
-}
-.soc-ioc-email {
-  color: #d9a15b;
-  background: rgba(217, 161, 91, 0.1);
-  border-color: rgba(217, 161, 91, 0.55);
-}
-.soc-ioc-cve {
-  color: #e06c75;
-  background: rgba(224, 108, 117, 0.1);
-  border-color: rgba(224, 108, 117, 0.55);
-}
-.soc-ioc-btc {
-  color: #98c379;
-  background: rgba(152, 195, 121, 0.1);
-  border-color: rgba(152, 195, 121, 0.55);
-}
-.soc-ioc-asn {
-  color: #8b93a3;
-  background: rgba(139, 147, 163, 0.1);
-  border-color: rgba(139, 147, 163, 0.55);
+.soc-ioc-url { --hl: #61afef; }
+.soc-ioc-hash { --hl: #c678dd; }
+.soc-ioc-email { --hl: #d9a15b; }
+.soc-ioc-cve { --hl: #e06c75; }
+.soc-ioc-btc { --hl: #98c379; }
+.soc-ioc-asn { --hl: #8b93a3; }
+
+.soc-ioc-onlight.soc-ioc-ip { --hl: #0f6f83; }
+.soc-ioc-onlight.soc-ioc-domain,
+.soc-ioc-onlight.soc-ioc-url { --hl: #1568b0; }
+.soc-ioc-onlight.soc-ioc-hash { --hl: #7433a0; }
+.soc-ioc-onlight.soc-ioc-email { --hl: #8a5300; }
+.soc-ioc-onlight.soc-ioc-cve { --hl: #b32820; }
+.soc-ioc-onlight.soc-ioc-btc { --hl: #2b7a2f; }
+.soc-ioc-onlight.soc-ioc-asn { --hl: #566073; }
+.soc-ioc-onlight:hover {
+  filter: brightness(0.9);
 }
 
 /* Card geometry lives in aperture.css (also injected here); host pages only need to be outranked */
@@ -82,13 +71,13 @@
   transform: translateX(-50%);
   z-index: 2147483647;
   padding: 10px 14px;
-  background: #12161f;
-  border: 1px solid #2f3745;
-  border-radius: 6px;
-  color: #d4d8e0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-3);
+  border-radius: var(--radius);
+  color: var(--text);
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-float);
   display: none;
 }
 .ap-pivot-toast.show {

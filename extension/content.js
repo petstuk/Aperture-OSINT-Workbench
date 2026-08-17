@@ -22,6 +22,52 @@
   let toastEl = null;
   let activePivotKey = null;
   let overlayLoadGen = 0;
+  let themePref = 'system';
+  let pageIsLight = false;
+
+  function resolvedTheme() {
+    if (themePref === 'light' || themePref === 'dark') return themePref;
+    try {
+      return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    } catch (_) {
+      return 'dark';
+    }
+  }
+
+  // Aperture's own surfaces follow the user's theme; they carry the class because the token
+  // definitions deliberately do not live on the host page's :root.
+  function applyThemeClass(el) {
+    if (!el) return;
+    const theme = resolvedTheme();
+    el.classList.toggle('ap-theme-light', theme === 'light');
+    el.classList.toggle('ap-theme-dark', theme !== 'light');
+  }
+
+  function refreshThemeClasses() {
+    [pivotEl, toastEl]
+      .concat(Array.from(document.querySelectorAll('.ap-palette-scrim, .ap-palette')))
+      .forEach(applyThemeClass);
+  }
+
+  // Highlights sit in the page's own content, so they follow the page, not the Aperture theme.
+  function detectPageIsLight() {
+    let el = document.body;
+    while (el) {
+      const bg = getComputedStyle(el).backgroundColor;
+      const m = String(bg).match(/rgba?\(([^)]+)\)/);
+      if (m) {
+        const p = m[1].split(/[,/]/).map((x) => parseFloat(x));
+        const alpha = p.length > 3 ? p[3] : 1;
+        if (alpha > 0.5) {
+          const l = (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255;
+          return l > 0.5;
+        }
+      }
+      el = el.parentElement;
+    }
+    // Nothing opaque set: browsers paint the canvas white.
+    return true;
+  }
 
   function pageHostname() {
     try {
@@ -71,6 +117,7 @@
       toastEl.className = 'ap-pivot-toast';
       document.documentElement.appendChild(toastEl);
     }
+    applyThemeClass(toastEl);
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     clearTimeout(toastEl._t);
@@ -141,7 +188,8 @@
       }
 
       const span = document.createElement('span');
-      span.className = 'soc-ioc soc-ioc-' + match.type;
+      span.className =
+        'soc-ioc soc-ioc-' + match.type + (pageIsLight ? ' soc-ioc-onlight' : '');
       span.dataset.ioc = match.value;
       span.dataset.type = match.type;
       if (href) span.dataset.href = href;
@@ -300,6 +348,7 @@
       pivotEl.appendChild(caret);
       document.documentElement.appendChild(pivotEl);
     }
+    applyThemeClass(pivotEl);
     return pivotEl;
   }
 
@@ -419,6 +468,11 @@
       ]);
 
       if (activePivotKey !== key) return;
+
+      if (config && config.theme && config.theme !== themePref) {
+        themePref = config.theme;
+        refreshThemeClasses();
+      }
 
       ApertureIndicatorCard.render(tip, {
         ioc,
@@ -594,12 +648,15 @@
         return first ? [first].concat(groups) : groups;
       }
     });
+    refreshThemeClasses();
   }
 
   async function refreshOverlayConfig() {
     try {
       const cfg = await sendMessage({ action: 'getOverlayConfig' });
       window.__apertureOverlayConfig = cfg || {};
+      themePref = (cfg && cfg.theme) || 'system';
+      refreshThemeClasses();
       if (overlayEnabled) initPagePalette();
     } catch (_) {
       window.__apertureOverlayConfig = {};
@@ -619,13 +676,23 @@
     }
   });
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      loadOverlaySetting();
-      refreshOverlayConfig();
+  try {
+    window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+      if (themePref === 'system') refreshThemeClasses();
     });
-  } else {
+  } catch (_) {
+    /* older engines: the theme still resolves on next open */
+  }
+
+  function start() {
+    pageIsLight = detectPageIsLight();
     loadOverlaySetting();
     refreshOverlayConfig();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
   }
 })();

@@ -18,6 +18,10 @@ google-chrome --headless=new --disable-gpu --hide-scrollbars \
 
 magick .github/dashboard-shot.png -crop 1440x720+0+0 +repage -resize 1280x640 \
   -depth 8 .github/social-preview.png
+
+# Chrome Web Store screenshot, same shot at the store's 1280x800
+magick .github/dashboard-shot.png -resize 1280x800 -depth 8 \
+  docs/store/chrome-store-1280x800.png
 ```
 
 Do **not** composite `icon512.png` onto the shot — the dashboard header already has the brand mark.

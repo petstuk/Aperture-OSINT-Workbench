@@ -13,25 +13,13 @@
   const CARET_INSET = 14;
   const MIN_HEIGHT = 200;
 
-  function hexA(hex, alpha) {
-    const n = parseInt(String(hex || '#8b93a3').slice(1), 16);
-    return (
-      'rgba(' +
-      ((n >> 16) & 255) +
-      ',' +
-      ((n >> 8) & 255) +
-      ',' +
-      (n & 255) +
-      ',' +
-      alpha +
-      ')'
-    );
+  // Both take a colour or a var() reference, so the card follows a theme switch as it stands.
+  function mix(color, percent) {
+    return 'color-mix(in srgb, ' + color + ' ' + percent + '%, transparent)';
   }
 
   function pillStyle(color) {
-    return (
-      'color:' + color + ';background:' + hexA(color, 0.12) + ';border-color:' + hexA(color, 0.28)
-    );
+    return 'color:' + color + ';background:' + mix(color, 14) + ';border-color:' + mix(color, 32);
   }
 
   function timeAgo(ts) {
@@ -154,7 +142,7 @@
   }
 
   function buildHead(opts, api) {
-    const typeColor = (IOCUtils.TYPE_COLORS && IOCUtils.TYPE_COLORS[opts.type]) || '#8b93a3';
+    const typeColor = IOCUtils.typeVar(opts.type);
     const head = document.createElement('div');
     head.className = 'ap-pivot-head';
 
@@ -235,7 +223,7 @@
     playBtn.type = 'button';
     playBtn.className = 'ap-pivot-play';
     if (play) {
-      const tabs = (play.tools || []).length;
+      const tabs = IOCUtils.runnableTools(play.tools).length;
       playBtn.textContent = '▷ ' + play.name + ' · ' + tabs + (tabs === 1 ? ' tab' : ' tabs');
       playBtn.title = 'Run ' + play.name;
       playBtn.addEventListener('click', async () => {
@@ -319,7 +307,7 @@
     const grid = document.createElement('div');
     grid.className = 'ap-pivot-verdicts';
     VERDICTS.forEach(([key, label]) => {
-      const color = IOCUtils.VERDICT_COLORS[key];
+      const color = IOCUtils.verdictVar(key);
       const isActive = active === key;
       const btn = textButton(label, 'ap-pivot-verdict' + (isActive ? ' active' : ''), async () => {
         const res = await api.send({ action: 'setVerdict', ioc: opts.ioc, verdict: key });
@@ -332,8 +320,8 @@
       });
       btn.title = key;
       btn.style.color = color;
-      btn.style.borderColor = hexA(color, isActive ? 0.55 : 0.35);
-      btn.style.background = hexA(color, isActive ? 0.2 : 0.08);
+      btn.style.borderColor = mix(color, isActive ? 55 : 35);
+      btn.style.background = mix(color, isActive ? 20 : 8);
       grid.appendChild(btn);
     });
     sec.appendChild(grid);

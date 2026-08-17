@@ -40,6 +40,8 @@ const defaultServices = {
   'MITRE ATT&CK': true
 };
 
+// Keep the keys in step with IOCUtils.SERVICE_ALIASES: other surfaces use that list to tell
+// which playbook entries will actually open a tab.
 const serviceUrls = {
   VirusTotal: 'https://www.virustotal.com/gui/search/[QUERY]',
   AbuseIPDB: 'https://www.abuseipdb.com/check/[QUERY]',
@@ -266,6 +268,12 @@ async function getPlaybooks() {
     }));
   }
   return IOCUtils.defaultPlaybooks();
+}
+
+const THEMES = ['system', 'dark', 'light'];
+
+function normalizeTheme(value) {
+  return THEMES.includes(value) ? value : 'system';
 }
 
 // A default that no longer matches an existing playbook of that type is dropped, so a
@@ -868,7 +876,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             'enabledServices',
             'playbooks',
             'customCombinations',
-            'defaultPlaybookByType'
+            'defaultPlaybookByType',
+            'theme'
           ]);
           const playbooks =
             data.playbooks && data.playbooks.length
@@ -880,7 +889,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             enabledServices: data.enabledServices || enabledServices || defaultServices,
             playbooks,
             customCombinations: playbooks,
-            defaultPlaybookByType: pruneDefaultPlaybooks(data.defaultPlaybookByType, playbooks)
+            defaultPlaybookByType: pruneDefaultPlaybooks(data.defaultPlaybookByType, playbooks),
+            theme: normalizeTheme(data.theme)
           });
         } catch (error) {
           console.error('Error loading overlay config:', error);
@@ -889,7 +899,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             disabledDomains: [],
             enabledServices: enabledServices || defaultServices,
             playbooks: [],
-            customCombinations: []
+            customCombinations: [],
+            theme: 'system'
           });
         }
         break;
@@ -1008,7 +1019,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
               'enabledServices',
               'overlayEnabled',
               'disabledDomains',
-              'defaultPlaybookByType'
+              'defaultPlaybookByType',
+              'theme'
             ]),
             storageGet('local', [
               'apertureFeatures',
@@ -1031,6 +1043,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             disabledDomains: normalizeDisabledDomainsList(sync.disabledDomains || []),
             defaultPlaybookByType: pruneDefaultPlaybooks(sync.defaultPlaybookByType, playbooks),
             services: Object.keys(serviceUrls),
+            theme: normalizeTheme(sync.theme),
             featureFlags,
             session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
             installedPacks: local.aperturePacksInstalled || {},
@@ -1049,6 +1062,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             disabledDomains: [],
             defaultPlaybookByType: {},
             services: Object.keys(serviceUrls),
+            theme: 'system',
             featureFlags: {},
             session: { caseId: null, paused: false, excludeDomains: [] },
             installedPacks: {},
@@ -1346,6 +1360,13 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         break;
       }
 
+      case 'setTheme': {
+        const theme = normalizeTheme(message.theme);
+        await storageSet('sync', { theme });
+        respond({ success: true, theme });
+        break;
+      }
+
       case 'setDisabledDomains': {
         const domains = normalizeDisabledDomainsList(message.domains || message.disabledDomains);
         await storageSet('sync', { disabledDomains: domains });
@@ -1528,24 +1549,6 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         else favs.unshift(ioc);
         await storageSet('local', { apertureFavorites: favs.slice(0, 100) });
         respond({ success: true, favorites: favs });
-        break;
-      }
-
-      case 'openSidePanel': {
-        // Chrome sidePanel API when available; otherwise open dedicated panel page
-        if (browserAPI.sidePanel && browserAPI.sidePanel.open) {
-          try {
-            const win = await browserAPI.windows.getCurrent();
-            await browserAPI.sidePanel.open({ windowId: win.id });
-            respond({ success: true, mode: 'sidePanel' });
-            break;
-          } catch (_) {
-            /* fall through to tab */
-          }
-        }
-        const url = browserAPI.runtime.getURL('sidepanel.html');
-        browserAPI.tabs.create({ url });
-        respond({ success: true, mode: 'tab' });
         break;
       }
 

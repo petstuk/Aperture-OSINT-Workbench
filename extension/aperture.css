@@ -48,7 +48,13 @@
   src: url('fonts/ibm-plex-mono-latin-600-normal.woff2') format('woff2');
 }
 
-:root {
+/* Tokens are defined on Aperture's own surfaces, never on :root: this sheet is injected into
+   every page, and names like --text or --accent would otherwise land on the host's html element
+   and could outrank the site's own variables. The :where() list is the fallback for an injected
+   root before its theme class is set; .ap-theme-light outranks it. */
+.ap-theme-dark,
+:where(html:not(.ap-theme-dark):not(.ap-theme-light))
+  :where(.ap-pivot, .ap-palette, .ap-palette-scrim, .ap-toast, .ap-pivot-toast) {
   --bg: #0b0e14;
   --bg-browser: #08090c;
   --top-bar: #0d1017;
@@ -66,8 +72,8 @@
   --text: #d4d8e0;
   --text-2: #c3cad6;
   --text-muted: #8b93a3;
-  --text-dim: #5a6273;
-  --text-faint: #4b5364;
+  --text-dim: #828b9b;
+  --text-faint: #7b8494;
   --accent: #61afef;
   --accent-hover: #4f96d6;
   --accent-ink: #07101a;
@@ -77,19 +83,95 @@
   --review: #c678dd;
   --ip: #56b6c2;
   --domain: #61afef;
+  --url: #61afef;
   --hash: #c678dd;
   --email: #d9a15b;
   --cve: #e06c75;
   --btc: #98c379;
   --asn: #8b93a3;
+  --eth: #627eea;
+  --attack: #e06c75;
+  --ja3: #c678dd;
+  --path: #56b6c2;
+  --onion: #7c8490;
+  --telegram: #2aabee;
+  --discord: #6f7bf4;
+  --cwe: #e06c75;
+  --uuid: #8b93a3;
+  --arn: #d9a15b;
+  --package: #61afef;
+  --unknown: #8b93a3;
+  --new: #8b93a3;
   --radius-sm: 5px;
   --radius: 6px;
   --radius-panel: 8px;
   --radius-float: 12px;
   --shadow-float: 0 20px 60px rgba(0, 0, 0, 0.6);
   --shadow-palette: 0 30px 80px rgba(0, 0, 0, 0.7);
+  --scrim: rgba(5, 7, 10, 0.72);
   --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+.ap-theme-light {
+  --bg: #f4f6f9;
+  --bg-browser: #e7eaef;
+  --top-bar: #ffffff;
+  --sidebar: #eef1f5;
+  --surface: #ffffff;
+  --surface-2: #f4f6f9;
+  --surface-3: #e9edf3;
+  --inset: #ffffff;
+  --border: #dde2ea;
+  --border-2: #ced5e0;
+  --border-3: #b0b9c7;
+  --divider: #e4e8ee;
+  --divider-faint: #edf0f4;
+  --text-hi: #10151d;
+  --text: #1d2530;
+  --text-2: #2c3542;
+  --text-muted: #566073;
+  --text-dim: #5a6473;
+  --text-faint: #5f6979;
+  --accent: #1568b0;
+  --accent-hover: #0f5490;
+  --accent-ink: #ffffff;
+  --benign: #2b7a2f;
+  --suspicious: #8a5300;
+  --malicious: #b32820;
+  --review: #7433a0;
+  --ip: #0f6f83;
+  --domain: #1568b0;
+  --url: #1568b0;
+  --hash: #7433a0;
+  --email: #8a5300;
+  --cve: #b32820;
+  --btc: #2b7a2f;
+  --asn: #566073;
+  --eth: #3b4fbe;
+  --attack: #b32820;
+  --ja3: #7433a0;
+  --path: #0f6f83;
+  --onion: #5b6472;
+  --telegram: #0a6a9e;
+  --discord: #3f4bc4;
+  --cwe: #b32820;
+  --uuid: #566073;
+  --arn: #8a5300;
+  --package: #1568b0;
+  --unknown: #566073;
+  --new: #566073;
+  --shadow-float: 0 18px 48px rgba(16, 21, 29, 0.16);
+  --shadow-palette: 0 26px 64px rgba(16, 21, 29, 0.22);
+  --scrim: rgba(28, 36, 48, 0.38);
+}
+
+.ap-theme-dark {
+  color-scheme: dark;
+}
+
+.ap-theme-light {
+  color-scheme: light;
 }
 
 /* This sheet is injected into every page, so the resets are scoped to extension pages and to
@@ -122,17 +204,53 @@ body.aperture {
   cursor: pointer;
 }
 
+/* Without these, form controls fall back to the browser's light widgets inside a dark UI.
+   color-scheme rides on the .ap-theme-* class rather than :root, which on a host page is the
+   site's own root and would restyle its controls and scrollbars. */
+:where(body.aperture, .ap-pivot, .ap-palette) input,
+:where(body.aperture, .ap-pivot, .ap-palette) select,
+:where(body.aperture, .ap-pivot, .ap-palette) textarea {
+  background: var(--inset);
+  border: 1px solid var(--border-2);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 12.5px;
+  outline: none;
+}
+
+:where(body.aperture, .ap-pivot, .ap-palette) input:focus,
+:where(body.aperture, .ap-pivot, .ap-palette) select:focus,
+:where(body.aperture, .ap-pivot, .ap-palette) textarea:focus {
+  border-color: var(--accent);
+}
+
+:where(body.aperture, .ap-pivot, .ap-palette) input::placeholder,
+:where(body.aperture, .ap-pivot, .ap-palette) textarea::placeholder {
+  color: var(--text-dim);
+}
+
+:where(body.aperture, .ap-pivot, .ap-palette) input[type='checkbox'],
+:where(body.aperture, .ap-pivot, .ap-palette) input[type='radio'] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  accent-color: var(--accent);
+}
+
 :where(body.aperture) a {
   color: var(--accent);
   text-decoration: none;
 }
 
 :where(body.aperture) a:hover {
-  color: #8cc6f5;
+  color: color-mix(in srgb, var(--accent) 78%, var(--text-hi));
 }
 
 :where(body.aperture, .ap-pivot, .ap-palette) ::selection {
-  background: rgba(97, 175, 239, 0.28);
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
 :where(body.aperture, .ap-pivot, .ap-palette) ::-webkit-scrollbar {
@@ -317,7 +435,7 @@ body.aperture {
 .ap-palette-scrim {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 10, 0.72);
+  background: var(--scrim);
   backdrop-filter: blur(3px);
   display: none;
   justify-content: center;
@@ -553,7 +671,7 @@ body.aperture {
 }
 .ap-pivot-nav {
   padding: 10px 14px;
-  background: rgba(217, 161, 91, 0.06);
+  background: color-mix(in srgb, var(--suspicious) 7%, transparent);
   border-bottom: 1px solid var(--divider);
   flex-shrink: 0;
 }
@@ -566,13 +684,13 @@ body.aperture {
   height: 28px;
   border-radius: var(--radius-sm);
   color: var(--suspicious);
-  border: 1px solid rgba(217, 161, 91, 0.38);
-  background: rgba(217, 161, 91, 0.12);
+  border: 1px solid color-mix(in srgb, var(--suspicious) 38%, transparent);
+  background: color-mix(in srgb, var(--suspicious) 12%, transparent);
   font-size: 11px;
   font-weight: 700;
 }
 .ap-pivot-nav-open:hover {
-  border-color: rgba(217, 161, 91, 0.6);
+  border-color: color-mix(in srgb, var(--suspicious) 60%, transparent);
 }
 .ap-pivot-nav-btn {
   height: 28px;

@@ -57,6 +57,10 @@
             if (typeof cb === 'function') cb();
             return Promise.resolve();
           }
+        },
+        onChanged: {
+          addListener: function () {},
+          removeListener: function () {}
         }
       }
     };
@@ -315,7 +319,10 @@
     playbooks,
     enabledServices,
     overlayEnabled: false,
+    disabledDomains: [],
+    defaultPlaybookByType: {},
     services,
+    theme: 'dark',
     featureFlags: {},
     session: { caseId: 'CASE-2041', paused: false, excludeDomains: [] },
     installedPacks: { 'attack-stix-lite': true, 'lolbas-index': true },
@@ -366,7 +373,6 @@
         [
           'setSession',
           'clearSession',
-          'openSidePanel',
           'openDashboard',
           'setTags',
           'updateNotes',
@@ -374,7 +380,8 @@
           'searchService',
           'runPlaybook',
           'clearHistory',
-          'deleteCase'
+          'deleteCase',
+          'setTheme'
         ].includes(action)
       ) {
         return Promise.resolve({ success: true });
