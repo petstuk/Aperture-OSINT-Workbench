@@ -13,6 +13,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 | **Version** | 4.2.2 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
+| **Chrome Web Store** | [chromewebstore.google.com/…/hpbeikjdpgemejlekddlaphdlaemjhgb](https://chromewebstore.google.com/detail/aperture-%E2%80%94-osint-workbenc/hpbeikjdpgemejlekddlaphdlaemjhgb) |
 | **License** | [MIT](LICENSE) |
 | **Formerly** | SOC OSINT Search |
 
@@ -68,6 +69,8 @@ Install from [Firefox Browser Add-ons](https://addons.mozilla.org/en-GB/firefox/
 2. Select [`extension/manifest.json`](extension/manifest.json)
 
 ### Chrome / Chromium
+
+Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/aperture-%E2%80%94-osint-workbenc/hpbeikjdpgemejlekddlaphdlaemjhgb), or load unpacked:
 
 1. `chrome://extensions` → enable **Developer mode**
 2. **Load unpacked** → select the [`extension/`](extension/) folder
