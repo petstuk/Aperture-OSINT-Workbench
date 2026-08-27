@@ -38,7 +38,8 @@
     favorites: [],
     packs: [],
     installedPacks: {},
-    theme: 'system'
+    theme: 'system',
+    feedbackPromptDismissed: false
   };
 
   function packText(format, items) {
@@ -718,6 +719,11 @@
     state.installedPacks = data.installedPacks || {};
     state.theme = data.theme || 'system';
     ApertureUI.applyTheme(state.theme);
+    const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
+    const flags = await new Promise((resolve) =>
+      browserAPI.storage.local.get('apertureFeedbackDismissed', resolve)
+    );
+    state.feedbackPromptDismissed = !!flags.apertureFeedbackDismissed;
     render();
   }
 
@@ -825,6 +831,27 @@
     renderInbox(root.querySelector('#ov-inbox'));
     renderPinnedRail(root.querySelector('#ov-pinned'));
     renderCasesRail(root.querySelector('#ov-cases'));
+
+    if (!state.feedbackPromptDismissed) {
+      const banner = document.createElement('div');
+      banner.className = 'feedback-banner';
+      banner.innerHTML =
+        '<span>Ideas or friction? Post on GitHub Discussions — Aperture does not send reports.</span>' +
+        '<span class="feedback-banner-actions">' +
+        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback">Share feedback</button>' +
+        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback-dismiss">Dismiss</button>' +
+        '</span>';
+      root.insertBefore(banner, root.querySelector('.metrics-rail'));
+      banner.querySelector('#ov-feedback').addEventListener('click', async () => {
+        await dismissFeedbackPrompt();
+        openFeedbackDiscussion();
+        renderOverview();
+      });
+      banner.querySelector('#ov-feedback-dismiss').addEventListener('click', async () => {
+        await dismissFeedbackPrompt();
+        renderOverview();
+      });
+    }
 
     root.querySelector('#ov-extract').addEventListener('click', () => go('extract'));
     root.querySelector('#ov-new-case').addEventListener('click', openNewCaseModal);
@@ -1410,6 +1437,51 @@
     });
   }
 
+  const GITHUB_REPO = 'https://github.com/petstuk/Aperture-OSINT-Workbench';
+
+  function extensionVersion() {
+    try {
+      const api = typeof browser !== 'undefined' ? browser : chrome;
+      return (api.runtime.getManifest() || {}).version || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function openExternal(url) {
+    const api = typeof browser !== 'undefined' ? browser : chrome;
+    if (api.tabs && typeof api.tabs.create === 'function') {
+      api.tabs.create({ url });
+      return;
+    }
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function openFeedbackDiscussion() {
+    openExternal(GITHUB_REPO + '/discussions/2');
+  }
+
+  async function dismissFeedbackPrompt() {
+    const api = typeof browser !== 'undefined' ? browser : chrome;
+    state.feedbackPromptDismissed = true;
+    await new Promise((resolve) =>
+      api.storage.local.set({ apertureFeedbackDismissed: true }, resolve)
+    );
+  }
+
+  function openBugIssue() {
+    const version = extensionVersion();
+    const body = [
+      '**Version:** ' + (version || '(unknown)'),
+      '**Browser:** ',
+      '**Install:** store / unpacked',
+      '',
+      '<!-- Describe the bug. Do not include IoCs or case data. -->',
+      ''
+    ].join('\n');
+    openExternal(GITHUB_REPO + '/issues/new?' + new URLSearchParams({ body: body }).toString());
+  }
+
   // Everything persistent lives here; the popup only owns the current tab, Labs only owns flags.
   function renderSettings() {
     const root = screens.settings;
@@ -1440,6 +1512,14 @@
       '<div class="ap-panel"><div class="panel-head"><span class="panel-title">OSINT services</span>' +
       '<span class="panel-meta" id="set-service-count"></span></div>' +
       '<div class="set-body set-services" id="set-services"></div></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Feedback</span>' +
+      '<span class="panel-meta">GitHub, no telemetry</span></div>' +
+      '<div class="set-body"><div class="set-hint">Opens GitHub in a new tab. You post it — Aperture does not send reports.</div>' +
+      '<div class="set-row"><span class="set-row-value">Ideas and questions</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-feedback">Open Discussions</button></div>' +
+      '<div class="set-row"><span class="set-row-value">Bugs and regressions</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-bug">Open an issue</button></div>' +
+      '</div></div>' +
       '</div>';
 
     const themeWrap = root.querySelector('#set-theme');
@@ -1573,6 +1653,8 @@
     }
 
     root.querySelector('#set-playbooks').addEventListener('click', () => go('playbooks'));
+    root.querySelector('#set-feedback').addEventListener('click', openFeedbackDiscussion);
+    root.querySelector('#set-bug').addEventListener('click', openBugIssue);
   }
 
   function renderLabs() {
@@ -2525,7 +2607,8 @@
         { icon: '▷', label: 'Playbooks', meta: 'navigate', onClick: () => go('playbooks') },
         { icon: '◈', label: 'Graph', meta: 'navigate', onClick: () => go('graph') },
         { icon: '▣', label: 'Offline packs', meta: 'navigate', onClick: () => go('packs') },
-        { icon: '⚗', label: 'Labs', meta: 'navigate', onClick: () => go('labs') }
+        { icon: '⚗', label: 'Labs', meta: 'navigate', onClick: () => go('labs') },
+        { icon: '✎', label: 'Send feedback', meta: 'GitHub Discussions', onClick: openFeedbackDiscussion }
       ];
       const cases = state.cases.map((c) => ({
         icon: '◇',
