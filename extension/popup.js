@@ -82,6 +82,17 @@
 
   document.getElementById('btn-workbench').addEventListener('click', () => openWorkbench('overview'));
 
+  document.getElementById('btn-feedback').addEventListener('click', async () => {
+    const url = 'https://github.com/petstuk/Aperture-OSINT-Workbench/discussions/2';
+    try {
+      await browserAPI.tabs.create({ url });
+      window.close();
+    } catch (err) {
+      console.error(err);
+      showToast('Could not open feedback');
+    }
+  });
+
   overlayToggle.addEventListener('click', async () => {
     state.overlayEnabled = !state.overlayEnabled;
     await sendMessage({ action: 'setOverlayEnabled', enabled: state.overlayEnabled });

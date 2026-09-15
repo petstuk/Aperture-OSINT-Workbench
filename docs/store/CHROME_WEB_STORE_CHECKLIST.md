@@ -1,4 +1,4 @@
-# Chrome Web Store Prep — Aperture v4.1.0
+# Chrome Web Store Prep — Aperture v4.3.0
 
 ## Account
 - [ ] Chrome Web Store developer account
@@ -7,7 +7,7 @@
 ## Package
 ```bash
 ./scripts/package.sh
-# Upload aperture-osint-v4.1.0.zip
+# Upload aperture-osint-v4.3.0.zip
 ```
 - [ ] Load unpacked in Chrome (`chrome://extensions`) — Manifest V3
 - [ ] Popup, dashboard, overlay, disabled domains, context menu smoke test
@@ -30,7 +30,7 @@ Paste or select an indicator of compromise — such as an IP, domain, URL, email
 • On-page detect (opt-in) — highlight IoCs and open a pivot card; disable on specific domains when needed
 • Context menu and command palette for fast lookup
 
-Core use requires no API keys, no accounts, and no telemetry. Parsing stays on-device; network use is limited to the public OSINT tabs you choose to open. Optional Labs features (local LLM / API enrichment) are off by default.
+Core use requires no API keys, no accounts, and no telemetry. Parsing stays on-device; network use is limited to the public OSINT tabs you choose to open.
 
 Formerly published as SOC OSINT Search.
 ```

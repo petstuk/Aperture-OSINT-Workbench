@@ -1495,13 +1495,6 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
           (await storageGet('local', 'aperturePacksInstalled')).aperturePacksInstalled || {};
         installed[message.id] = true;
         await storageSet('local', { aperturePacksInstalled: installed });
-        try {
-          if (typeof ApertureStore !== 'undefined') {
-            await ApertureStore.cacheSet('pack:' + message.id, pack.data, 0);
-          }
-        } catch (_) {
-          /* optional */
-        }
         respond({ success: true, id: message.id });
         break;
       }
@@ -1518,7 +1511,15 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
       case 'setFeatureFlags': {
         const prev =
           (await storageGet('local', 'apertureFeatures')).apertureFeatures || {};
-        const next = ApertureFeatures.mergeFlags({ ...prev, ...(message.flags || {}) });
+        const incoming = message.flags || {};
+        const allowed = {};
+        Object.keys(incoming).forEach((key) => {
+          if (typeof ApertureFeatures !== 'undefined' && ApertureFeatures.isComingSoon(key)) {
+            return;
+          }
+          allowed[key] = incoming[key];
+        });
+        const next = ApertureFeatures.mergeFlags({ ...prev, ...allowed });
         await storageSet('local', { apertureFeatures: next });
         if (next.useIndexedDb && typeof ApertureStore !== 'undefined') {
           try {

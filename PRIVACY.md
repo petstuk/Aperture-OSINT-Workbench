@@ -1,6 +1,6 @@
 # Privacy Policy — Aperture (OSINT Workbench)
 
-**Last updated:** 11 August 2026
+**Last updated:** 15 September 2026
 
 Aperture is a local-first browser extension for security analysts. This policy describes how the extension handles data.
 
@@ -8,7 +8,7 @@ Aperture is a local-first browser extension for security analysts. This policy d
 
 - Core features process data **on your device**.
 - We (the developers) **do not** operate a backend that receives your investigation data, browsing activity, or telemetry.
-- Network requests happen only when **you** choose to open public OSINT sites or enable optional Labs features.
+- Network requests happen only when **you** choose to open public OSINT sites.
 
 ## Data handled on your device
 
@@ -17,7 +17,7 @@ Depending on how you use Aperture, the extension may store locally (via browser 
 - Settings and feature flags
 - Playbooks and recent indicators
 - Cases, notes, tags, verdicts, and related investigation metadata
-- Optional offline packs / caches you create or import
+- Offline pack indexes bundled in the extension (ATT&CK, LOLBAS, GTFOBins) and a few-byte install flag
 
 This data stays in your browser profile unless you export it yourself.
 
@@ -29,14 +29,9 @@ If you enable **on-page IoC detect**, the extension reads text on pages you visi
 
 When you run a lookup or playbook, Aperture opens tabs to public tools you select (for example VirusTotal, AbuseIPDB, Shodan, URLScan). Those sites receive whatever appears in the URL or page you open, under **their** privacy policies. This only happens on your explicit action.
 
-## Optional Labs features (off by default)
+## Labs (coming soon)
 
-If you enable Labs options such as:
-
-- **Local LLM** — prompts may be sent to a local endpoint you configure (for example Ollama on your machine)
-- **API enrichment** — indicators and a session-provided API key may be sent to the provider you choose (for example AlienVault OTX)
-
-These features are opt-in. API keys are intended for session use and are not designed to be stored in synced extension settings.
+The dashboard **Labs** screen is a roadmap. Experimental options such as a local LLM or API enrichment are **not available** in this version and cannot be turned on. Core use still does not send investigation data to the Aperture developers.
 
 ## Data we do not collect
 

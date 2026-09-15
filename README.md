@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.2.3 (Manifest V3) |
+| **Version** | 4.3.0 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **Chrome Web Store** | [chromewebstore.google.com/…/hpbeikjdpgemejlekddlaphdlaemjhgb](https://chromewebstore.google.com/detail/aperture-%E2%80%94-osint-workbenc/hpbeikjdpgemejlekddlaphdlaemjhgb) |
@@ -34,14 +34,14 @@ Most OSINT “extensions” are thin wrappers around cloud APIs. Aperture is bui
 - Capture work into **cases** and **playbooks** without sending data to a vendor
 - Stay readable for store review and forks — **no build step**, no bundler, plain HTML/CSS/JS
 
-Optional **Labs** features (local LLM, API enrichment, experimental tools) are **off by default**.
+Optional **Labs** features are a **Coming soon** roadmap and cannot be turned on yet.
 
 ---
 
 ## Features
 
 - **Popup launcher** — open the workbench; toggle on-page detect and disable the current site
-- **Dashboard workbench** — triage inbox, bulk extract, cases, playbooks, relationship graph, offline packs, Labs
+- **Dashboard workbench** — triage inbox, bulk extract, cases, playbooks, relationship graph, offline packs, Labs (coming soon)
 - **Playbooks** — ordered multi-tool workflows; share codes (`APX|…`); delay / concurrency / skip-private-IP options
 - **Cases** — indicators, verdicts, tags, notes, timeline, session capture, JSON / Markdown / CSV export
 - **On-page detect** (opt-in) — highlight IoCs; anchored pivot card with verdicts, tools, clipboard packs, related IoCs; disable per domain (e.g. Splunk, CrowdStrike) from the popup or Workbench Settings
@@ -80,7 +80,7 @@ Install from the [Chrome Web Store](https://chromewebstore.google.com/detail/ape
 ## Privacy
 
 - Parsing and enrichment run **on-device**
-- Network use is limited to **tabs you open** to public OSINT sites (unless you enable opt-in Labs adapters / local LLM)
+- Network use is limited to **tabs you open** to public OSINT sites
 - On-page highlights are **off by default**
 - Firefox `data_collection_permissions`: **none**
 - Host access (`<all_urls>`) supports context-menu selection and optional page highlights
@@ -118,14 +118,14 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 | On-page | [`extension/content.js`](extension/content.js), [`extension/content.css`](extension/content.css) |
 | Shared UI | [`extension/aperture.css`](extension/aperture.css), [`extension/indicator-card.js`](extension/indicator-card.js), [`extension/palette.js`](extension/palette.js), `extension/fonts/` |
 | Offline packs / flags / IDB | `extension/aperture-packs.js`, `aperture-features.js`, `aperture-store.js` |
-| DevTools (experimental) | [`extension/devtools.html`](extension/devtools.html) |
+| DevTools (coming soon) | [`extension/devtools.html`](extension/devtools.html) |
 
 ### Package a release zip
 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.2.3.zip (extension runtime only)
+# → aperture-osint-v4.3.0.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -149,7 +149,8 @@ Common fork points:
 - **New OSINT site** — add URL template in `extension/background.js` (`serviceUrls`) and map it in `IOCUtils.toolsFor()`
 - **New IoC type** — extend detection in `extension/ioc-utils.js` and cover it in `test/test-ioc-utils.js`
 - **New playbook** — create in the UI or import an `APX|…` share code
-- **Labs / experimental behaviour** — feature flags via the dashboard **Labs** screen (`extension/aperture-features.js`)
+- **Offline packs** — regenerate compact ATT&CK / LOLBAS / GTFOBins indexes with `python3 scripts/generate-offline-packs.py`
+- **Labs / experimental behaviour** — dashboard **Labs** is coming soon; do not ship no-op flags as working switches
 
 Keep the privacy model: network only on explicit user action; keys never in `storage.sync`; experimental features default off.
 
@@ -159,6 +160,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.3.0](docs/releases/RELEASE_NOTES_v4.3.0.md) | Full offline pack indexes; Labs / STIX / case playbook / DevTools marked coming soon |
 | [4.2.3](docs/releases/RELEASE_NOTES_v4.2.3.md) | Feedback to GitHub Discussions from Settings, overview, and the palette |
 | [4.2.2](docs/releases/RELEASE_NOTES_v4.2.2.md) | Light theme uses IBM Plex; stronger text contrast in both themes |
 | [4.2.1](docs/releases/RELEASE_NOTES_v4.2.1.md) | Light theme; ordered playbook editor; workbench live refresh; side panel removed |

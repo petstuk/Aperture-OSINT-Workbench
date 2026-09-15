@@ -114,6 +114,19 @@
       background: var(--surface-3);
       color: var(--text-hi);
     }
+    .nav-btn-quiet {
+      color: var(--text-faint);
+      font-size: 12px;
+      height: 30px;
+    }
+    .nav-soon {
+      margin-left: auto;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--email);
+      font-weight: 700;
+    }
     .case-nav {
       width: 100%;
       display: flex;
@@ -995,12 +1008,13 @@
         <button type="button" class="nav-btn" data-nav="graph"><span>◈</span>Graph</button>
         <button type="button" class="nav-btn" data-nav="packs"><span>▣</span>Offline packs</button>
         <button type="button" class="nav-btn" data-nav="settings"><span>⚙</span>Settings</button>
-        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs</button>
+        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs<span class="nav-soon">soon</span></button>
       </div>
       <div style="margin-top:auto">
         <div class="nav-label"><span>Cases</span><span id="case-count">0</span></div>
         <div id="case-nav-list"></div>
       </div>
+      <button type="button" class="nav-btn nav-btn-quiet" id="nav-feedback"><span>✎</span>Feedback</button>
     </aside>
 
     <main class="main">

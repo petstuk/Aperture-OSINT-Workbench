@@ -1,11 +1,11 @@
-# Testing Guide — Aperture v4.1.0
+# Testing Guide — Aperture v4.3.0
 
 ## Load unpacked
 1. Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/`
 2. Firefox: `about:debugging` → This Firefox → Load Temporary Add-on → `extension/manifest.json`
 
 ## Smoke
-1. Open popup — brand APERTURE, detect field, playbooks, recent
+1. Open popup — workbench launcher, on-page detect, disable this site, Feedback
 2. Paste `8.8.8.8` — type pill + quick tools appear; click VT
 3. Paste an email — HIBP appears in quick tools; opens haveibeenpwned.com/account/…
 4. Open full workbench — triage stats/inbox (empty OK)
@@ -31,4 +31,11 @@
 5. Global on-page detect **off** still wins everywhere, even with an empty disabled list
 
 ## Upgrade path
-Install 4.0.x data then load 4.1.0 — history/cases/playbooks intact; `disabledDomains` empty until configured.
+Install 4.2.x data then load 4.3.0 — history/cases/playbooks intact. Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads.
+
+## v4.3.0 honesty
+1. **Offline packs** — ATT&CK / LOLBAS / GTFOBins entry counts are large; search `T1059.001`, `certutil`, `bash`
+2. **Labs** — Coming soon; no checkboxes; export/dedupe live in Settings → Workspace
+3. **STIX** — buttons disabled (· soon) on pivot, extract, and case export; JSON/Markdown/CSV still work
+4. **Case → Run playbook** — disabled; pivot/extract playbooks still run
+5. DevTools **Aperture** panel — Coming soon copy; Bulk extract still parses HAR/text if pasted there

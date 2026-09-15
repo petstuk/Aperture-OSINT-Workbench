@@ -352,8 +352,7 @@
         [
           ['defang', 'Defang'],
           ['markdown', 'Markdown'],
-          ['csv', 'CSV'],
-          ['stix', 'STIX']
+          ['csv', 'CSV']
         ].forEach(([fmt, label]) => {
           const btn = document.createElement('button');
           btn.type = 'button';
@@ -369,6 +368,13 @@
           });
           packRow.appendChild(btn);
         });
+        const stixSoon = document.createElement('button');
+        stixSoon.type = 'button';
+        stixSoon.className = 'ap-btn ap-btn-secondary ap-btn-sm';
+        stixSoon.textContent = 'STIX · soon';
+        stixSoon.disabled = true;
+        stixSoon.title = 'Valid STIX 2.1 (UUIDs, TLP) is coming soon';
+        packRow.appendChild(stixSoon);
         body.appendChild(packRow);
 
         const toolsLab = document.createElement('label');
@@ -1312,7 +1318,7 @@
     const root = screens.graph;
     root.innerHTML =
       '<div class="screen-head"><div><h1>Relationship graph</h1>' +
-      '<p>Local co-occurrence from cases — no cloud graph database.</p>' +
+      '<p>Indicators that share a case are linked. That is co-occurrence, not DNS / URL / malware family graphing.</p>' +
       '<div class="panel-meta" id="graph-meta" style="margin-top:6px"></div></div>' +
       '<button type="button" class="ap-btn ap-btn-primary" id="graph-refresh">Refresh</button></div>' +
       '<div class="ap-panel" style="padding:12px">' +
@@ -1389,7 +1395,7 @@
     const root = screens.packs;
     root.innerHTML =
       '<div class="screen-head"><div><h1>Offline packs</h1>' +
-      '<p>Install embedded lite indexes for local lookup. No network required after install.</p></div></div>' +
+      '<p>Compact indexes bundled in the extension (ATT&amp;CK, LOLBAS, GTFOBins). Install stores a few bytes — not a copy of the dataset.</p></div></div>' +
       '<div class="pb-grid" id="packs-grid"></div>' +
       '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
       '<label>Lookup pack</label><select id="pack-id"></select>' +
@@ -1482,7 +1488,29 @@
     openExternal(GITHUB_REPO + '/issues/new?' + new URLSearchParams({ body: body }).toString());
   }
 
-  // Everything persistent lives here; the popup only owns the current tab, Labs only owns flags.
+  async function exportWorkspaceFile() {
+    const res = await sendMessage({ action: 'exportWorkspace' });
+    if (res && res.bundle) {
+      downloadText(
+        'aperture-workspace.json',
+        JSON.stringify(res.bundle, null, 2),
+        'application/json'
+      );
+      showToast('Exported workspace');
+    }
+  }
+
+  async function dedupeHistoryNow() {
+    const res = await sendMessage({ action: 'dedupeHistory' });
+    showToast(
+      res && res.success
+        ? 'Deduped ' + res.before + ' → ' + res.after
+        : (res && res.error) || 'Failed'
+    );
+    load();
+  }
+
+  // Everything persistent lives here; the popup only owns the current tab.
   function renderSettings() {
     const root = screens.settings;
     root.innerHTML =
@@ -1512,6 +1540,14 @@
       '<div class="ap-panel"><div class="panel-head"><span class="panel-title">OSINT services</span>' +
       '<span class="panel-meta" id="set-service-count"></span></div>' +
       '<div class="set-body set-services" id="set-services"></div></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Workspace</span>' +
+      '<span class="panel-meta">local file / history</span></div>' +
+      '<div class="set-body"><div class="set-hint">Download cases, history and playbooks as JSON, or collapse duplicate history rows.</div>' +
+      '<div class="set-row"><span class="set-row-value">Export workspace</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-export">Export JSON</button></div>' +
+      '<div class="set-row"><span class="set-row-value">Dedupe history</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-dedupe">Dedupe</button></div>' +
+      '</div></div>' +
       '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Feedback</span>' +
       '<span class="panel-meta">GitHub, no telemetry</span></div>' +
       '<div class="set-body"><div class="set-hint">Opens GitHub in a new tab. You post it — Aperture does not send reports.</div>' +
@@ -1653,146 +1689,47 @@
     }
 
     root.querySelector('#set-playbooks').addEventListener('click', () => go('playbooks'));
+    root.querySelector('#set-export').addEventListener('click', exportWorkspaceFile);
+    root.querySelector('#set-dedupe').addEventListener('click', dedupeHistoryNow);
     root.querySelector('#set-feedback').addEventListener('click', openFeedbackDiscussion);
     root.querySelector('#set-bug').addEventListener('click', openBugIssue);
   }
 
   function renderLabs() {
     const root = screens.labs;
-    const flags = state.featureFlags || {};
-    const defaults =
-      typeof ApertureFeatures !== 'undefined' ? ApertureFeatures.DEFAULTS : flags;
-    const p3Keys = [
-      'useIndexedDb',
-      'apiEnrichment',
-      'selfHostedConnectors',
-      'pluginSdk',
-      'localLlm',
-      'attackNavigator',
-      'vaultEncryption',
-      'scanWorker',
-      'detectionWave2',
-      'workspaces'
-    ];
-    const p4Keys = [
-      'emailParser',
-      'pageIocDiff',
-      'confidenceHints',
-      'vimMode',
-      'devtoolsPanel',
-      'geoMap',
-      'sigmaYaraAssist',
-      'localApi',
-      'crossTabMesh',
-      'evidenceLocker',
-      'airgapSync',
-      'huntAgent',
-      'multiMonitorLayouts'
-    ];
+    const features = typeof ApertureFeatures !== 'undefined' ? ApertureFeatures : null;
+    const soonKeys = features ? features.COMING_SOON : [];
 
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Labs &amp; feature flags</h1>' +
-      '<p>Experimental and platform features. All default off. Local-first.</p></div>' +
-      '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="labs-export">Export workspace</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="labs-dedupe">Dedupe history</button>' +
-      '</div></div>' +
-      '<div class="labs-banner">Some flags gate network adapters; keys never sync. Keep secrets out of storage.sync.</div>' +
-      '<div class="ap-panel" id="labs-flags" style="padding:14px"></div>' +
-      '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
-      '<div class="panel-title">Email / header parser</div>' +
-      '<textarea id="labs-email" class="raw" placeholder="Paste raw email headers…"></textarea>' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="labs-parse" style="margin-top:8px">Parse</button>' +
-      '<pre id="labs-email-out" style="margin-top:8px;font-size:11px;max-height:200px;overflow:auto"></pre></div>' +
-      '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
-      '<div class="panel-title">Local LLM (Ollama)</div>' +
-      '<textarea id="labs-llm" class="raw" placeholder="Prompt grounded on your case…"></textarea>' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="labs-llm-go" style="margin-top:8px">Generate</button>' +
-      '<pre id="labs-llm-out" style="margin-top:8px;font-size:11px;max-height:200px;overflow:auto"></pre></div>' +
-      '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
-      '<div class="panel-title">Sigma assist</div>' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="labs-sigma">Draft from case IoCs</button>' +
-      '<pre id="labs-sigma-out" style="margin-top:8px;font-size:11px;max-height:200px;overflow:auto"></pre></div>';
+      '<div class="screen-head"><div><h1>Labs</h1>' +
+      '<p>Experimental workbench tools. Nothing here is on yet — this page is a roadmap, not a settings panel.</p></div>' +
+      '<span class="ap-pill" style="align-self:flex-start;margin-top:4px">Coming soon</span></div>' +
+      '<div class="labs-banner">Local LLM, header parsing, Sigma assist, on-page IoC diff, vault encryption, and the other items below stay off until they are finished. Export and history dedupe live in Settings.</div>' +
+      '<div class="ap-panel" id="labs-flags" style="padding:14px"></div>';
 
     const flagBox = root.querySelector('#labs-flags');
-    function addGroup(title, keys) {
-      const h = document.createElement('div');
-      h.className = 'ap-pivot-label';
-      h.style.cssText =
-        'margin:12px 0 8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600';
-      h.textContent = title;
-      flagBox.appendChild(h);
-      keys.forEach((key) => {
-        if (!(key in defaults) && !(key in flags)) return;
-        const row = document.createElement('label');
-        row.style.cssText =
-          'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider)';
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = !!flags[key];
-        cb.addEventListener('change', async () => {
-          const patch = {};
-          patch[key] = cb.checked;
-          await sendMessage({ action: 'setFeatureFlags', flags: patch });
-          showToast(key + (cb.checked ? ' enabled' : ' disabled'));
-          load();
-        });
-        const span = document.createElement('span');
-        span.textContent = key;
-        row.appendChild(cb);
-        row.appendChild(span);
-        flagBox.appendChild(row);
-      });
-    }
-    addGroup('P3', p3Keys);
-    addGroup('P4', p4Keys);
+    const heading = document.createElement('div');
+    heading.className = 'ap-pivot-label';
+    heading.style.cssText =
+      'margin:0 0 8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600';
+    heading.textContent = 'Planned';
+    flagBox.appendChild(heading);
 
-    root.querySelector('#labs-dedupe').addEventListener('click', async () => {
-      const res = await sendMessage({ action: 'dedupeHistory' });
-      showToast(
-        res && res.success
-          ? 'Deduped ' + res.before + ' → ' + res.after
-          : (res && res.error) || 'Failed'
-      );
-      load();
-    });
-
-    root.querySelector('#labs-export').addEventListener('click', async () => {
-      const res = await sendMessage({ action: 'exportWorkspace' });
-      if (res && res.bundle) {
-        downloadText(
-          'aperture-workspace.json',
-          JSON.stringify(res.bundle, null, 2),
-          'application/json'
-        );
-        showToast('Exported workspace');
-      }
-    });
-
-    root.querySelector('#labs-parse').addEventListener('click', async () => {
-      const res = await sendMessage({
-        action: 'parseEmailHeaders',
-        text: root.querySelector('#labs-email').value,
-        force: true
-      });
-      root.querySelector('#labs-email-out').textContent = JSON.stringify(res, null, 2);
-    });
-
-    root.querySelector('#labs-llm-go').addEventListener('click', async () => {
-      const res = await sendMessage({
-        action: 'localLlm',
-        prompt: root.querySelector('#labs-llm').value
-      });
-      root.querySelector('#labs-llm-out').textContent =
-        (res && res.text) || (res && res.error) || 'No response';
-    });
-
-    root.querySelector('#labs-sigma').addEventListener('click', async () => {
-      const c = state.cases.find((x) => x.id === state.caseId) || state.cases[0];
-      const iocs = (c && c.indicators) || state.history.slice(0, 20).map((h) => h.ioc);
-      const res = await sendMessage({ action: 'sigmaAssist', iocs });
-      root.querySelector('#labs-sigma-out').textContent =
-        (res && res.sigma) || (res && res.error) || '';
+    soonKeys.forEach((key) => {
+      if (key === 'detectionWave2') return;
+      const row = document.createElement('div');
+      row.style.cssText =
+        'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--divider);opacity:.72';
+      const name = document.createElement('span');
+      name.style.cssText = 'flex:1;font-size:13px;color:var(--text-muted)';
+      name.textContent = features && features.labelFor ? features.labelFor(key) : key;
+      const badge = document.createElement('span');
+      badge.textContent = 'Coming soon';
+      badge.style.cssText =
+        'flex-shrink:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--email);font-weight:700';
+      row.appendChild(name);
+      row.appendChild(badge);
+      flagBox.appendChild(row);
     });
   }
 
@@ -1818,7 +1755,7 @@
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="defang">Defanged</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="markdown">Markdown</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="csv">CSV</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="stix">STIX 2.1</button></div>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="Valid STIX 2.1 (UUIDs, TLP) is coming soon">STIX · soon</button></div>' +
       '<div class="copy-as-row">' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-sel-all">Select all</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-case">Add to case</button>' +
@@ -2201,7 +2138,7 @@
       '<h1></h1>' +
       '<p></p></div>' +
       '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-run">▷ Run playbook</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="case-run" disabled title="Multi-indicator case playbooks are coming soon">▷ Run playbook · soon</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="case-graph">View graph</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary" id="case-delete">Delete case</button>' +
       '</div></div>' +
@@ -2210,7 +2147,7 @@
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-json">JSON</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-md">Markdown</button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-csv">CSV</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-stix">STIX</button></div>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="Valid STIX 2.1 (UUIDs, TLP) is coming soon">STIX · soon</button></div>' +
       '<div class="ap-panel" id="case-session" style="padding:14px;margin-bottom:16px"></div>' +
       '<div class="case-grid">' +
       '<div><div class="ap-panel" id="case-iocs"></div>' +
@@ -2385,28 +2322,6 @@
         go('overview');
       }
     });
-    root.querySelector('#case-run').addEventListener('click', async () => {
-      if (!indicators.length) {
-        showToast('No indicators');
-        return;
-      }
-      const first = indicators[0];
-      const pb = IOCUtils.playbookForType(first.type, state.playbooks);
-      const res = await sendMessage({
-        action: 'runPlaybook',
-        ioc: first.ioc,
-        playbookId: pb.id
-      });
-      if (res && res.success) {
-        await sendMessage({
-          action: 'updateCase',
-          id: c.id,
-          timelineEvent: 'Ran playbook ' + pb.name + ' on ' + first.ioc
-        });
-        showToast('Ran ' + pb.name);
-        load();
-      }
-    });
     function exportCaseReport(format) {
       const report = {
         case: c,
@@ -2433,22 +2348,12 @@
         showToast('Exported Markdown report');
         return;
       }
-      if (format === 'stix') {
-        downloadText(
-          c.id + '-report.stix.json',
-          packText('stix', indicators),
-          'application/json'
-        );
-        showToast('Exported STIX 2.1');
-        return;
-      }
       downloadText(c.id + '-report.csv', packText('csv', indicators), 'text/csv');
       showToast('Exported CSV report');
     }
     root.querySelector('#case-export-json').addEventListener('click', () => exportCaseReport('json'));
     root.querySelector('#case-export-md').addEventListener('click', () => exportCaseReport('md'));
     root.querySelector('#case-export-csv').addEventListener('click', () => exportCaseReport('csv'));
-    root.querySelector('#case-export-stix').addEventListener('click', () => exportCaseReport('stix'));
     root.querySelector('#case-graph').addEventListener('click', () => {
       go('graph');
       showToast('Graph for case indicators');
@@ -2560,6 +2465,7 @@
   document.querySelectorAll('.nav-btn[data-nav]').forEach((btn) => {
     btn.addEventListener('click', () => go(btn.dataset.nav));
   });
+  document.getElementById('nav-feedback').addEventListener('click', openFeedbackDiscussion);
 
   const palette = createPalette({
     onEscape: closeWorkbenchPivot,
@@ -2607,7 +2513,7 @@
         { icon: '▷', label: 'Playbooks', meta: 'navigate', onClick: () => go('playbooks') },
         { icon: '◈', label: 'Graph', meta: 'navigate', onClick: () => go('graph') },
         { icon: '▣', label: 'Offline packs', meta: 'navigate', onClick: () => go('packs') },
-        { icon: '⚗', label: 'Labs', meta: 'navigate', onClick: () => go('labs') },
+        { icon: '⚗', label: 'Labs', meta: 'coming soon', onClick: () => go('labs') },
         { icon: '✎', label: 'Send feedback', meta: 'GitHub Discussions', onClick: openFeedbackDiscussion }
       ];
       const cases = state.cases.map((c) => ({

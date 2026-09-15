@@ -1,11 +1,11 @@
-# AMO / Store Submission Checklist — Aperture v4.1.0
+# AMO / Store Submission Checklist — Aperture v4.3.0
 
 ## Pre-submit
-- [ ] Version `4.1.0` in `extension/manifest.json`
-- [ ] `./scripts/package.sh` builds clean zip (`aperture-osint-v4.1.0.zip`)
+- [ ] Version `4.3.0` in `extension/manifest.json`
+- [ ] `./scripts/package.sh` builds clean zip (`aperture-osint-v4.3.0.zip`)
 - [ ] No remote code / no minified obfuscated bundles
 - [ ] Fonts bundled locally under `extension/fonts/`
-- [ ] Release notes attached (`docs/releases/RELEASE_NOTES_v4.1.0.md`)
+- [ ] Release notes attached (`docs/releases/RELEASE_NOTES_v4.3.0.md`)
 - [ ] Open `test/test-ioc-utils.html` — all checks pass
 
 ## Functional

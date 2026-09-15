@@ -386,14 +386,6 @@
       ['Copy', () => api.copy(opts.ioc, 'Copied ' + opts.ioc)],
       ['Defang', () => api.copy(IOCUtils.defang(opts.ioc), 'Copied defanged')],
       [
-        'STIX',
-        () =>
-          api.copy(
-            IOCUtils.clipboardPack('stix', [{ ioc: opts.ioc, type: opts.type }]),
-            'Copied STIX 2.1'
-          )
-      ],
-      [
         'Base64',
         () => {
           const out = IOCUtils.toBase64(opts.ioc);
@@ -404,6 +396,10 @@
     ].forEach(([label, run]) => {
       left.appendChild(textButton(label, 'ap-pivot-line-btn', run));
     });
+    const stixSoon = textButton('STIX · soon', 'ap-pivot-line-btn', function () {});
+    stixSoon.disabled = true;
+    stixSoon.title = 'Valid STIX 2.1 (UUIDs, TLP) is coming soon';
+    left.appendChild(stixSoon);
     line.appendChild(left);
 
     const related = Array.isArray(opts.related) ? opts.related : [];

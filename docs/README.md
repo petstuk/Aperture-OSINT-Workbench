@@ -2,7 +2,7 @@
 
 | Path | Contents |
 |---|---|
-| [releases/](releases/) | Version release notes (current: [v4.1.0](releases/RELEASE_NOTES_v4.1.0.md)) |
+| [releases/](releases/) | Version release notes (current: [v4.3.0](releases/RELEASE_NOTES_v4.3.0.md)) |
 | [store/](store/) | AMO / Chrome Web Store submission checklists |
 | [TESTING_GUIDE.md](TESTING_GUIDE.md) | Manual smoke / regression checks |
 | [CRITICAL_AUDIT.md](CRITICAL_AUDIT.md) | Feature-gap audit for SOC / DFIR / CTI reviewers (v4.2.2) |
