@@ -24,7 +24,6 @@ const defaultServices = {
   Shodan: true,
   Censys: true,
   'AlienVault OTX': true,
-  ThreatCrowd: true,
   'IBM X-Force Exchange': true,
   MalwareBazaar: true,
   GreyNoise: true,
@@ -36,6 +35,7 @@ const defaultServices = {
   URLhaus: true,
   ThreatFox: true,
   NVD: true,
+  CWE: true,
   'BGP HE': true,
   'MITRE ATT&CK': true
 };
@@ -49,18 +49,18 @@ const serviceUrls = {
   Shodan: 'https://www.shodan.io/search?query=[QUERY]',
   Censys: 'https://search.censys.io/search?q=[QUERY]',
   'AlienVault OTX': 'https://otx.alienvault.com/browse/pulses?q=[QUERY]',
-  ThreatCrowd: 'https://threatcrowd.org/ip.php?ip=[QUERY]',
   'IBM X-Force Exchange': 'https://exchange.xforce.ibmcloud.com/search/[QUERY]',
   MalwareBazaar: 'https://bazaar.abuse.ch/browse.php?search=[QUERY]',
-  GreyNoise: 'https://viz.greynoise.io/query/?gnql=[QUERY]',
+  GreyNoise: 'https://viz.greynoise.io/ips/[QUERY]',
   Spur: 'https://app.spur.us/search?q=[QUERY]',
   'Have I Been Pwned': 'https://haveibeenpwned.com/account/[QUERY]',
   'crt.sh': 'https://crt.sh/?q=%25.[QUERY]',
-  RDAP: 'https://rdap.org/domain/[QUERY]',
+  RDAP: 'https://client.rdap.org/?object=[QUERY]&type=domain',
   'Wayback Machine': 'https://web.archive.org/web/*/[QUERY]',
   URLhaus: 'https://urlhaus.abuse.ch/browse.php?search=[QUERY]',
   ThreatFox: 'https://threatfox.abuse.ch/browse.php?search=[QUERY]',
   NVD: 'https://nvd.nist.gov/vuln/detail/[QUERY]',
+  CWE: 'https://cwe.mitre.org/data/definitions/[QUERY].html',
   'BGP HE': 'https://bgp.he.net/search?search%5Bsearch%5D=[QUERY]&commit=Search',
   'MITRE ATT&CK': 'https://attack.mitre.org/techniques/[QUERY]/'
 };
@@ -516,25 +516,12 @@ function resolveServiceUrl(serviceName, ioc, type) {
   const iocType = type || detectIOCType(ioc);
   const query = queryForService(ioc, iocType, name);
 
-  if (name === 'ThreatCrowd') {
-    if (iocType === 'ip') {
-      return 'https://threatcrowd.org/ip.php?ip=' + encodeURIComponent(query);
-    }
-    if (iocType === 'email') {
-      return 'https://threatcrowd.org/email.php?email=' + encodeURIComponent(query);
-    }
-    if (iocType === 'url') {
-      try {
-        const host = new URL(query).hostname;
-        return 'https://threatcrowd.org/domain.php?domain=' + encodeURIComponent(host);
-      } catch (_) {
-        return 'https://threatcrowd.org/domain.php?domain=' + encodeURIComponent(query);
-      }
-    }
-    if (iocType === 'domain') {
-      return 'https://threatcrowd.org/domain.php?domain=' + encodeURIComponent(query);
-    }
-    return serviceUrls.ThreatCrowd.replace('[QUERY]', encodeURIComponent(query));
+  if (name === 'CWE') {
+    const num = String(query || '')
+      .toUpperCase()
+      .replace(/^CWE-/, '');
+    if (!/^\d{1,5}$/.test(num)) return null;
+    return 'https://cwe.mitre.org/data/definitions/' + num + '.html';
   }
 
   if (name === 'MITRE ATT&CK') {
@@ -765,7 +752,7 @@ async function createContextMenus() {
   }
 
   for (const [service, enabled] of Object.entries(enabledServices)) {
-    if (enabled) {
+    if (enabled && serviceUrls[service]) {
       browserAPI.contextMenus.create({
         id: `search-${service}`,
         parentId: 'aperture-parent',

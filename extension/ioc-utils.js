@@ -76,8 +76,8 @@
     URLhaus: 'URLhaus',
     ThreatFox: 'ThreatFox',
     NVD: 'NVD',
-    'BGP HE': 'BGP HE',
-    ThreatCrowd: 'ThreatCrowd'
+    CWE: 'CWE',
+    'BGP HE': 'BGP HE'
   };
 
   // Ordered longest-first so multi-char tokens win
@@ -288,7 +288,7 @@
         ['VT', 'VirusTotal'],
         ['OTX', 'AlienVault OTX']
       ],
-      cwe: [['NVD', 'NVD']],
+      cwe: [['CWE', 'CWE']],
       uuid: [['VT', 'VirusTotal']],
       arn: [['VT', 'VirusTotal']],
       package: [['VT', 'VirusTotal']]
@@ -1207,7 +1207,7 @@
   function canonicalize(type, value) {
     const refanged = refang(String(value || '').trim());
     const t = type || detectIOCType(refanged);
-    if (t === 'cve' || t === 'asn') return refanged.toUpperCase();
+    if (t === 'cve' || t === 'asn' || t === 'cwe') return refanged.toUpperCase();
     if (t === 'email' || t === 'domain' || t === 'hash') return refanged.toLowerCase();
     if (t === 'ip' && isIpv6Address(refanged)) {
       return stripIpv6Decorations(refanged).toLowerCase();

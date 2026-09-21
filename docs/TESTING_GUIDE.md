@@ -1,4 +1,4 @@
-# Testing Guide — Aperture v4.3.0
+# Testing Guide — Aperture v4.3.1
 
 ## Load unpacked
 1. Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/`
@@ -31,7 +31,13 @@
 5. Global on-page detect **off** still wins everywhere, even with an empty disabled list
 
 ## Upgrade path
-Install 4.2.x data then load 4.3.0 — history/cases/playbooks intact. Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads.
+Install 4.2.x / 4.3.0 data then load 4.3.1 — history/cases/playbooks intact. Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads. A stored ThreatCrowd enable flag is ignored (no context-menu item).
+
+## v4.3.1
+1. Bare domain on `test/test-history.html` (e.g. `google.com`) and a workbench domain row — pivot shows **Open link**
+2. Domain inside `<a href="https://example.com/full/path">example.com</a>` — Open link follows that href
+3. CWE IoC (e.g. `CWE-79`) — pivot/tool opens cwe.mitre.org; ThreatCrowd is gone
+4. GreyNoise on an IP — `viz.greynoise.io/ips/…`; RDAP on a domain — `client.rdap.org`
 
 ## v4.3.0 honesty
 1. **Offline packs** — ATT&CK / LOLBAS / GTFOBins entry counts are large; search `T1059.001`, `certutil`, `bash`

@@ -51,17 +51,16 @@
     return '';
   }
 
-  // Resolves the link the analyst would have followed had the pivot not swallowed the click.
-  function linkInfo(opts) {
-    const raw = String(opts.href || (opts.type === 'url' ? opts.ioc : '') || '').trim();
-    if (!raw) return { show: false, badScheme: false };
+  function parseFollowable(raw) {
+    const value = String(raw || '').trim();
+    if (!value) return { show: false, badScheme: false };
     let url = null;
     try {
-      url = new URL(raw);
+      url = new URL(value);
     } catch (_) {
-      if (raw.indexOf('://') < 0) {
+      if (value.indexOf('://') < 0) {
         try {
-          url = new URL('http://' + raw);
+          url = new URL('http://' + value);
         } catch (_e) {
           url = null;
         }
@@ -72,6 +71,20 @@
       return { show: false, badScheme: true };
     }
     return { show: true, badScheme: false, url: url.href, host: url.hostname.toLowerCase() };
+  }
+
+  // Real http(s) href wins. If that is missing or unusable, url and domain IoCs
+  // are still followable — bare hosts and javascript: wrappers were dropping the band.
+  function linkInfo(opts) {
+    const fromHref = parseFollowable(opts.href);
+    if (fromHref.show) return fromHref;
+    if (opts.type !== 'url' && opts.type !== 'domain') return fromHref;
+    const fromIoc = parseFollowable(opts.ioc);
+    if (fromIoc.show) return fromIoc;
+    return {
+      show: false,
+      badScheme: fromHref.badScheme || fromIoc.badScheme
+    };
   }
 
   function summaryLine(opts) {

@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.3.0 (Manifest V3) |
+| **Version** | 4.3.1 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **Chrome Web Store** | [chromewebstore.google.com/…/hpbeikjdpgemejlekddlaphdlaemjhgb](https://chromewebstore.google.com/detail/aperture-%E2%80%94-osint-workbenc/hpbeikjdpgemejlekddlaphdlaemjhgb) |
@@ -55,7 +55,7 @@ IPv4/IPv6, domains, URLs, emails, MD5/SHA-1/SHA-256, CVEs, BTC, ASNs, plus ETH, 
 
 ### Public OSINT pivots
 
-VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, ThreatCrowd, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur, Have I Been Pwned, crt.sh, RDAP, Wayback Machine, URLhaus, ThreatFox, NVD, BGP HE, MITRE ATT&CK.
+VirusTotal, AbuseIPDB, URLScan, Shodan, Censys, AlienVault OTX, IBM X-Force Exchange, MalwareBazaar, GreyNoise, Spur, Have I Been Pwned, crt.sh, RDAP, Wayback Machine, URLhaus, ThreatFox, NVD, CWE, BGP HE, MITRE ATT&CK.
 
 ---
 
@@ -125,7 +125,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.3.0.zip (extension runtime only)
+# → aperture-osint-v4.3.1.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -160,6 +160,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.3.1](docs/releases/RELEASE_NOTES_v4.3.1.md) | Open link on domain IoCs; CWE pivot; GreyNoise/RDAP URLs; ThreatCrowd removed |
 | [4.3.0](docs/releases/RELEASE_NOTES_v4.3.0.md) | Full offline pack indexes; Labs / STIX / case playbook / DevTools marked coming soon |
 | [4.2.3](docs/releases/RELEASE_NOTES_v4.2.3.md) | Feedback to GitHub Discussions from Settings, overview, and the palette |
 | [4.2.2](docs/releases/RELEASE_NOTES_v4.2.2.md) | Light theme uses IBM Plex; stronger text contrast in both themes |
