@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aperture i18n tests</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #0b0e14; color: #d4d8e0; }
+    h1 { font-size: 18px; }
+    .pass { color: #98c379; }
+    .fail { color: #e06c75; }
+    pre { background: #12161f; padding: 12px; border-radius: 8px; overflow: auto; font-size: 12px; }
+    #summary { margin: 12px 0; font-weight: 600; }
+    .glyphs {
+      margin-top: 20px;
+      font-family: 'IBM Plex Sans', 'Noto Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+      font-size: 18px;
+      line-height: 1.5;
+    }
+    .glyphs h2 { font-size: 13px; color: #8b93a3; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+    .glyphs p { margin: 6px 0 16px; }
+  </style>
+</head>
+<body>
+  <h1>i18n tests</h1>
+  <div id="summary"></div>
+  <pre id="out"></pre>
+  <div class="glyphs">
+    <h2>Russian glyphs</h2>
+    <p id="glyph-ru"></p>
+    <h2>Simplified Chinese glyphs</h2>
+    <p id="glyph-zh"></p>
+  </div>
+  <script src="../extension/i18n.js"></script>
+  <script src="test-i18n.js"></script>
+</body>
+</html>

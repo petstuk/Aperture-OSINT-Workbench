@@ -170,8 +170,8 @@
   --radius: 6px;
   --radius-panel: 8px;
   --radius-float: 12px;
-  --font-ui: 'IBM Plex Sans', -apple-system, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-ui: 'IBM Plex Sans', 'Noto Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'Noto Sans Mono', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', ui-monospace, monospace;
 }
 
 .ap-theme-dark {

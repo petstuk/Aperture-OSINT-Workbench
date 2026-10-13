@@ -100,34 +100,67 @@
     { re: /^\s+dot\s+/i, to: '.' }
   ];
 
-  function typeLabel(t, value) {
+  const TYPE_LABEL_KEYS = {
+    domain: 'type_domain',
+    url: 'type_url',
+    hash: 'type_hash',
+    email: 'type_email',
+    cve: 'type_cve',
+    btc: 'type_btc',
+    asn: 'type_asn',
+    eth: 'type_eth',
+    attack: 'type_attack',
+    ja3: 'type_ja3',
+    path: 'type_path',
+    onion: 'type_onion',
+    telegram: 'type_telegram',
+    discord: 'type_discord',
+    cwe: 'type_cwe',
+    uuid: 'type_uuid',
+    arn: 'type_arn',
+    package: 'type_package'
+  };
+
+  const TYPE_LABEL_EN = {
+    type_ipv4: 'IPv4',
+    type_ipv6: 'IPv6',
+    type_domain: 'Domain',
+    type_url: 'URL',
+    type_hash: 'Hash',
+    type_email: 'Email',
+    type_cve: 'CVE',
+    type_btc: 'Wallet',
+    type_asn: 'ASN',
+    type_eth: 'Ethereum',
+    type_attack: 'Attack Pattern',
+    type_ja3: 'JA3',
+    type_path: 'File Path',
+    type_onion: 'Onion',
+    type_telegram: 'Telegram',
+    type_discord: 'Discord',
+    type_cwe: 'CWE',
+    type_uuid: 'UUID',
+    type_arn: 'AWS ARN',
+    type_package: 'Package',
+    type_other: 'Other'
+  };
+
+  function typeLabelKey(t, value) {
     if (t === 'ip') {
       const v = stripIpv6Decorations(value || '');
-      if (v.includes(':')) return 'IPv6';
-      return 'IPv4';
+      if (v.includes(':')) return 'type_ipv6';
+      return 'type_ipv4';
     }
-    return (
-      {
-        domain: 'Domain',
-        url: 'URL',
-        hash: 'Hash',
-        email: 'Email',
-        cve: 'CVE',
-        btc: 'Wallet',
-        asn: 'ASN',
-        eth: 'Ethereum',
-        attack: 'Attack Pattern',
-        ja3: 'JA3',
-        path: 'File Path',
-        onion: 'Onion',
-        telegram: 'Telegram',
-        discord: 'Discord',
-        cwe: 'CWE',
-        uuid: 'UUID',
-        arn: 'AWS ARN',
-        package: 'Package'
-      }[t] || 'Other'
-    );
+    return TYPE_LABEL_KEYS[t] || 'type_other';
+  }
+
+  function typeLabel(t, value) {
+    const key = typeLabelKey(t, value);
+    if (typeof ApertureI18n !== 'undefined' && typeof ApertureI18n.t === 'function') {
+      const translated = ApertureI18n.t(key);
+      if (translated && translated !== key) return translated;
+    }
+    return TYPE_LABEL_EN[key] || TYPE_LABEL_EN.type_other;
   }
 
   function stripIpv6Decorations(s) {

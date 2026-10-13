@@ -987,34 +987,34 @@
       <img class="ap-brand-icon" src="icons/icon128.png" width="22" height="22" alt="">
       <div class="ap-wordmark">
         <span class="ap-wordmark-title">APERTURE</span>
-        <span class="ap-wordmark-sub">osint workbench</span>
+        <span class="ap-wordmark-sub" data-i18n="brand_sub">osint workbench</span>
       </div>
     </div>
     <button type="button" class="cmd-trigger" id="cmd-trigger">
       <span>⌕</span>
-      <span style="flex:1;text-align:left">Search tools, IoCs, playbooks, cases…</span>
+      <span style="flex:1;text-align:left" data-i18n="cmd_placeholder">Search tools, IoCs, playbooks, cases…</span>
       <span class="ap-keycap">⌘K</span>
     </button>
-    <div class="local-chip"><span class="dot"></span>Local · no keys</div>
+    <div class="local-chip"><span class="dot"></span><span data-i18n="local_chip_keys">Local · no keys</span></div>
   </header>
 
   <div class="shell">
     <aside class="sidebar" id="sidebar">
       <div>
-        <div class="nav-label">Workspace</div>
-        <button type="button" class="nav-btn active" data-nav="overview"><span>▤</span>Overview</button>
-        <button type="button" class="nav-btn" data-nav="extract"><span>⧉</span>Bulk extract</button>
-        <button type="button" class="nav-btn" data-nav="playbooks"><span>▷</span>Playbooks</button>
-        <button type="button" class="nav-btn" data-nav="graph"><span>◈</span>Graph</button>
-        <button type="button" class="nav-btn" data-nav="packs"><span>▣</span>Offline packs</button>
-        <button type="button" class="nav-btn" data-nav="settings"><span>⚙</span>Settings</button>
-        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span>Labs<span class="nav-soon">soon</span></button>
+        <div class="nav-label" data-i18n="nav_workspace">Workspace</div>
+        <button type="button" class="nav-btn active" data-nav="overview"><span>▤</span><span data-i18n="nav_overview">Overview</span></button>
+        <button type="button" class="nav-btn" data-nav="extract"><span>⧉</span><span data-i18n="nav_extract">Bulk extract</span></button>
+        <button type="button" class="nav-btn" data-nav="playbooks"><span>▷</span><span data-i18n="nav_playbooks">Playbooks</span></button>
+        <button type="button" class="nav-btn" data-nav="graph"><span>◈</span><span data-i18n="nav_graph">Graph</span></button>
+        <button type="button" class="nav-btn" data-nav="packs"><span>▣</span><span data-i18n="nav_packs">Offline packs</span></button>
+        <button type="button" class="nav-btn" data-nav="settings"><span>⚙</span><span data-i18n="nav_settings">Settings</span></button>
+        <button type="button" class="nav-btn" data-nav="labs"><span>⚗</span><span data-i18n="nav_labs">Labs</span><span class="nav-soon" data-i18n="nav_soon">soon</span></button>
       </div>
       <div style="margin-top:auto">
-        <div class="nav-label"><span>Cases</span><span id="case-count">0</span></div>
+        <div class="nav-label"><span data-i18n="nav_cases">Cases</span><span id="case-count">0</span></div>
         <div id="case-nav-list"></div>
       </div>
-      <button type="button" class="nav-btn nav-btn-quiet" id="nav-feedback"><span>✎</span>Feedback</button>
+      <button type="button" class="nav-btn nav-btn-quiet" id="nav-feedback"><span>✎</span><span data-i18n="nav_feedback">Feedback</span></button>
     </aside>
 
     <main class="main">
@@ -1039,6 +1039,7 @@
   </div>
 
   <script src="ioc-utils.js"></script>
+  <script src="i18n.js"></script>
   <script src="aperture-features.js"></script>
   <script src="aperture-packs.js"></script>
   <script src="palette.js"></script>

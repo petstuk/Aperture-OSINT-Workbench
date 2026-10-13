@@ -2,6 +2,7 @@
 if (typeof importScripts === 'function') {
   importScripts(
     'ioc-utils.js',
+    'i18n.js',
     'aperture-features.js',
     'aperture-packs.js',
     'aperture-store.js'
@@ -274,6 +275,24 @@ const THEMES = ['system', 'dark', 'light'];
 
 function normalizeTheme(value) {
   return THEMES.includes(value) ? value : 'system';
+}
+
+function uiLanguage() {
+  try {
+    return browserAPI.i18n.getUILanguage();
+  } catch (_) {
+    return 'en';
+  }
+}
+
+function normalizeLocale(value) {
+  return ApertureI18n.normalizeLocale(value);
+}
+
+async function applyStoredLocale() {
+  const data = await storageGet('sync', ['locale']);
+  await ApertureI18n.setLocale(data.locale, uiLanguage());
+  return normalizeLocale(data.locale);
 }
 
 // A default that no longer matches an existing playbook of that type is dropped, so a
@@ -711,20 +730,21 @@ function removeAllContextMenus() {
 
 async function createContextMenus() {
   await ensureEnabledServices();
+  await applyStoredLocale();
   const playbooks = await getPlaybooks();
 
   await removeAllContextMenus();
 
   browserAPI.contextMenus.create({
     id: 'aperture-parent',
-    title: 'Aperture OSINT',
+    title: ApertureI18n.t('menu_parent'),
     contexts: ['selection']
   });
 
   browserAPI.contextMenus.create({
     id: 'playbook-default',
     parentId: 'aperture-parent',
-    title: '▷ Run default playbook',
+    title: ApertureI18n.t('menu_run_default'),
     contexts: ['selection']
   });
   browserAPI.contextMenus.create({
@@ -798,6 +818,9 @@ browserAPI.storage.onChanged.addListener((changes, namespace) => {
     if (changes.playbooks || changes.customCombinations) {
       createContextMenus();
     }
+    if (changes.locale) {
+      applyStoredLocale().then(() => createContextMenus());
+    }
   }
 });
 
@@ -864,7 +887,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             'playbooks',
             'customCombinations',
             'defaultPlaybookByType',
-            'theme'
+            'theme',
+            'locale'
           ]);
           const playbooks =
             data.playbooks && data.playbooks.length
@@ -877,7 +901,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             playbooks,
             customCombinations: playbooks,
             defaultPlaybookByType: pruneDefaultPlaybooks(data.defaultPlaybookByType, playbooks),
-            theme: normalizeTheme(data.theme)
+            theme: normalizeTheme(data.theme),
+            locale: normalizeLocale(data.locale)
           });
         } catch (error) {
           console.error('Error loading overlay config:', error);
@@ -887,7 +912,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             enabledServices: enabledServices || defaultServices,
             playbooks: [],
             customCombinations: [],
-            theme: 'system'
+            theme: 'system',
+            locale: 'system'
           });
         }
         break;
@@ -1007,7 +1033,8 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
               'overlayEnabled',
               'disabledDomains',
               'defaultPlaybookByType',
-              'theme'
+              'theme',
+              'locale'
             ]),
             storageGet('local', [
               'apertureFeatures',
@@ -1031,6 +1058,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             defaultPlaybookByType: pruneDefaultPlaybooks(sync.defaultPlaybookByType, playbooks),
             services: Object.keys(serviceUrls),
             theme: normalizeTheme(sync.theme),
+            locale: normalizeLocale(sync.locale),
             featureFlags,
             session: local.apertureSession || { caseId: null, paused: false, excludeDomains: [] },
             installedPacks: local.aperturePacksInstalled || {},
@@ -1050,6 +1078,7 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
             defaultPlaybookByType: {},
             services: Object.keys(serviceUrls),
             theme: 'system',
+            locale: 'system',
             featureFlags: {},
             session: { caseId: null, paused: false, excludeDomains: [] },
             installedPacks: {},
@@ -1351,6 +1380,19 @@ browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const theme = normalizeTheme(message.theme);
         await storageSet('sync', { theme });
         respond({ success: true, theme });
+        break;
+      }
+
+      case 'setLocale': {
+        const locale = normalizeLocale(message.locale);
+        await storageSet('sync', { locale });
+        await ApertureI18n.setLocale(locale, uiLanguage());
+        await createContextMenus();
+        respond({
+          success: true,
+          locale,
+          resolvedLocale: ApertureI18n.resolvedLocale()
+        });
         break;
       }
 

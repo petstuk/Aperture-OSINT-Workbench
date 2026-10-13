@@ -126,30 +126,31 @@
       <img class="ap-brand-icon" src="icons/icon128.png" width="22" height="22" alt="">
       <div class="ap-wordmark">
         <span class="ap-wordmark-title">APERTURE</span>
-        <span class="ap-wordmark-sub">osint workbench</span>
+        <span class="ap-wordmark-sub" data-i18n="brand_sub">osint workbench</span>
       </div>
     </div>
-    <span class="local-chip"><span class="dot"></span>Local</span>
+    <span class="local-chip"><span class="dot"></span><span data-i18n="local_chip">Local</span></span>
   </div>
 
   <div class="popup-body">
-    <button type="button" class="ap-btn ap-btn-primary" id="btn-workbench" style="width:100%">Open full workbench ↗</button>
-    <div class="launch-hint">Triage, cases, playbooks, packs and settings all live in the workbench.</div>
+    <button type="button" class="ap-btn ap-btn-primary" id="btn-workbench" style="width:100%" data-i18n="popup_open">Open full workbench ↗</button>
+    <div class="launch-hint" data-i18n="popup_hint">Triage, cases, playbooks, packs and settings all live in the workbench.</div>
 
-    <div class="section-label">This tab</div>
+    <div class="section-label" data-i18n="popup_this_tab">This tab</div>
     <div class="tab-row">
-      <span>On-page IoC detect</span>
-      <button type="button" class="toggle" id="overlay-toggle" aria-label="Toggle on-page detection"></button>
+      <span data-i18n="popup_detect">On-page IoC detect</span>
+      <button type="button" class="toggle" id="overlay-toggle" data-i18n-aria="settings_overlay_aria" aria-label="Toggle on-page detection"></button>
     </div>
     <div class="tab-row">
       <span class="tab-host" id="site-host">No site host</span>
       <button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-site-toggle" disabled>Disable</button>
     </div>
     <div class="tab-note" id="site-note"></div>
-    <button type="button" class="popup-feedback" id="btn-feedback">Feedback</button>
+    <button type="button" class="popup-feedback" id="btn-feedback" data-i18n="popup_feedback">Feedback</button>
   </div>
 
   <script src="ioc-utils.js"></script>
+  <script src="i18n.js"></script>
   <script src="palette.js"></script>
   <script src="popup.js"></script>
 </body>

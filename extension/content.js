@@ -1,6 +1,10 @@
 (function () {
   const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
 
+  function tt(key, vars) {
+    return typeof ApertureI18n !== 'undefined' ? ApertureI18n.t(key, vars) : key;
+  }
+
   const SKIP_TAGS = new Set([
     'SCRIPT', 'STYLE', 'NOSCRIPT', 'TEXTAREA', 'INPUT', 'SELECT',
     'OPTION', 'KBD', 'SAMP', 'SVG', 'MATH'
@@ -332,7 +336,7 @@
         iocs
       });
       if (res && res.success && res.added && res.added.length) {
-        showToast(res.added.length + ' new IoCs since last visit');
+        showToast(tt('toast_new_iocs', { n: res.added.length }));
       }
     } catch (_) {
       /* feature may be off */
@@ -456,7 +460,7 @@
     }
     activePivotKey = key;
     tip.classList.add('open');
-    ApertureIndicatorCard.renderMessage(tip, 'Loading…');
+    ApertureIndicatorCard.renderMessage(tip, tt('loading'));
     repositionPivot();
     addPivotListeners();
 
@@ -496,7 +500,7 @@
       focusPivot();
     } catch (error) {
       if (activePivotKey !== key) return;
-      ApertureIndicatorCard.renderMessage(tip, 'Could not load actions', 'error');
+      ApertureIndicatorCard.renderMessage(tip, tt('action_failed'), 'error');
       repositionPivot();
     }
   }
@@ -562,7 +566,7 @@
 
   browserAPI.storage.onChanged.addListener((changes, area) => {
     if (area !== 'sync') return;
-    if (!changes.overlayEnabled && !changes.disabledDomains) return;
+    if (!changes.overlayEnabled && !changes.disabledDomains && !changes.locale) return;
     // Bump generation so in-flight get cannot overwrite this toggle
     overlayLoadGen++;
     if (changes.overlayEnabled) {
@@ -574,6 +578,7 @@
         : [];
     }
     applyEffectiveOverlay();
+    if (changes.locale) refreshOverlayConfig();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -595,8 +600,8 @@
           sendMessage({ action: 'runPlaybook', ioc, playbookId: pb.id }).then((res) => {
             showToast(
               res && res.success
-                ? 'Ran ' + pb.name + ' — opened ' + (res.opened || 0) + ' tabs'
-                : (res && res.error) || 'Failed'
+                ? tt('toast_ran_opened', { name: pb.name, n: res.opened || 0 })
+                : (res && res.error) || tt('failed')
             );
           });
 
@@ -609,10 +614,10 @@
         const tools = Array.from(toolNames).sort().map((name) => ({
           icon: '◇',
           label: name,
-          meta: found ? found.ioc : 'paste an indicator',
+          meta: found ? found.ioc : tt('palette_paste_meta'),
           onClick: () => {
             if (!found) {
-              showToast('Paste an indicator into the palette first');
+              showToast(tt('toast_paste_indicator'));
               return;
             }
             sendMessage({
@@ -620,7 +625,7 @@
               ioc: found.ioc,
               service: name
             }).then((res) => {
-              showToast(res && res.success ? 'Opened ' + name : (res && res.error) || 'Failed');
+              showToast(res && res.success ? tt('toast_opened', { name }) : (res && res.error) || tt('failed'));
             });
           }
         }));
@@ -630,15 +635,15 @@
           meta: pb.trigger,
           onClick: () => {
             if (!found) {
-              showToast('Paste an indicator into the palette first');
+              showToast(tt('toast_paste_indicator'));
               return;
             }
             runPlaybook(pb, found.ioc);
           }
         }));
         const groups = [
-          { label: 'Run OSINT tool', items: tools },
-          { label: 'Playbooks', items: plays }
+          { label: tt('palette_run_tool'), items: tools },
+          { label: tt('palette_group_playbooks'), items: plays }
         ];
         const first = ApertureUI.indicatorGroup(query, {
           playbooks,
@@ -656,6 +661,9 @@
       const cfg = await sendMessage({ action: 'getOverlayConfig' });
       window.__apertureOverlayConfig = cfg || {};
       themePref = (cfg && cfg.theme) || 'system';
+      if (typeof ApertureI18n !== 'undefined' && cfg && cfg.locale) {
+        await ApertureI18n.setLocale(cfg.locale);
+      }
       refreshThemeClasses();
       if (overlayEnabled) initPagePalette();
     } catch (_) {
@@ -667,12 +675,12 @@
     if (!message) return;
     if (message.action === 'openPalette') {
       if (isPageDomainDisabled()) {
-        showToast('Disabled on this site');
+        showToast(tt('toast_disabled_site'));
         return;
       }
       initPagePalette();
       if (pagePalette) pagePalette.open();
-      else showToast('Palette unavailable');
+      else showToast(tt('toast_palette_unavailable'));
     }
   });
 

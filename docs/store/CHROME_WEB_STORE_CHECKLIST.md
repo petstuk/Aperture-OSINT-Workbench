@@ -1,4 +1,4 @@
-# Chrome Web Store Prep — Aperture v4.3.1
+# Chrome Web Store Prep — Aperture v4.4.0
 
 ## Account
 - [ ] Chrome Web Store developer account
@@ -7,10 +7,10 @@
 ## Package
 ```bash
 ./scripts/package.sh
-# Upload aperture-osint-v4.3.1.zip
+# Upload aperture-osint-v4.4.0.zip
 ```
 - [ ] Load unpacked in Chrome (`chrome://extensions`) — Manifest V3
-- [ ] Popup, dashboard, overlay, disabled domains, context menu smoke test
+- [ ] Popup, dashboard, overlay, disabled domains, language setting, context menu smoke test
 
 ## Store listing
 **Name:** Aperture — OSINT Workbench  

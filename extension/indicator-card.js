@@ -1,10 +1,14 @@
 // Shared indicator card — one definition rendered by the on-page pivot and the workbench pivot.
 (function (global) {
+  function tt(key, vars) {
+    return typeof ApertureI18n !== 'undefined' ? ApertureI18n.t(key, vars) : key;
+  }
+
   const VERDICTS = [
-    ['benign', 'Benign'],
-    ['suspicious', 'Suspect'],
-    ['malicious', 'Malicious'],
-    ['review', 'Review']
+    ['benign', 'verdict_benign'],
+    ['suspicious', 'verdict_suspect'],
+    ['malicious', 'verdict_malicious'],
+    ['review', 'verdict_review']
   ];
   const FACTS_VISIBLE = 3;
   const TOOLS_VISIBLE = 4;
@@ -25,13 +29,13 @@
   function timeAgo(ts) {
     if (!ts) return '';
     const diff = Date.now() - ts;
-    if (diff < 60000) return 'just now';
+    if (diff < 60000) return tt('time_just_now');
     const mins = Math.floor(diff / 60000);
-    if (mins < 60) return mins + 'm ago';
+    if (mins < 60) return tt('time_m_ago', { n: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return hours + 'h ago';
+    if (hours < 24) return tt('time_h_ago', { n: hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return days + 'd ago';
+    if (days < 30) return tt('time_d_ago', { n: days });
     return new Date(ts).toLocaleDateString();
   }
 
@@ -94,13 +98,13 @@
       archive.verdict || archive.status || (found ? 'unknown' : 'new')
     );
     const caseIds = Array.isArray(archive.caseIds) ? archive.caseIds.filter(Boolean) : [];
-    let caseLabel = 'no case';
+    let caseLabel = tt('pivot_no_case');
     if (caseIds.length === 1) caseLabel = caseIds[0];
     else if (caseIds.length > 1) caseLabel = caseIds[0] + ' +' + (caseIds.length - 1);
     const seen = found
-      ? timeAgo(archive.timestamp) || archive.date || 'seen before'
-      : 'first time seen';
-    return verdict + ' · ' + caseLabel + ' · ' + seen;
+      ? timeAgo(archive.timestamp) || archive.date || tt('pivot_seen_before')
+      : tt('pivot_first_seen');
+    return tt('verdict_' + verdict) + ' · ' + caseLabel + ' · ' + seen;
   }
 
   function currentVerdict(opts) {
@@ -111,7 +115,7 @@
   function factRows(opts, link) {
     const rows = IOCUtils.enrichFacts(opts.type, opts.ioc).map(([k, v]) => ({ k, v }));
     if (link.badScheme) {
-      rows.unshift({ k: 'link', v: 'non-http scheme', color: 'var(--suspicious)' });
+      rows.unshift({ k: tt('pivot_link'), v: tt('pivot_non_http'), color: 'var(--suspicious)' });
       return rows;
     }
     if (!link.show) return rows;
@@ -125,10 +129,10 @@
         )
       : '';
     if (textHost && anchorHost && textHost !== anchorHost) {
-      rows.unshift({ k: 'link text', v: 'differs from href', color: 'var(--suspicious)' });
+      rows.unshift({ k: tt('pivot_link_text'), v: tt('pivot_differs_href'), color: 'var(--suspicious)' });
     }
     if (ownHost && anchorHost && ownHost !== anchorHost) {
-      rows.unshift({ k: 'redirect', v: 'via ' + anchorHost, color: 'var(--suspicious)' });
+      rows.unshift({ k: tt('pivot_redirect'), v: tt('pivot_via', { host: anchorHost }), color: 'var(--suspicious)' });
     }
     return rows;
   }
@@ -176,7 +180,7 @@
     meta.appendChild(typePill);
     if (opts.mode !== 'inline') {
       const close = textButton('×', 'ap-pivot-close', () => api.close());
-      close.title = 'Close';
+      close.title = tt('close');
       meta.appendChild(close);
     }
     top.appendChild(meta);
@@ -197,24 +201,24 @@
     const row = document.createElement('div');
     row.className = 'ap-pivot-nav-row';
     row.appendChild(
-      textButton('Open link ↗', 'ap-pivot-nav-open', async () => {
+      textButton(tt('pivot_open_link'), 'ap-pivot-nav-open', async () => {
         const res = await api.send({ action: 'openLink', url: link.url });
         api.toast(
-          res && res.success ? 'Opened ' + link.host + ' in a background tab' : (res && res.error) || 'Could not open link'
+          res && res.success ? tt('toast_opened_link', { host: link.host }) : (res && res.error) || tt('toast_could_not_open_link')
         );
       })
     );
     row.appendChild(
-      textButton('Copy', 'ap-pivot-nav-btn', () => api.copy(link.url, 'Copied link'))
+      textButton(tt('pivot_copy'), 'ap-pivot-nav-btn', () => api.copy(link.url, tt('toast_copied_link')))
     );
     row.appendChild(
-      textButton('Archive ↗', 'ap-pivot-nav-btn', async () => {
+      textButton(tt('pivot_archive'), 'ap-pivot-nav-btn', async () => {
         const res = await api.send({
           action: 'openLink',
           url: 'https://web.archive.org/web/' + link.url
         });
         api.toast(
-          res && res.success ? 'Opened archive in a background tab' : (res && res.error) || 'Could not open archive'
+          res && res.success ? tt('toast_opened_archive') : (res && res.error) || tt('toast_could_not_open_archive')
         );
       })
     );
@@ -222,7 +226,7 @@
 
     const sub = document.createElement('div');
     sub.className = 'ap-pivot-nav-sub';
-    sub.textContent = '→ ' + link.host + ' · new tab · not sandboxed';
+    sub.textContent = tt('pivot_nav_sub', { host: link.host });
     band.appendChild(sub);
     return band;
   }
@@ -237,8 +241,9 @@
     playBtn.className = 'ap-pivot-play';
     if (play) {
       const tabs = IOCUtils.runnableTools(play.tools).length;
-      playBtn.textContent = '▷ ' + play.name + ' · ' + tabs + (tabs === 1 ? ' tab' : ' tabs');
-      playBtn.title = 'Run ' + play.name;
+      playBtn.textContent =
+        '▷ ' + play.name + ' · ' + (tabs === 1 ? tt('tab_one', { n: tabs }) : tt('tab_other', { n: tabs }));
+      playBtn.title = tt('pivot_run_title', { name: play.name });
       playBtn.addEventListener('click', async () => {
         const res = await api.send({
           action: 'runPlaybook',
@@ -246,32 +251,32 @@
           playbookId: play.id
         });
         if (res && res.success) {
-          api.toast('Ran ' + play.name + ' — opened ' + (res.opened || 0) + ' tabs');
+          api.toast(tt('toast_ran_opened', { name: play.name, n: res.opened || 0 }));
           api.changed();
         } else {
-          api.toast((res && res.error) || 'Could not run playbook');
+          api.toast((res && res.error) || tt('toast_could_not_run_playbook'));
         }
       });
     } else {
-      playBtn.textContent = '▷ No playbook for this type';
+      playBtn.textContent = tt('pivot_no_playbook');
       playBtn.disabled = true;
-      playBtn.title = 'Assign a default playbook on the workbench Playbooks screen';
+      playBtn.title = tt('pivot_no_playbook_title');
     }
     actions.appendChild(playBtn);
 
     actions.appendChild(
-      textButton('+ Case', 'ap-pivot-case', async () => {
+      textButton(tt('pivot_add_case'), 'ap-pivot-case', async () => {
         const res = await api.send({
           action: 'addToCase',
           ioc: opts.ioc,
           create: true,
-          caseName: 'Quick case'
+          caseName: tt('pivot_quick_case')
         });
         if (res && res.success) {
-          api.toast('Added ' + opts.ioc + ' to ' + res.case.id);
+          api.toast(tt('toast_added_ioc_case', { ioc: opts.ioc, id: res.case.id }));
           api.changed();
         } else {
-          api.toast((res && res.error) || 'Could not add to case');
+          api.toast((res && res.error) || tt('toast_could_not_add_case'));
         }
       })
     );
@@ -279,7 +284,7 @@
   }
 
   function buildFacts(rows) {
-    const sec = section('Local enrichment · no network');
+    const sec = section(tt('pivot_facts'));
     const list = document.createElement('div');
     list.className = 'ap-pivot-facts';
     const hidden = [];
@@ -303,7 +308,7 @@
     });
     sec.appendChild(list);
     if (hidden.length) {
-      const more = textButton('+ ' + hidden.length + ' more', 'ap-pivot-more', () => {
+      const more = textButton(tt('pivot_more', { n: hidden.length }), 'ap-pivot-more', () => {
         hidden.forEach((row) => {
           row.hidden = false;
         });
@@ -316,19 +321,19 @@
 
   function buildVerdicts(opts, api) {
     const active = currentVerdict(opts);
-    const sec = section('Set verdict');
+    const sec = section(tt('pivot_set_verdict'));
     const grid = document.createElement('div');
     grid.className = 'ap-pivot-verdicts';
-    VERDICTS.forEach(([key, label]) => {
+    VERDICTS.forEach(([key, labelKey]) => {
       const color = IOCUtils.verdictVar(key);
       const isActive = active === key;
-      const btn = textButton(label, 'ap-pivot-verdict' + (isActive ? ' active' : ''), async () => {
+      const btn = textButton(tt(labelKey), 'ap-pivot-verdict' + (isActive ? ' active' : ''), async () => {
         const res = await api.send({ action: 'setVerdict', ioc: opts.ioc, verdict: key });
         if (res && res.success !== false) {
-          api.toast('Verdict set: ' + key);
+          api.toast(tt('toast_verdict_set', { verdict: tt('verdict_' + key) }));
           api.changed();
         } else {
-          api.toast((res && res.error) || 'Could not set verdict');
+          api.toast((res && res.error) || tt('toast_could_not_set_verdict'));
         }
       });
       btn.title = key;
@@ -344,13 +349,13 @@
   function buildTools(opts, api) {
     const enabled = opts.enabledServices || {};
     const tools = IOCUtils.toolsFor(opts.type).filter((t) => enabled[t.name] !== false);
-    const sec = section('Open in');
+    const sec = section(tt('pivot_open_in'));
     const wrap = document.createElement('div');
     wrap.className = 'ap-pivot-tools';
     if (!tools.length) {
       const empty = document.createElement('div');
       empty.className = 'ap-pivot-empty';
-      empty.textContent = 'No services enabled for this type';
+      empty.textContent = tt('pivot_no_services');
       sec.appendChild(empty);
       return sec;
     }
@@ -363,10 +368,10 @@
           service: tool.name
         });
         if (res && res.success) {
-          api.toast('Opened ' + tool.name);
+          api.toast(tt('toast_opened', { name: tool.name }));
           api.changed();
         } else {
-          api.toast((res && res.error) || 'Failed');
+          api.toast((res && res.error) || tt('failed'));
         }
       });
       btn.title = tool.code;
@@ -384,7 +389,7 @@
         });
         more.remove();
       });
-      more.title = 'Show ' + hidden.length + ' more services';
+      more.title = tt('pivot_show_more_services', { n: hidden.length });
       wrap.appendChild(more);
     }
     return sec;
@@ -396,22 +401,22 @@
     const left = document.createElement('div');
     left.className = 'ap-pivot-line-actions';
     [
-      ['Copy', () => api.copy(opts.ioc, 'Copied ' + opts.ioc)],
-      ['Defang', () => api.copy(IOCUtils.defang(opts.ioc), 'Copied defanged')],
+      [tt('pivot_copy_action'), () => api.copy(opts.ioc, tt('toast_copied_name', { name: opts.ioc }))],
+      [tt('pivot_defang'), () => api.copy(IOCUtils.defang(opts.ioc), tt('toast_copied_defanged'))],
       [
-        'Base64',
+        tt('pivot_base64'),
         () => {
           const out = IOCUtils.toBase64(opts.ioc);
-          if (out == null) api.toast('Base64 failed');
-          else api.copy(out, 'Copied Base64');
+          if (out == null) api.toast(tt('toast_base64_failed'));
+          else api.copy(out, tt('toast_copied_base64'));
         }
       ]
     ].forEach(([label, run]) => {
       left.appendChild(textButton(label, 'ap-pivot-line-btn', run));
     });
-    const stixSoon = textButton('STIX · soon', 'ap-pivot-line-btn', function () {});
+    const stixSoon = textButton(tt('stix_soon'), 'ap-pivot-line-btn', function () {});
     stixSoon.disabled = true;
-    stixSoon.title = 'Valid STIX 2.1 (UUIDs, TLP) is coming soon';
+    stixSoon.title = tt('stix_soon_title');
     left.appendChild(stixSoon);
     line.appendChild(left);
 
@@ -432,9 +437,9 @@
       list.appendChild(btn);
     });
 
-    const toggle = textButton('related · ' + related.length + ' ›', 'ap-pivot-line-related', () => {
+    const toggle = textButton(tt('pivot_related', { n: related.length }) + ' ›', 'ap-pivot-line-related', () => {
       list.hidden = !list.hidden;
-      toggle.textContent = 'related · ' + related.length + (list.hidden ? ' ›' : ' ⌄');
+      toggle.textContent = tt('pivot_related', { n: related.length }) + (list.hidden ? ' ›' : ' ⌄');
     });
     line.appendChild(toggle);
     return { line, list };
@@ -482,9 +487,9 @@
         try {
           if (!navigator.clipboard || !navigator.clipboard.writeText) throw new Error('unavailable');
           await navigator.clipboard.writeText(value);
-          api.toast(okMsg || 'Copied');
+          api.toast(okMsg || tt('copied'));
         } catch (_) {
-          api.toast(legacyCopy(value) ? okMsg || 'Copied' : 'Copy failed');
+          api.toast(legacyCopy(value) ? okMsg || tt('copied') : tt('copy_failed'));
         }
       }
     };

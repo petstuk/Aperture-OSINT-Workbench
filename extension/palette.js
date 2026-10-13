@@ -14,6 +14,10 @@
 
     const scrim = document.createElement('div');
     scrim.className = 'ap-palette-scrim';
+    function tt(key, vars) {
+      return typeof ApertureI18n !== 'undefined' ? ApertureI18n.t(key, vars) : key;
+    }
+
     scrim.innerHTML =
       '<div class="ap-palette" role="dialog" aria-label="Command palette">' +
       '<div class="ap-palette-head">' +
@@ -22,12 +26,7 @@
       '<span class="ap-keycap">esc</span>' +
       '</div>' +
       '<div class="ap-palette-body"></div>' +
-      '<div class="ap-palette-foot">' +
-      '<span><span class="ap-keycap">↑↓</span> navigate</span>' +
-      '<span><span class="ap-keycap">↵</span> open</span>' +
-      '<span><span class="ap-keycap">esc</span> dismiss</span>' +
-      '<span style="margin-left:auto;color:var(--text-faint)">Everything runs locally — opens tools in new tabs</span>' +
-      '</div></div>';
+      '<div class="ap-palette-foot"></div></div>';
 
     root.appendChild(scrim);
     const panel = scrim.querySelector('.ap-palette');
@@ -47,7 +46,20 @@
       return items;
     }
 
+    function applyChrome() {
+      const dialog = scrim.querySelector('.ap-palette');
+      dialog.setAttribute('aria-label', tt('palette_aria'));
+      input.placeholder = tt('palette_placeholder');
+      const foot = scrim.querySelector('.ap-palette-foot');
+      foot.innerHTML =
+        '<span><span class="ap-keycap">↑↓</span> ' + tt('palette_navigate') + '</span>' +
+        '<span><span class="ap-keycap">↵</span> ' + tt('palette_open') + '</span>' +
+        '<span><span class="ap-keycap">esc</span> ' + tt('palette_dismiss') + '</span>' +
+        '<span style="margin-left:auto;color:var(--text-faint)">' + tt('palette_foot') + '</span>';
+    }
+
     function render() {
+      applyChrome();
       const q = query.trim().toLowerCase();
       const groups = (getGroups(query) || [])
         .map((g) => ({
@@ -67,7 +79,7 @@
       if (!groups.length) {
         const empty = document.createElement('div');
         empty.className = 'ap-palette-empty';
-        empty.textContent = 'No matches for “' + (query || '') + '”';
+        empty.textContent = tt('palette_no_matches', { query: query || '' });
         body.appendChild(empty);
         return;
       }
@@ -205,7 +217,7 @@
       const tabs = IOCUtils.runnableTools(play.tools).length;
       items.push({
         icon: '▷',
-        label: play.name + ' · ' + tabs + (tabs === 1 ? ' tab' : ' tabs'),
+        label: play.name + ' · ' + (tabs === 1 ? tt('tab_one', { n: tabs }) : tt('tab_other', { n: tabs })),
         meta: ioc,
         kw: found.raw + ' ' + ioc + ' ' + play.name,
         onClick: () => context.onRunPlaybook(play, ioc, type)
@@ -214,7 +226,7 @@
     if (context.onOpenIndicator) {
       items.push({
         icon: '◇',
-        label: 'Open pivot',
+        label: tt('palette_open_pivot'),
         meta: IOCUtils.typeLabel(type, ioc),
         kw: found.raw + ' ' + ioc,
         onClick: () => context.onOpenIndicator(ioc, type)

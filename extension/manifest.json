@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Aperture \u2014 OSINT Workbench",
-  "version": "4.3.1",
+  "version": "4.4.0",
   "description": "Local-first OSINT workbench for SOC/DFIR: IoC pivot, playbooks, cases. No API keys by default. Formerly SOC OSINT Search.",
   "permissions": [
     "contextMenus",
@@ -42,6 +42,7 @@
     "service_worker": "background.js",
     "scripts": [
       "ioc-utils.js",
+      "i18n.js",
       "aperture-features.js",
       "aperture-packs.js",
       "aperture-store.js",
@@ -56,6 +57,7 @@
       ],
       "js": [
         "ioc-utils.js",
+        "i18n.js",
         "palette.js",
         "indicator-card.js",
         "content.js"
@@ -93,6 +95,8 @@
         "dashboard.html",
         "archive.html",
         "fonts/*",
+        "locales/*",
+        "i18n.js",
         "aperture.css",
         "ioc-utils.js",
         "palette.js",

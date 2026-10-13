@@ -1,6 +1,26 @@
 (function () {
   const { sendMessage, showToast, createPalette, pillStyle } = ApertureUI;
 
+  function t(key, vars) {
+    return ApertureI18n.t(key, vars);
+  }
+
+  function tabsLabel(n) {
+    const count = Number(n) || 0;
+    return count === 1 ? t('tab_one', { n: count }) : t('tab_other', { n: count });
+  }
+
+  function verdictLabel(v) {
+    return t('verdict_' + IOCUtils.normalizeVerdict(v));
+  }
+
+  function applyShellChrome() {
+    document.querySelectorAll('[data-i18n]').forEach((el) => {
+      const key = el.getAttribute('data-i18n');
+      if (key) el.textContent = t(key);
+    });
+  }
+
   const PLAYBOOK_TRIGGER_TYPES = [
     'ip',
     'domain',
@@ -39,6 +59,7 @@
     packs: [],
     installedPacks: {},
     theme: 'system',
+    locale: 'system',
     feedbackPromptDismissed: false
   };
 
@@ -176,7 +197,7 @@
     }
     state.pivotIoc = ioc;
     tip.classList.add('open');
-    ApertureIndicatorCard.renderMessage(tip, 'Loading…');
+    ApertureIndicatorCard.renderMessage(tip, t('loading'));
     repositionWorkbenchPivot();
     markPivotingRow();
     addPivotListeners();
@@ -286,10 +307,10 @@
         if (okMsg) showToast(okMsg);
         return res;
       }
-      showToast((res && res.error) || 'Action failed');
+      showToast((res && res.error) || t('action_failed'));
       return res;
     } catch (err) {
-      showToast(err.message || 'Action failed');
+      showToast(err.message || t('action_failed'));
       return { success: false };
     }
   }
@@ -299,17 +320,21 @@
       (t) => state.enabledServices[t.name] !== false
     );
     if (!tools.length) {
-      showToast('No enabled tools');
+      showToast(t('toast_no_enabled_tools'));
       return;
     }
     sendMessage({ action: 'searchService', ioc: h.ioc, service: tools[0].name }).then((res) => {
-      showToast(res && res.success ? 'Opened ' + tools[0].name : (res && res.error) || 'Failed');
+      showToast(
+        res && res.success
+          ? t('toast_opened', { name: tools[0].name })
+          : (res && res.error) || t('failed')
+      );
     });
   }
 
   function openInboxDetailModal(h) {
     openModal(
-      'Indicator detail',
+      t('detail_title'),
       (body) => {
         body.style.width = '100%';
         const val = document.createElement('div');
@@ -329,7 +354,7 @@
         body.appendChild(meta);
 
         const notesLab = document.createElement('label');
-        notesLab.textContent = 'Notes';
+        notesLab.textContent = t('notes');
         const notes = document.createElement('textarea');
         notes.id = 'm-notes';
         notes.value = h.notes || '';
@@ -337,7 +362,7 @@
         body.appendChild(notes);
 
         const tagsLab = document.createElement('label');
-        tagsLab.textContent = 'Tags (comma-separated)';
+        tagsLab.textContent = t('detail_tags');
         const tags = document.createElement('input');
         tags.id = 'm-tags';
         tags.value = (h.tags || []).join(', ');
@@ -345,25 +370,25 @@
         body.appendChild(tags);
 
         const packLab = document.createElement('label');
-        packLab.textContent = 'Clipboard pack';
+        packLab.textContent = t('detail_clipboard');
         body.appendChild(packLab);
         const packRow = document.createElement('div');
         packRow.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
         [
-          ['defang', 'Defang'],
-          ['markdown', 'Markdown'],
-          ['csv', 'CSV']
-        ].forEach(([fmt, label]) => {
+          ['defang', 'format_defang'],
+          ['markdown', 'format_markdown'],
+          ['csv', 'format_csv']
+        ].forEach(([fmt, labelKey]) => {
           const btn = document.createElement('button');
           btn.type = 'button';
           btn.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-          btn.textContent = label;
+          btn.textContent = t(labelKey);
           btn.addEventListener('click', async () => {
             try {
               await navigator.clipboard.writeText(packText(fmt, [h]));
-              showToast('Copied ' + label);
+              showToast(t('toast_copied_name', { name: t(labelKey) }));
             } catch (_) {
-              showToast('Copy failed');
+              showToast(t('copy_failed'));
             }
           });
           packRow.appendChild(btn);
@@ -371,28 +396,32 @@
         const stixSoon = document.createElement('button');
         stixSoon.type = 'button';
         stixSoon.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-        stixSoon.textContent = 'STIX · soon';
+        stixSoon.textContent = t('stix_soon');
         stixSoon.disabled = true;
-        stixSoon.title = 'Valid STIX 2.1 (UUIDs, TLP) is coming soon';
+        stixSoon.title = t('stix_soon_title');
         packRow.appendChild(stixSoon);
         body.appendChild(packRow);
 
         const toolsLab = document.createElement('label');
-        toolsLab.textContent = 'Tools';
+        toolsLab.textContent = t('tools');
         body.appendChild(toolsLab);
         const toolsRow = document.createElement('div');
         toolsRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px';
         IOCUtils.toolsFor(h.type)
-          .filter((t) => state.enabledServices[t.name] !== false)
-          .forEach((t) => {
+          .filter((tool) => state.enabledServices[tool.name] !== false)
+          .forEach((tool) => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-            btn.textContent = t.code;
-            btn.title = t.name;
+            btn.textContent = tool.code;
+            btn.title = tool.name;
             btn.addEventListener('click', () => {
-              sendMessage({ action: 'searchService', ioc: h.ioc, service: t.name }).then((res) => {
-                showToast(res && res.success ? 'Opened ' + t.name : (res && res.error) || 'Failed');
+              sendMessage({ action: 'searchService', ioc: h.ioc, service: tool.name }).then((res) => {
+                showToast(
+                  res && res.success
+                    ? t('toast_opened', { name: tool.name })
+                    : (res && res.error) || t('failed')
+                );
               });
             });
             toolsRow.appendChild(btn);
@@ -409,7 +438,7 @@
         if (notesRes && notesRes.success === false) return;
         const tagsRes = await callAction(
           { action: 'setTags', ioc: h.ioc, tags: tagsVal },
-          'Saved indicator'
+          t('toast_saved_indicator')
         );
         if (tagsRes && tagsRes.success !== false) {
           closeModal();
@@ -443,7 +472,7 @@
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-    addBtn.textContent = 'Add';
+    addBtn.textContent = t('add');
     addRow.appendChild(select);
     addRow.appendChild(addBtn);
     el.appendChild(list);
@@ -462,7 +491,7 @@
       if (!chosen.length) {
         const empty = document.createElement('li');
         empty.className = 'pb-tool-empty';
-        empty.textContent = 'No services yet — add at least one below.';
+        empty.textContent = t('playbooks_no_services');
         list.appendChild(empty);
         return;
       }
@@ -484,23 +513,23 @@
         if (state.services.length && !state.services.includes(name)) {
           const note = document.createElement('span');
           note.className = 'pb-tool-note';
-          note.textContent = 'unknown — skipped';
-          note.title = 'No URL template for this service, so a run opens no tab for it.';
+          note.textContent = t('playbooks_unknown_skipped');
+          note.title = t('playbooks_unknown_title');
           row.appendChild(note);
         } else if (suggested.size && !suggested.has(name)) {
           const note = document.createElement('span');
           note.className = 'pb-tool-note pb-tool-note-soft';
-          note.textContent = 'not suggested';
-          note.title = 'Still runs, but this service is not one of the usual pivots for this type.';
+          note.textContent = t('playbooks_not_suggested');
+          note.title = t('playbooks_not_suggested_title');
           row.appendChild(note);
         }
 
         [
-          ['↑', 'Move earlier', () => move(index, -1), index === 0],
-          ['↓', 'Move later', () => move(index, 1), index === chosen.length - 1],
+          ['↑', t('playbooks_move_earlier'), () => move(index, -1), index === 0],
+          ['↓', t('playbooks_move_later'), () => move(index, 1), index === chosen.length - 1],
           [
             '✕',
-            'Remove ' + name,
+            t('playbooks_remove_service', { name }),
             () => {
               chosen.splice(index, 1);
               render();
@@ -531,7 +560,7 @@
       select.innerHTML = '';
       if (!pool.length && !rest.length) {
         const opt = document.createElement('option');
-        opt.textContent = 'Every service is already in this playbook';
+        opt.textContent = t('playbooks_every_service');
         select.appendChild(opt);
         select.disabled = true;
         addBtn.disabled = true;
@@ -551,8 +580,8 @@
         });
         select.appendChild(grp);
       };
-      group('Usual pivots for ' + IOCUtils.typeLabel(type), pool);
-      group('All other services', rest);
+      group(t('playbooks_usual_pivots', { type: IOCUtils.typeLabel(type) }), pool);
+      group(t('playbooks_all_other'), rest);
     }
 
     function render() {
@@ -593,7 +622,7 @@
     const name = document.createElement('input');
     name.id = 'm-name';
     name.value = pb ? pb.name : '';
-    addField('Name', name);
+    addField(t('playbooks_name'), name);
     const trigger = document.createElement('select');
     trigger.id = 'm-trigger';
     PLAYBOOK_TRIGGER_TYPES.forEach((t) => {
@@ -603,37 +632,37 @@
       if (pb && pb.trigger === t) opt.selected = true;
       trigger.appendChild(opt);
     });
-    addField('Trigger type', trigger);
+    addField(t('playbooks_trigger'), trigger);
     const picker = buildToolPicker(pb, trigger);
-    addField('Services (run in this order)', picker.el);
+    addField(t('playbooks_services'), picker.el);
     playbookToolPicker = picker;
     const promptEl = document.createElement('input');
     promptEl.id = 'm-prompt';
     promptEl.value = pb ? pb.prompt || '' : '';
-    addField('Prompt', promptEl);
+    addField(t('playbooks_prompt_label'), promptEl);
     const delayEl = document.createElement('input');
     delayEl.id = 'm-delay';
     delayEl.type = 'number';
     delayEl.min = '0';
     delayEl.step = '50';
     delayEl.value = pb && pb.delayMs != null ? String(pb.delayMs) : '0';
-    addField('Delay between tabs (ms)', delayEl);
+    addField(t('playbooks_delay'), delayEl);
     const concEl = document.createElement('input');
     concEl.id = 'm-concurrency';
     concEl.type = 'number';
     concEl.min = '1';
     concEl.value = pb && pb.concurrency != null ? String(pb.concurrency) : '3';
-    addField('Bulk concurrency', concEl);
+    addField(t('playbooks_concurrency'), concEl);
     const skipEl = document.createElement('input');
     skipEl.id = 'm-skip-private';
     skipEl.type = 'checkbox';
     skipEl.checked = !!(pb && pb.skipPrivateIp);
-    addCheckField('Skip private / local IPs', skipEl);
+    addCheckField(t('playbooks_skip_private'), skipEl);
     const defaultEl = document.createElement('input');
     defaultEl.id = 'm-default';
     defaultEl.type = 'checkbox';
     defaultEl.checked = !!(pb && state.defaultPlaybookByType[pb.trigger] === pb.id);
-    addCheckField('Default for this type (pivot ▷, ⌘K, context menu)', defaultEl);
+    addCheckField(t('playbooks_default_check'), defaultEl);
   }
 
   async function savePlaybookFromModal(existing) {
@@ -641,11 +670,11 @@
     const trigger = document.getElementById('m-trigger').value;
     const tools = playbookToolPicker ? playbookToolPicker.getTools() : [];
     if (!name) {
-      showToast('Name required');
+      showToast(t('toast_name_required'));
       return;
     }
     if (!tools.length) {
-      showToast('Add at least one service');
+      showToast(t('toast_add_service'));
       return;
     }
     const entry = {
@@ -672,7 +701,7 @@
       null
     );
     if (res && res.success !== false) {
-      showToast(existing ? 'Playbook updated' : 'Playbook created');
+      showToast(existing ? t('toast_playbook_updated') : t('toast_playbook_created'));
       closeModal();
       await load();
     }
@@ -693,10 +722,10 @@
   function timeAgo(ts) {
     if (!ts) return '';
     const s = Math.floor((Date.now() - ts) / 1000);
-    if (s < 60) return s + 's ago';
-    if (s < 3600) return Math.floor(s / 60) + 'm ago';
-    if (s < 86400) return Math.floor(s / 3600) + 'h ago';
-    return Math.floor(s / 86400) + 'd ago';
+    if (s < 60) return t('time_s_ago', { n: s });
+    if (s < 3600) return t('time_m_ago', { n: Math.floor(s / 60) });
+    if (s < 86400) return t('time_h_ago', { n: Math.floor(s / 3600) });
+    return t('time_d_ago', { n: Math.floor(s / 86400) });
   }
 
   function startOfToday() {
@@ -724,7 +753,10 @@
     state.packs = data.packs || [];
     state.installedPacks = data.installedPacks || {};
     state.theme = data.theme || 'system';
+    state.locale = data.locale || 'system';
     ApertureUI.applyTheme(state.theme);
+    await ApertureI18n.setLocale(state.locale);
+    applyShellChrome();
     const browserAPI = typeof browser !== 'undefined' ? browser : chrome;
     const flags = await new Promise((resolve) =>
       browserAPI.storage.local.get('apertureFeedbackDismissed', resolve)
@@ -786,7 +818,9 @@
     el.innerHTML = '';
     if (!state.cases.length) {
       el.innerHTML =
-        '<div style="padding:8px;font-size:12px;color:var(--text-faint)">No cases yet</div>';
+        '<div style="padding:8px;font-size:12px;color:var(--text-faint)">' +
+        t('nav_no_cases') +
+        '</div>';
       return;
     }
     state.cases.forEach((c) => {
@@ -820,11 +854,11 @@
     const root = screens.overview;
     root.innerHTML =
       '<div class="screen-head">' +
-      '<div><h1>Triage overview</h1>' +
-      '<p>Everything detected across your sessions — enriched locally, ready to pivot.</p></div>' +
+      '<div><h1>' + t('overview_title') + '</h1>' +
+      '<p>' + t('overview_sub') + '</p></div>' +
       '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="ov-extract">⧉ Bulk extract</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="ov-new-case">+ New case</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="ov-extract">' + t('overview_bulk') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-primary" id="ov-new-case">' + t('overview_new_case') + '</button>' +
       '</div></div>' +
       '<div class="metrics-rail" id="ov-metrics"></div>' +
       '<div class="body-grid">' +
@@ -842,10 +876,10 @@
       const banner = document.createElement('div');
       banner.className = 'feedback-banner';
       banner.innerHTML =
-        '<span>Ideas or friction? Post on GitHub Discussions — Aperture does not send reports.</span>' +
+        '<span>' + t('overview_feedback') + '</span>' +
         '<span class="feedback-banner-actions">' +
-        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback">Share feedback</button>' +
-        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback-dismiss">Dismiss</button>' +
+        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback">' + t('overview_share_feedback') + '</button>' +
+        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback-dismiss">' + t('overview_dismiss') + '</button>' +
         '</span>';
       root.insertBefore(banner, root.querySelector('.metrics-rail'));
       banner.querySelector('#ov-feedback').addEventListener('click', async () => {
@@ -866,17 +900,17 @@
   function renderMetricsRail(rail) {
     const today = startOfToday();
     const metrics = [
-      ['open cases', state.cases.length, 'var(--text-hi)'],
-      ['today', state.history.filter((h) => (h.timestamp || 0) >= today).length, 'var(--accent)'],
+      [t('metric_open_cases'), state.cases.length, 'var(--text-hi)'],
+      [t('metric_today'), state.history.filter((h) => (h.timestamp || 0) >= today).length, 'var(--accent)'],
       [
-        'malicious',
+        t('metric_malicious'),
         state.history.filter(
           (h) => IOCUtils.normalizeVerdict(h.verdict || h.status) === 'malicious'
         ).length,
         'var(--malicious)'
       ],
       [
-        'under review',
+        t('metric_under_review'),
         state.history.filter(
           (h) => IOCUtils.normalizeVerdict(h.verdict || h.status) === 'review'
         ).length,
@@ -915,8 +949,10 @@
     dot.style.boxShadow = capturing ? '0 0 8px ' + dotColor : 'none';
     const label = document.createElement('span');
     label.textContent = !capturing
-      ? 'Session capture off'
-      : (paused ? 'Paused · ' : 'Capturing to ') + state.session.caseId;
+      ? t('session_off')
+      : paused
+        ? t('session_paused', { id: state.session.caseId })
+        : t('session_capturing', { id: state.session.caseId });
     session.appendChild(dot);
     session.appendChild(label);
 
@@ -924,7 +960,7 @@
       const pause = document.createElement('button');
       pause.type = 'button';
       pause.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-      pause.textContent = paused ? 'Resume' : 'Pause';
+      pause.textContent = paused ? t('resume') : t('pause');
       pause.addEventListener('click', async () => {
         await callAction(
           {
@@ -939,9 +975,9 @@
       const clear = document.createElement('button');
       clear.type = 'button';
       clear.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-      clear.textContent = 'Clear';
+      clear.textContent = t('clear');
       clear.addEventListener('click', async () => {
-        await callAction({ action: 'clearSession' }, 'Session cleared');
+        await callAction({ action: 'clearSession' }, t('toast_session_cleared'));
         await load();
       });
       session.appendChild(pause);
@@ -953,21 +989,21 @@
   function renderInbox(inbox) {
     const filtered = filteredInboxHistory();
     inbox.innerHTML =
-      '<div class="panel-head"><span class="panel-title">Detection inbox</span>' +
+      '<div class="panel-head"><span class="panel-title">' + t('inbox_title') + '</span>' +
       '<div style="display:flex;align-items:center;gap:10px">' +
       '<span class="panel-meta" id="inbox-count"></span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="inbox-clear">Clear inbox</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="inbox-clear">' + t('inbox_clear') + '</button>' +
       '</div></div>' +
       '<div class="inbox-toolbar" id="inbox-toolbar"></div>' +
-      '<div class="col-head"><span>Indicator</span><span>Enrichment</span><span>Verdict</span>' +
-      '<span>Seen</span><span></span></div>' +
+      '<div class="col-head"><span>' + t('inbox_col_indicator') + '</span><span>' + t('inbox_col_enrichment') + '</span><span>' + t('inbox_col_verdict') + '</span>' +
+      '<span>' + t('inbox_col_seen') + '</span><span></span></div>' +
       '<div id="ov-inbox-rows"></div>';
     inbox.querySelector('#inbox-count').textContent =
-      filtered.length + ' / ' + state.history.length + ' indicators';
+      t('inbox_count', { shown: filtered.length, total: state.history.length });
     inbox.querySelector('#inbox-clear').addEventListener('click', async () => {
       if (!state.history.length) return;
-      if (!confirm('Clear all detection history? This cannot be undone.')) return;
-      const res = await callAction({ action: 'clearHistory' }, 'Inbox cleared');
+      if (!confirm(t('inbox_confirm_clear'))) return;
+      const res = await callAction({ action: 'clearHistory' }, t('toast_inbox_cleared'));
       if (res && res.success !== false) {
         state.inboxFilter = '';
         state.inboxTagFilter = [];
@@ -994,7 +1030,7 @@
     const search = document.createElement('input');
     search.type = 'search';
     search.className = 'inbox-search';
-    search.placeholder = 'Filter by IoC, type, tags, notes…';
+    search.placeholder = t('inbox_filter_placeholder');
     search.value = state.inboxFilter;
     search.addEventListener('input', () => {
       state.inboxFilter = search.value;
@@ -1011,10 +1047,10 @@
       (h) => matchesInboxSearch(h) && matchesInboxTags(h) && matchesInboxTypes(h)
     );
     [
-      ['', 'All'],
-      ['malicious', 'Malicious'],
-      ['suspicious', 'Suspicious'],
-      ['review', 'Review']
+      ['', t('inbox_all')],
+      ['malicious', t('verdict_malicious')],
+      ['suspicious', t('verdict_suspicious')],
+      ['review', t('verdict_review')]
     ].forEach(([key, label]) => {
       const count = key
         ? forVerdict.filter(
@@ -1042,7 +1078,7 @@
     const trigger = document.createElement('button');
     trigger.type = 'button';
     trigger.className = 'inbox-tag-chip' + (hasInboxTagFilter() ? ' active' : '');
-    trigger.textContent = 'Tags ⌄';
+    trigger.textContent = t('inbox_tags');
     const menu = document.createElement('div');
     menu.className = 'inbox-tags-menu';
     menu.hidden = true;
@@ -1075,7 +1111,7 @@
 
     const types = Array.from(new Set(scoped.map((h) => h.type).filter(Boolean))).sort();
     if (types.length) {
-      addLabel('Type');
+      addLabel(t('inbox_menu_type'));
       types.forEach((type) => {
         addItem(
           IOCUtils.typeLabel(type),
@@ -1092,7 +1128,7 @@
     }
     const tags = allHistoryTags(scoped);
     if (tags.length) {
-      addLabel('Tag');
+      addLabel(t('inbox_menu_tag'));
       tags.forEach((tag) => {
         addItem(
           tag,
@@ -1110,7 +1146,7 @@
     if (!types.length && !tags.length) {
       const empty = document.createElement('div');
       empty.className = 'rail-empty';
-      empty.textContent = 'Nothing to filter yet.';
+      empty.textContent = t('inbox_nothing_filter');
       menu.appendChild(empty);
     }
 
@@ -1156,7 +1192,7 @@
     const clear = document.createElement('button');
     clear.type = 'button';
     clear.className = 'inbox-tag-chip';
-    clear.textContent = 'Clear filters';
+    clear.textContent = t('inbox_clear_filters');
     clear.addEventListener('click', () => {
       state.inboxTagFilter = [];
       state.inboxTypeFilter = [];
@@ -1176,7 +1212,7 @@
       empty.appendChild(glyph);
       empty.appendChild(
         document.createTextNode(
-          'No indicators yet — search from the context menu, on-page pivot, or bulk extract.'
+          t('inbox_empty')
         )
       );
       rows.appendChild(empty);
@@ -1185,7 +1221,7 @@
     if (!filtered.length) {
       const empty = document.createElement('div');
       empty.className = 'ap-empty';
-      empty.textContent = 'No indicators match the current filter.';
+      empty.textContent = t('inbox_no_match');
       rows.appendChild(empty);
       return;
     }
@@ -1205,8 +1241,8 @@
         '<span class="ap-pill"></span>' +
         '<div class="triage-seen"></div>' +
         '<div class="triage-actions">' +
-        '<button type="button" class="icon-btn" data-act="copy" title="Copy indicator">⧉</button>' +
-        '<button type="button" class="icon-btn" data-act="pivot" title="Open pivot">⤢</button></div>';
+        '<button type="button" class="icon-btn" data-act="copy" title="' + t('inbox_copy_title') + '">⧉</button>' +
+        '<button type="button" class="icon-btn" data-act="pivot" title="' + t('inbox_pivot_title') + '">⤢</button></div>';
       row.querySelector('.ap-status-dot').style.cssText =
         'background:' + typeColor + ';box-shadow:0 0 ' + (active ? 7 : 6) + 'px ' + typeColor;
       const val = row.querySelector('.ioc-val');
@@ -1218,16 +1254,16 @@
       row.querySelector('.triage-enrich').textContent = enrich;
       row.querySelector('.triage-enrich').title = enrich;
       const pill = row.querySelector('.ap-pill');
-      pill.textContent = verdict;
+      pill.textContent = verdictLabel(verdict);
       pill.style.cssText = pillStyle(vColor);
       row.querySelector('.triage-seen').textContent = timeAgo(h.timestamp);
       row.querySelector('[data-act="copy"]').addEventListener('click', async (e) => {
         e.stopPropagation();
         try {
           await navigator.clipboard.writeText(h.ioc);
-          showToast('Copied');
+          showToast(t('copied'));
         } catch (_) {
-          showToast('Copy failed');
+          showToast(t('copy_failed'));
         }
       });
       const pivotBtn = row.querySelector('[data-act="pivot"]');
@@ -1243,14 +1279,14 @@
 
   function renderPinnedRail(panel) {
     panel.innerHTML =
-      '<div class="panel-head"><span class="rail-title">Pinned</span>' +
+      '<div class="panel-head"><span class="rail-title">' + t('pinned_title') + '</span>' +
       '<span class="panel-meta"></span></div><div class="rail-rows"></div>';
     panel.querySelector('.panel-meta').textContent = String(state.favorites.length);
     const rows = panel.querySelector('.rail-rows');
     if (!state.favorites.length) {
       const empty = document.createElement('div');
       empty.className = 'rail-empty';
-      empty.textContent = 'Nothing pinned yet.';
+      empty.textContent = t('pinned_empty');
       rows.appendChild(empty);
       return;
     }
@@ -1268,10 +1304,10 @@
       value.textContent = ioc;
       value.title = ioc;
       const pill = row.querySelector('.ap-pill');
-      pill.textContent = verdict;
+      pill.textContent = verdictLabel(verdict);
       pill.style.cssText = pillStyle(IOCUtils.verdictVar(verdict));
       row.querySelector('.rail-row-meta').textContent =
-        IOCUtils.typeLabel(type) + (entry ? ' · ' + timeAgo(entry.timestamp) : ' · not in inbox');
+        IOCUtils.typeLabel(type) + (entry ? ' · ' + timeAgo(entry.timestamp) : ' · ' + t('inbox_not_in_inbox'));
       row.addEventListener('click', () => openWorkbenchPivot(ioc, type, row));
       rows.appendChild(row);
     });
@@ -1279,14 +1315,14 @@
 
   function renderCasesRail(panel) {
     panel.innerHTML =
-      '<div class="panel-head"><span class="rail-title">Open cases</span>' +
+      '<div class="panel-head"><span class="rail-title">' + t('cases_rail_title') + '</span>' +
       '<span class="panel-meta"></span></div><div class="rail-rows"></div>';
     panel.querySelector('.panel-meta').textContent = String(state.cases.length);
     const rows = panel.querySelector('.rail-rows');
     if (!state.cases.length) {
       const empty = document.createElement('div');
       empty.className = 'rail-empty';
-      empty.textContent = 'No cases yet — open one from an indicator pivot or + New case.';
+      empty.textContent = t('cases_rail_empty');
       rows.appendChild(empty);
       return;
     }
@@ -1301,14 +1337,14 @@
       const value = row.querySelector('.rail-row-value');
       value.textContent = c.id;
       const pill = row.querySelector('.ap-pill');
-      pill.textContent = verdict;
+      pill.textContent = verdictLabel(verdict);
       pill.style.cssText = pillStyle(IOCUtils.verdictVar(verdict));
       row.querySelector('.rail-row-meta').textContent =
-        c.name +
-        ' · ' +
-        (c.indicators || []).length +
-        ' indicators · updated ' +
-        timeAgo(c.updatedAt || c.createdAt);
+        t('cases_rail_meta', {
+          name: c.name,
+          n: (c.indicators || []).length,
+          when: timeAgo(c.updatedAt || c.createdAt)
+        });
       row.addEventListener('click', () => go('case', c.id));
       rows.appendChild(row);
     });
@@ -1317,10 +1353,10 @@
   function renderGraph() {
     const root = screens.graph;
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Relationship graph</h1>' +
-      '<p>Indicators that share a case are linked. That is co-occurrence, not DNS / URL / malware family graphing.</p>' +
+      '<div class="screen-head"><div><h1>' + t('graph_title') + '</h1>' +
+      '<p>' + t('graph_sub') + '</p>' +
       '<div class="panel-meta" id="graph-meta" style="margin-top:6px"></div></div>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="graph-refresh">Refresh</button></div>' +
+      '<button type="button" class="ap-btn ap-btn-primary" id="graph-refresh">' + t('refresh') + '</button></div>' +
       '<div class="ap-panel" style="padding:12px">' +
       '<div id="graph-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>' +
       '<svg id="graph-svg" width="100%" height="480"></svg></div>';
@@ -1332,7 +1368,7 @@
       const nodes = (res && res.nodes) || [];
       const edges = (res && res.edges) || [];
       root.querySelector('#graph-meta').textContent =
-        nodes.length + ' nodes · ' + edges.length + ' edges';
+        t('graph_meta', { nodes: nodes.length, edges: edges.length });
       const legend = root.querySelector('#graph-legend');
       legend.innerHTML = '';
       const types = [...new Set(nodes.map((n) => n.type))].sort();
@@ -1383,7 +1419,7 @@
         svg.appendChild(g);
       });
       if (!nodes.length) {
-        showToast('No graph edges yet — add indicators to cases');
+        showToast(t('toast_no_graph'));
       }
     }
 
@@ -1394,13 +1430,13 @@
   function renderPacks() {
     const root = screens.packs;
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Offline packs</h1>' +
-      '<p>Compact indexes bundled in the extension (ATT&amp;CK, LOLBAS, GTFOBins). Install stores a few bytes — not a copy of the dataset.</p></div></div>' +
+      '<div class="screen-head"><div><h1>' + t('packs_title') + '</h1>' +
+      '<p>' + t('packs_sub') + '</p></div></div>' +
       '<div class="pb-grid" id="packs-grid"></div>' +
       '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
-      '<label>Lookup pack</label><select id="pack-id"></select>' +
-      '<input id="pack-q" placeholder="Query…" style="margin-top:8px;width:100%" />' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="pack-go" style="margin-top:8px">Search</button>' +
+      '<label>' + t('packs_lookup') + '</label><select id="pack-id"></select>' +
+      '<input id="pack-q" placeholder="' + t('packs_query') + '" style="margin-top:8px;width:100%" />' +
+      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="pack-go" style="margin-top:8px">' + t('search') + '</button>' +
       '<pre id="pack-out" style="margin-top:12px;max-height:240px;overflow:auto;font-size:11px"></pre></div>';
 
     const grid = root.querySelector('#packs-grid');
@@ -1413,13 +1449,15 @@
         '<div style="font-weight:600"></div><div class="pb-prompt"></div>' +
         '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm pack-install"></button>';
       card.children[0].textContent = p.name;
-      card.children[1].textContent = p.description + ' · ' + p.entries + ' entries';
+      card.children[1].textContent = t('packs_entries', { desc: p.description, n: p.entries });
       const btn = card.querySelector('.pack-install');
-      btn.textContent = installed ? 'Installed' : 'Install';
+      btn.textContent = installed ? t('installed') : t('install');
       btn.disabled = installed;
       btn.addEventListener('click', async () => {
         const res = await sendMessage({ action: 'installPack', id: p.id });
-        showToast(res && res.success ? 'Installed ' + p.id : (res && res.error) || 'Failed');
+        showToast(
+          res && res.success ? t('toast_installed_pack', { id: p.id }) : (res && res.error) || t('failed')
+        );
         load();
       });
       grid.appendChild(card);
@@ -1496,7 +1534,7 @@
         JSON.stringify(res.bundle, null, 2),
         'application/json'
       );
-      showToast('Exported workspace');
+      showToast(t('toast_exported_workspace'));
     }
   }
 
@@ -1504,8 +1542,8 @@
     const res = await sendMessage({ action: 'dedupeHistory' });
     showToast(
       res && res.success
-        ? 'Deduped ' + res.before + ' → ' + res.after
-        : (res && res.error) || 'Failed'
+        ? t('toast_deduped', { before: res.before, after: res.after })
+        : (res && res.error) || t('failed')
     );
     load();
   }
@@ -1514,55 +1552,56 @@
   function renderSettings() {
     const root = screens.settings;
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Settings</h1>' +
-      '<p>Detection defaults, enabled services and per-site rules. Synced by the browser, never sent anywhere.</p></div>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="set-playbooks">▷ Default playbooks</button>' +
+      '<div class="screen-head"><div><h1>' + t('settings_title') + '</h1>' +
+      '<p>' + t('settings_sub') + '</p></div>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="set-playbooks">' + t('settings_default_playbooks') + '</button>' +
       '</div>' +
       '<div class="set-grid">' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">On-page detection</span>' +
-      '<span class="panel-meta">default for every site</span></div>' +
-      '<div class="set-body"><div class="set-hint">Highlights indicators in page text and opens the pivot on click. ' +
-      'The toolbar popup toggles the same setting plus the current site.</div>' +
-      '<div class="set-row"><span class="set-row-value">Highlight indicators on pages</span>' +
-      '<button type="button" class="toggle" id="set-overlay" aria-label="Toggle on-page detection"></button></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_overlay_title') + '</span>' +
+      '<span class="panel-meta">' + t('settings_overlay_meta') + '</span></div>' +
+      '<div class="set-body"><div class="set-hint">' + t('settings_overlay_hint') + '</div>' +
+      '<div class="set-row"><span class="set-row-value">' + t('settings_overlay_row') + '</span>' +
+      '<button type="button" class="toggle" id="set-overlay" aria-label="' + t('settings_overlay_aria') + '"></button></div>' +
       '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Disabled sites</span>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_sites_title') + '</span>' +
       '<span class="panel-meta" id="set-domain-count"></span></div>' +
-      '<div class="set-body"><div class="set-hint">Suffix match — crowdstrike.com also covers its subdomains.</div>' +
-      '<div class="set-add"><input id="set-domain-input" type="text" placeholder="e.g. splunk.company.com" spellcheck="false" autocomplete="off" />' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-domain-add">Add</button></div>' +
+      '<div class="set-body"><div class="set-hint">' + t('settings_sites_hint') + '</div>' +
+      '<div class="set-add"><input id="set-domain-input" type="text" placeholder="' + t('settings_sites_placeholder') + '" spellcheck="false" autocomplete="off" />' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-domain-add">' + t('add') + '</button></div>' +
       '<div id="set-domain-list"></div></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Appearance</span>' +
-      '<span class="panel-meta">every Aperture surface</span></div>' +
-      '<div class="set-body"><div class="set-hint">Applies to the workbench, the popup, and the ' +
-      'pivot and palette on pages. Page highlights follow the site you are reading.</div>' +
-      '<div class="seg" id="set-theme" role="group" aria-label="Theme"></div></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">OSINT services</span>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_appearance_title') + '</span>' +
+      '<span class="panel-meta">' + t('settings_appearance_meta') + '</span></div>' +
+      '<div class="set-body"><div class="set-hint">' + t('settings_appearance_hint') + '</div>' +
+      '<div class="seg" id="set-theme" role="group" aria-label="' + t('theme_aria') + '"></div>' +
+      '<div class="set-row" style="margin-top:12px"><span class="set-row-value">' + t('locale_label') + '</span>' +
+      '<select id="set-locale" class="pb-default-select" style="flex:0 0 190px" aria-label="' + t('locale_aria') + '"></select></div>' +
+      '</div></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_services_title') + '</span>' +
       '<span class="panel-meta" id="set-service-count"></span></div>' +
       '<div class="set-body set-services" id="set-services"></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Workspace</span>' +
-      '<span class="panel-meta">local file / history</span></div>' +
-      '<div class="set-body"><div class="set-hint">Download cases, history and playbooks as JSON, or collapse duplicate history rows.</div>' +
-      '<div class="set-row"><span class="set-row-value">Export workspace</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-export">Export JSON</button></div>' +
-      '<div class="set-row"><span class="set-row-value">Dedupe history</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-dedupe">Dedupe</button></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_workspace_title') + '</span>' +
+      '<span class="panel-meta">' + t('settings_workspace_meta') + '</span></div>' +
+      '<div class="set-body"><div class="set-hint">' + t('settings_workspace_hint') + '</div>' +
+      '<div class="set-row"><span class="set-row-value">' + t('settings_export_row') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-export">' + t('settings_export_json') + '</button></div>' +
+      '<div class="set-row"><span class="set-row-value">' + t('settings_dedupe_row') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-dedupe">' + t('settings_dedupe') + '</button></div>' +
       '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Feedback</span>' +
-      '<span class="panel-meta">GitHub, no telemetry</span></div>' +
-      '<div class="set-body"><div class="set-hint">Opens GitHub in a new tab. You post it — Aperture does not send reports.</div>' +
-      '<div class="set-row"><span class="set-row-value">Ideas and questions</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-feedback">Open Discussions</button></div>' +
-      '<div class="set-row"><span class="set-row-value">Bugs and regressions</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-bug">Open an issue</button></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_feedback_title') + '</span>' +
+      '<span class="panel-meta">' + t('settings_feedback_meta') + '</span></div>' +
+      '<div class="set-body"><div class="set-hint">' + t('settings_feedback_hint') + '</div>' +
+      '<div class="set-row"><span class="set-row-value">' + t('settings_ideas') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-feedback">' + t('settings_open_discussions') + '</button></div>' +
+      '<div class="set-row"><span class="set-row-value">' + t('settings_bugs') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-bug">' + t('settings_open_issue') + '</button></div>' +
       '</div></div>' +
       '</div>';
 
     const themeWrap = root.querySelector('#set-theme');
     [
-      ['system', 'System'],
-      ['dark', 'Dark'],
-      ['light', 'Light']
+      ['system', t('theme_system')],
+      ['dark', t('theme_dark')],
+      ['light', t('theme_light')]
     ].forEach(([value, label]) => {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -1581,6 +1620,26 @@
       themeWrap.appendChild(btn);
     });
 
+    const localeSel = root.querySelector('#set-locale');
+    ApertureI18n.prefs.forEach((code) => {
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = code === 'system' ? t('locale_system') : ApertureI18n.nativeName(code);
+      if (state.locale === code) opt.selected = true;
+      localeSel.appendChild(opt);
+    });
+    localeSel.addEventListener('change', async () => {
+      const value = localeSel.value;
+      if (state.locale === value) return;
+      const res = await callAction({ action: 'setLocale', locale: value }, null);
+      if (res && res.success !== false) {
+        state.locale = res.locale || value;
+        await ApertureI18n.setLocale(state.locale);
+        applyShellChrome();
+        render();
+      }
+    });
+
     const overlayBtn = root.querySelector('#set-overlay');
     overlayBtn.classList.toggle('on', state.overlayEnabled);
     overlayBtn.addEventListener('click', async () => {
@@ -1589,17 +1648,17 @@
       if (res && res.success !== false) {
         state.overlayEnabled = next;
         overlayBtn.classList.toggle('on', next);
-        showToast(next ? 'On-page detect enabled' : 'On-page detect disabled');
+        showToast(next ? t('toast_detect_on') : t('toast_detect_off'));
       }
     });
 
     const domainList = root.querySelector('#set-domain-list');
     root.querySelector('#set-domain-count').textContent =
-      state.disabledDomains.length + ' rules';
+      t('settings_sites_rules', { n: state.disabledDomains.length });
     if (!state.disabledDomains.length) {
       const empty = document.createElement('div');
       empty.className = 'set-empty';
-      empty.textContent = 'No sites disabled.';
+      empty.textContent = t('settings_sites_empty');
       domainList.appendChild(empty);
     } else {
       state.disabledDomains.forEach((domain) => {
@@ -1612,11 +1671,11 @@
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'ap-btn ap-btn-secondary ap-btn-sm';
-        remove.textContent = 'Remove';
+        remove.textContent = t('remove');
         remove.addEventListener('click', async () => {
           const res = await callAction({ action: 'removeDisabledDomain', domain }, null);
           if (res && res.success !== false) {
-            showToast('Removed ' + domain);
+            showToast(t('toast_removed', { name: domain }));
             await load();
           }
         });
@@ -1630,13 +1689,13 @@
       const input = root.querySelector('#set-domain-input');
       const domain = IOCUtils.normalizeDisabledDomain(input.value);
       if (!domain) {
-        showToast('Enter a valid domain');
+        showToast(t('toast_enter_domain'));
         return;
       }
       const res = await callAction({ action: 'addDisabledDomain', domain }, null);
       if (res && res.success !== false) {
         input.value = '';
-        showToast('Disabled on ' + domain);
+        showToast(t('toast_disabled_on', { host: domain }));
         await load();
       }
     };
@@ -1651,11 +1710,11 @@
     const services = root.querySelector('#set-services');
     const enabledCount = state.services.filter((s) => state.enabledServices[s] !== false).length;
     root.querySelector('#set-service-count').textContent =
-      enabledCount + ' / ' + state.services.length + ' on';
+      t('settings_services_on', { on: enabledCount, total: state.services.length });
     if (!state.services.length) {
       const empty = document.createElement('div');
       empty.className = 'set-empty';
-      empty.textContent = 'No services loaded — reload the extension.';
+      empty.textContent = t('settings_services_empty');
       services.appendChild(empty);
     } else {
       state.services.forEach((name) => {
@@ -1667,7 +1726,7 @@
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'toggle';
-        toggle.setAttribute('aria-label', 'Toggle ' + name);
+        toggle.setAttribute('aria-label', t('settings_toggle_service', { name }));
         toggle.classList.toggle('on', state.enabledServices[name] !== false);
         toggle.addEventListener('click', async () => {
           const next = { ...state.enabledServices };
@@ -1678,7 +1737,7 @@
           );
           if (res && res.success !== false) {
             state.enabledServices = next;
-            showToast(name + (next[name] ? ' enabled' : ' disabled'));
+            showToast(next[name] ? t('toast_service_enabled', { name }) : t('toast_service_disabled', { name }));
             renderSettings();
           }
         });
@@ -1701,10 +1760,10 @@
     const soonKeys = features ? features.COMING_SOON : [];
 
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Labs</h1>' +
-      '<p>Experimental workbench tools. Nothing here is on yet — this page is a roadmap, not a settings panel.</p></div>' +
-      '<span class="ap-pill" style="align-self:flex-start;margin-top:4px">Coming soon</span></div>' +
-      '<div class="labs-banner">Local LLM, header parsing, Sigma assist, on-page IoC diff, vault encryption, and the other items below stay off until they are finished. Export and history dedupe live in Settings.</div>' +
+      '<div class="screen-head"><div><h1>' + t('labs_title') + '</h1>' +
+      '<p>' + t('labs_sub') + '</p></div>' +
+      '<span class="ap-pill" style="align-self:flex-start;margin-top:4px">' + t('coming_soon') + '</span></div>' +
+      '<div class="labs-banner">' + t('labs_banner') + '</div>' +
       '<div class="ap-panel" id="labs-flags" style="padding:14px"></div>';
 
     const flagBox = root.querySelector('#labs-flags');
@@ -1712,7 +1771,7 @@
     heading.className = 'ap-pivot-label';
     heading.style.cssText =
       'margin:0 0 8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600';
-    heading.textContent = 'Planned';
+    heading.textContent = t('labs_planned');
     flagBox.appendChild(heading);
 
     soonKeys.forEach((key) => {
@@ -1724,7 +1783,7 @@
       name.style.cssText = 'flex:1;font-size:13px;color:var(--text-muted)';
       name.textContent = features && features.labelFor ? features.labelFor(key) : key;
       const badge = document.createElement('span');
-      badge.textContent = 'Coming soon';
+      badge.textContent = t('coming_soon');
       badge.style.cssText =
         'flex-shrink:0;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--email);font-weight:700';
       row.appendChild(name);
@@ -1736,30 +1795,30 @@
   function renderExtract() {
     const root = screens.extract;
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Bulk extract</h1>' +
-      '<p>Paste a log line, email header, or alert. Aperture refangs and classifies every indicator locally — no upload, no keys.</p></div></div>' +
+      '<div class="screen-head"><div><h1>' + t('extract_title') + '</h1>' +
+      '<p>' + t('extract_sub') + '</p></div></div>' +
       '<div class="extract-grid">' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Raw input</span>' +
-      '<span class="panel-meta">refang · dedupe · classify</span></div>' +
-      '<div style="padding:14px"><textarea class="raw" id="extract-raw" placeholder="Paste indicators here…"></textarea></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('extract_raw') + '</span>' +
+      '<span class="panel-meta">' + t('extract_raw_meta') + '</span></div>' +
+      '<div style="padding:14px"><textarea class="raw" id="extract-raw" placeholder="' + t('extract_placeholder') + '"></textarea></div>' +
       '<div class="panel-foot">' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="btn-extract">Extract indicators</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="btn-clear">Clear</button>' +
+      '<button type="button" class="ap-btn ap-btn-primary" id="btn-extract">' + t('extract_run') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="btn-clear">' + t('clear') + '</button>' +
       '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Extracted</span>' +
-      '<span class="panel-meta" id="extract-count">0 found</span></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('extract_extracted') + '</span>' +
+      '<span class="panel-meta" id="extract-count">' + t('extract_found', { n: 0 }) + '</span></div>' +
       '<div id="extract-list" style="max-height:360px;overflow:auto"></div>' +
       '<div class="panel-foot" style="flex-direction:column;align-items:stretch;gap:10px">' +
-      '<div class="copy-as-row"><span class="panel-meta" style="margin-right:4px">Copy as</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="raw">Raw</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="defang">Defanged</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="markdown">Markdown</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="csv">CSV</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="Valid STIX 2.1 (UUIDs, TLP) is coming soon">STIX · soon</button></div>' +
+      '<div class="copy-as-row"><span class="panel-meta" style="margin-right:4px">' + t('extract_copy_as') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="raw">' + t('format_raw') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="defang">' + t('format_defanged') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="markdown">' + t('format_markdown') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="csv">' + t('format_csv') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="' + t('stix_soon_title') + '">' + t('stix_soon') + '</button></div>' +
       '<div class="copy-as-row">' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-sel-all">Select all</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-case">Add to case</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="btn-run-pb">Run playbook</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-sel-all">' + t('extract_select_all') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-case">' + t('extract_add_case') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="btn-run-pb">' + t('extract_run_pb') + '</button>' +
       '</div></div></div></div>';
 
     const raw = root.querySelector('#extract-raw');
@@ -1767,11 +1826,11 @@
 
     function paintResults() {
       root.querySelector('#extract-count').textContent =
-        state.extractResults.length + ' found';
+        t('extract_found', { n: state.extractResults.length });
       list.innerHTML = '';
       if (!state.extractResults.length) {
         list.innerHTML =
-          '<div class="ap-empty"><div class="ap-empty-glyph">⧉</div>Extracted indicators will appear here.</div>';
+          '<div class="ap-empty"><div class="ap-empty-glyph">⧉</div>' + t('extract_empty') + '</div>';
         return;
       }
       state.extractResults.forEach((r, idx) => {
@@ -1791,7 +1850,7 @@
         row.querySelector('.ioc-val').textContent = r.value;
         row.querySelector('.ioc-meta').textContent = r.enrich;
         const pill = row.querySelector('.ap-pill');
-        pill.textContent = r.typeLabel;
+        pill.textContent = IOCUtils.typeLabel(r.type, r.value);
         pill.style.cssText = pillStyle(color);
         list.appendChild(row);
       });
@@ -1812,11 +1871,11 @@
         });
       }
       if (state.extractResults.length) {
-        showToast('Extracted ' + state.extractResults.length + ' indicators');
+        showToast(t('toast_extracted', { n: state.extractResults.length }));
         await load();
         paintResults();
       } else {
-        showToast('No indicators found');
+        showToast(t('toast_no_indicators'));
       }
     });
 
@@ -1845,14 +1904,14 @@
           verdict: r.verdict
         }));
         if (!items.length) {
-          showToast('Nothing to copy');
+          showToast(t('toast_nothing_to_copy'));
           return;
         }
         try {
           await navigator.clipboard.writeText(packText(btn.dataset.copy, items));
-          showToast('Copied ' + btn.dataset.copy);
+          showToast(t('toast_copied_name', { name: btn.dataset.copy }));
         } catch (_) {
-          showToast('Copy failed');
+          showToast(t('copy_failed'));
         }
       });
     });
@@ -1860,12 +1919,12 @@
     root.querySelector('#btn-add-case').addEventListener('click', async () => {
       const selected = Array.from(state.extractSelected).map((i) => state.extractResults[i]);
       if (!selected.length) {
-        showToast('Select indicators first');
+        showToast(t('toast_select_first'));
         return;
       }
       const res = await sendMessage({
         action: 'createCase',
-        name: 'Extract batch',
+        name: t('extract_batch_name'),
         indicators: selected.map((s) => s.value),
         verdict: 'review'
       });
@@ -1873,7 +1932,7 @@
         for (const s of selected) {
           await sendMessage({ action: 'addToCase', ioc: s.value, caseId: res.case.id });
         }
-        showToast('Added ' + selected.length + ' to ' + res.case.id);
+        showToast(t('toast_added_to_case', { n: selected.length, id: res.case.id }));
         await load();
       }
     });
@@ -1881,7 +1940,7 @@
     root.querySelector('#btn-run-pb').addEventListener('click', async () => {
       const selected = Array.from(state.extractSelected).map((i) => state.extractResults[i]);
       if (!selected.length) {
-        showToast('Select indicators first');
+        showToast(t('toast_select_first'));
         return;
       }
       const groups = new Map();
@@ -1892,7 +1951,7 @@
         groups.get(pb.id).iocs.push(s.value);
       });
       if (!groups.size) {
-        showToast('No playbook for selected types');
+        showToast(t('toast_no_playbook_types'));
         return;
       }
       let processed = 0;
@@ -1905,11 +1964,15 @@
         if (res && res.success) {
           processed += res.processed || group.iocs.length;
         } else {
-          showToast((res && res.error) || 'Failed running ' + group.pb.name);
+          showToast((res && res.error) || t('toast_failed_running', { name: group.pb.name }));
         }
       }
       if (processed) {
-        showToast('Processed ' + processed + ' indicator' + (processed === 1 ? '' : 's'));
+        showToast(
+          processed === 1
+            ? t('toast_processed_one', { n: processed })
+            : t('toast_processed_other', { n: processed })
+        );
         maybeAskReview();
       }
     });
@@ -1918,11 +1981,11 @@
   function renderPlaybooks() {
     const root = screens.playbooks;
     root.innerHTML =
-      '<div class="screen-head"><div><h1>Playbooks</h1>' +
-      '<p>Named, ordered tool workflows that fire on a given indicator type.</p></div>' +
+      '<div class="screen-head"><div><h1>' + t('playbooks_title') + '</h1>' +
+      '<p>' + t('playbooks_sub') + '</p></div>' +
       '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="pb-import">↓ Import code</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="pb-new">+ New playbook</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="pb-import">' + t('playbooks_import') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-primary" id="pb-new">' + t('playbooks_new') + '</button>' +
       '</div></div>' +
       '<div class="ap-panel pb-defaults" id="pb-defaults"></div>' +
       '<div class="pb-grid" id="pb-grid"></div>';
@@ -1931,7 +1994,7 @@
 
     const grid = root.querySelector('#pb-grid');
     if (!state.playbooks.length) {
-      grid.innerHTML = '<div class="ap-empty">No playbooks — import a code or create one.</div>';
+      grid.innerHTML = '<div class="ap-empty">' + t('playbooks_empty') + '</div>';
     } else {
       state.playbooks.forEach((pb, index) => {
         const card = document.createElement('div');
@@ -1945,13 +2008,13 @@
           '<div class="pb-prompt"></div>' +
           '<div style="display:flex;gap:8px">' +
           '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm pb-run" style="flex:1"></button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-edit" title="Edit playbook">✎</button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-share" title="Copy share code">⇄</button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-delete" title="Delete playbook">✕</button>' +
+          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-edit" title="' + t('playbooks_edit') + '">✎</button>' +
+          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-share" title="' + t('playbooks_share') + '">⇄</button>' +
+          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-delete" title="' + t('playbooks_delete') + '">✕</button>' +
           '</div>';
         card.querySelector('.pb-name').textContent = pb.name;
         const trig = card.querySelector('.pb-trig');
-        trig.textContent = 'on ' + IOCUtils.typeLabel(pb.trigger);
+        trig.textContent = t('playbooks_on_type', { type: IOCUtils.typeLabel(pb.trigger) });
         trig.style.cssText = pillStyle(trigColor);
         const chain = card.querySelector('.pb-chain');
         (pb.tools || []).forEach((t, i) => {
@@ -1967,20 +2030,19 @@
           chain.appendChild(chip);
         });
         card.querySelector('.pb-prompt').textContent =
-          'Prompt: ' + (pb.prompt || 'Record your finding after the run.');
+          t('playbooks_prompt', { text: pb.prompt || t('playbooks_prompt_default') });
         const runBtn = card.querySelector('.pb-run');
         const runnable = IOCUtils.runnableTools(pb.tools).length;
-        runBtn.textContent =
-          'Run · opens ' + runnable + (runnable === 1 ? ' tab' : ' tabs');
+        runBtn.textContent = t('playbooks_run_opens', { tabs: tabsLabel(runnable) });
         runBtn.addEventListener('click', () => {
-          const ioc = prompt('Indicator to run this playbook on:');
+          const ioc = prompt(t('playbooks_run_prompt'));
           if (!ioc) return;
           sendMessage({ action: 'runPlaybook', ioc: ioc.trim(), playbookId: pb.id }).then(
             (res) => {
               showToast(
                 res && res.success
-                  ? 'Ran ' + pb.name + ' — opened ' + (res.opened || 0) + ' tabs'
-                  : (res && res.error) || 'Failed'
+                  ? t('toast_ran_opened', { name: pb.name, n: res.opened || 0 })
+                  : (res && res.error) || t('failed')
               );
               maybeAskReview();
               load();
@@ -1995,23 +2057,23 @@
           });
           if (res && res.code) {
             await navigator.clipboard.writeText(res.code).catch(() => {});
-            showToast('Copied share code');
+            showToast(t('toast_copied_share'));
           }
         });
         card.querySelector('.pb-edit').addEventListener('click', () => {
           openModal(
-            'Edit playbook',
+            t('playbooks_edit'),
             (body) => buildPlaybookForm(body, pb),
             () => savePlaybookFromModal(pb)
           );
         });
         card.querySelector('.pb-delete').addEventListener('click', async () => {
-          if (!confirm('Delete playbook “' + pb.name + '”? It will also leave the right-click menu.')) {
+          if (!confirm(t('playbooks_delete_confirm', { name: pb.name }))) {
             return;
           }
           const next = state.playbooks.filter((p) => p.id !== pb.id);
           await sendMessage({ action: 'savePlaybooks', playbooks: next });
-          showToast('Deleted ' + pb.name);
+          showToast(t('toast_deleted', { name: pb.name }));
           load();
         });
         grid.appendChild(card);
@@ -2020,10 +2082,10 @@
 
     root.querySelector('#pb-import').addEventListener('click', () => {
       openModal(
-        'Import playbook',
+        t('playbooks_import_title'),
         (body) => {
           const lab = document.createElement('label');
-          lab.textContent = 'Share code';
+          lab.textContent = t('playbooks_share_code');
           const input = document.createElement('input');
           input.id = 'm-code';
           input.placeholder = 'APX|Name|ip|VirusTotal,Shodan';
@@ -2034,11 +2096,11 @@
           const code = document.getElementById('m-code').value.trim();
           const res = await sendMessage({ action: 'importPlaybook', code });
           if (res && res.success) {
-            showToast('Imported ' + res.playbook.name);
+            showToast(t('toast_imported', { name: res.playbook.name }));
             closeModal();
             load();
           } else {
-            showToast((res && res.error) || 'Invalid code');
+            showToast((res && res.error) || t('toast_invalid_code'));
           }
         }
       );
@@ -2046,7 +2108,7 @@
 
     root.querySelector('#pb-new').addEventListener('click', () => {
       openModal(
-        'New playbook',
+        t('playbooks_new_title'),
         (body) => buildPlaybookForm(body, null),
         () => savePlaybookFromModal(null)
       );
@@ -2056,8 +2118,8 @@
   // One explicit default per type — the pivot, ⌘K and the context menu all read this.
   function renderPlaybookDefaults(panel) {
     panel.innerHTML =
-      '<div class="panel-head"><span class="panel-title">Default per indicator type</span>' +
-      '<span class="panel-meta">Used by the pivot ▷ button, ⌘K and “Run default playbook”</span></div>' +
+      '<div class="panel-head"><span class="panel-title">' + t('playbooks_defaults_title') + '</span>' +
+      '<span class="panel-meta">' + t('playbooks_defaults_meta') + '</span></div>' +
       '<div class="pb-default-rows"></div>';
     const rows = panel.querySelector('.pb-default-rows');
     const types = PLAYBOOK_TRIGGER_TYPES.filter((type) =>
@@ -2066,7 +2128,7 @@
     if (!types.length) {
       const empty = document.createElement('div');
       empty.className = 'pb-default-empty';
-      empty.textContent = 'Create a playbook to assign a default for its indicator type.';
+      empty.textContent = t('playbooks_defaults_empty');
       rows.appendChild(empty);
       return;
     }
@@ -2082,7 +2144,7 @@
       select.className = 'pb-default-select';
       const auto = document.createElement('option');
       auto.value = '';
-      auto.textContent = 'First matching playbook';
+      auto.textContent = t('playbooks_first_matching');
       select.appendChild(auto);
       state.playbooks
         .filter((p) => p.trigger === type)
@@ -2090,7 +2152,7 @@
           const opt = document.createElement('option');
           opt.value = p.id;
           const count = IOCUtils.runnableTools(p.tools).length;
-          opt.textContent = p.name + ' · ' + count + (count === 1 ? ' tab' : ' tabs');
+          opt.textContent = p.name + ' · ' + tabsLabel(count);
           if (state.defaultPlaybookByType[type] === p.id) opt.selected = true;
           select.appendChild(opt);
         });
@@ -2105,8 +2167,8 @@
         if (res && res.success !== false) {
           showToast(
             select.value
-              ? 'Default for ' + IOCUtils.typeLabel(type) + ' set'
-              : 'Default for ' + IOCUtils.typeLabel(type) + ' cleared'
+              ? t('toast_default_set', { type: IOCUtils.typeLabel(type) })
+              : t('toast_default_cleared', { type: IOCUtils.typeLabel(type) })
           );
           await load();
         }
@@ -2122,7 +2184,7 @@
     const c = state.cases.find((x) => x.id === state.caseId);
     if (!c) {
       root.innerHTML =
-        '<div class="ap-empty"><div class="ap-empty-glyph">◇</div>Select or create a case.</div>';
+        '<div class="ap-empty"><div class="ap-empty-glyph">◇</div>' + t('case_select') + '</div>';
       return;
     }
     const color = IOCUtils.verdictVar(c.verdict);
@@ -2130,7 +2192,7 @@
       .map((ioc) => state.history.find((h) => h.ioc === ioc) || { ioc, type: IOCUtils.detectIOCType(ioc), verdict: 'unknown' });
 
     root.innerHTML =
-      '<button type="button" class="back-link" id="case-back">← Triage overview</button>' +
+      '<button type="button" class="back-link" id="case-back">' + t('case_back') + '</button>' +
       '<div class="screen-head"><div>' +
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
       '<span class="ap-mono" style="color:var(--text-dim);font-size:12px"></span>' +
@@ -2138,58 +2200,57 @@
       '<h1></h1>' +
       '<p></p></div>' +
       '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-run" disabled title="Multi-indicator case playbooks are coming soon">▷ Run playbook · soon</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-graph">View graph</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-delete">Delete case</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="case-run" disabled title="' + t('case_run_soon_title') + '">' + t('case_run_soon') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="case-graph">' + t('case_view_graph') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary" id="case-delete">' + t('case_delete') + '</button>' +
       '</div></div>' +
       '<div class="copy-as-row" style="margin-bottom:14px">' +
-      '<span class="panel-meta">Export</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-json">JSON</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-md">Markdown</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-csv">CSV</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="Valid STIX 2.1 (UUIDs, TLP) is coming soon">STIX · soon</button></div>' +
+      '<span class="panel-meta">' + t('export') + '</span>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-json">' + t('format_json') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-md">' + t('format_markdown') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-csv">' + t('format_csv') + '</button>' +
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="' + t('stix_soon_title') + '">' + t('stix_soon') + '</button></div>' +
       '<div class="ap-panel" id="case-session" style="padding:14px;margin-bottom:16px"></div>' +
       '<div class="case-grid">' +
       '<div><div class="ap-panel" id="case-iocs"></div>' +
-      '<div class="notes-box"><div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">Case tags</div>' +
-      '<input type="text" id="case-tags" placeholder="comma-separated tags" style="width:100%;height:34px;padding:0 10px;background:transparent;border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text);margin-bottom:14px" />' +
-      '<div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">Case notes</div>' +
+      '<div class="notes-box"><div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">' + t('case_tags') + '</div>' +
+      '<input type="text" id="case-tags" placeholder="' + t('case_tags_placeholder') + '" style="width:100%;height:34px;padding:0 10px;background:transparent;border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text);margin-bottom:14px" />' +
+      '<div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">' + t('case_notes') + '</div>' +
       '<textarea id="case-notes"></textarea></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">Timeline</span></div>' +
+      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('case_timeline') + '</span></div>' +
       '<div class="timeline" id="case-tl"></div></div></div>';
 
     root.querySelector('.ap-mono').textContent = c.id;
     const pill = root.querySelector('#case-verdict');
-    pill.textContent = c.verdict;
+    pill.textContent = verdictLabel(c.verdict);
     pill.style.cssText = pillStyle(color);
     root.querySelector('h1').textContent = c.name;
-    root.querySelector('p').textContent =
-      indicators.length +
-      ' indicators · opened ' +
-      timeAgo(c.createdAt) +
-      ' · local';
+    root.querySelector('p').textContent = t('case_meta', {
+      n: indicators.length,
+      when: timeAgo(c.createdAt)
+    });
 
     const sessPanel = root.querySelector('#case-session');
     const sessActive = state.session && state.session.caseId === c.id;
     const exclude = ((state.session && state.session.excludeDomains) || []).join(', ');
     sessPanel.innerHTML =
-      '<div class="panel-title" style="margin-bottom:8px">Session capture</div>' +
+      '<div class="panel-title" style="margin-bottom:8px">' + t('case_session') + '</div>' +
       '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="case-sess-state"></div>' +
-      '<label style="font-size:11px;color:var(--text-dim)">Exclude domains (comma-separated)</label>' +
+      '<label style="font-size:11px;color:var(--text-dim)">' + t('case_exclude') + '</label>' +
       '<input type="text" id="case-sess-exclude" style="width:100%;height:34px;margin:6px 0 10px;padding:0 10px;background:var(--inset);border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text)" />' +
       '<div class="copy-as-row">' +
       '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="case-sess-start"></button>' +
       '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-pause"></button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-clear">Clear</button></div>';
+      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-clear">' + t('clear') + '</button></div>';
     sessPanel.querySelector('#case-sess-state').textContent = sessActive
       ? state.session.paused
-        ? 'Recording paused for this case'
-        : 'Recording — capturing page IoCs into this case'
-      : 'Not recording';
+        ? t('case_rec_paused')
+        : t('case_rec_on')
+      : t('case_rec_off');
     const excludeInput = sessPanel.querySelector('#case-sess-exclude');
     excludeInput.value = exclude;
     const startBtn = sessPanel.querySelector('#case-sess-start');
-    startBtn.textContent = sessActive ? 'Update exclude list' : 'Start capture';
+    startBtn.textContent = sessActive ? t('case_update_exclude') : t('case_start_capture');
     startBtn.addEventListener('click', async () => {
       const domains = excludeInput.value
         .split(',')
@@ -2201,12 +2262,12 @@
         paused: sessActive ? !!state.session.paused : false,
         excludeDomains: domains
       });
-      showToast(sessActive ? 'Session updated' : 'Session capture started');
+      showToast(sessActive ? t('toast_session_updated') : t('toast_session_started'));
       load();
     });
     const pauseBtn = sessPanel.querySelector('#case-sess-pause');
     pauseBtn.textContent =
-      sessActive && state.session.paused ? 'Resume' : 'Pause';
+      sessActive && state.session.paused ? t('resume') : t('pause');
     pauseBtn.disabled = !sessActive;
     pauseBtn.addEventListener('click', async () => {
       await sendMessage({
@@ -2219,16 +2280,16 @@
     });
     sessPanel.querySelector('#case-sess-clear').addEventListener('click', async () => {
       await sendMessage({ action: 'clearSession' });
-      showToast('Session cleared');
+      showToast(t('toast_session_cleared'));
       load();
     });
 
     const iocPanel = root.querySelector('#case-iocs');
     iocPanel.innerHTML =
-      '<div class="panel-head"><span class="panel-title">Indicators</span></div><div id="case-ioc-rows"></div>';
+      '<div class="panel-head"><span class="panel-title">' + t('case_indicators') + '</span></div><div id="case-ioc-rows"></div>';
     const rows = iocPanel.querySelector('#case-ioc-rows');
     if (!indicators.length) {
-      rows.innerHTML = '<div class="ap-empty">No indicators in this case</div>';
+      rows.innerHTML = '<div class="ap-empty">' + t('case_no_indicators') + '</div>';
     } else {
       indicators.forEach((h) => {
         const typeColor = IOCUtils.typeVar(h.type);
@@ -2247,20 +2308,20 @@
         block.querySelector('.ioc-meta').textContent =
           h.enrich || IOCUtils.enrich(h.type, h.ioc);
         const vp = block.querySelector('.v');
-        vp.textContent = v;
+        vp.textContent = verdictLabel(v);
         vp.style.cssText = pillStyle(IOCUtils.verdictVar(v));
 
         const notesLab = document.createElement('div');
         notesLab.className = 'case-ioc-notes-label';
-        notesLab.textContent = 'Notes';
+        notesLab.textContent = t('notes');
         const notesInput = document.createElement('textarea');
         notesInput.className = 'case-ioc-notes';
         notesInput.value = h.notes || '';
-        notesInput.placeholder = 'Analyst notes for this indicator…';
+        notesInput.placeholder = t('case_notes_placeholder');
         notesInput.addEventListener('blur', async () => {
           const res = await callAction(
             { action: 'updateNotes', ioc: h.ioc, notes: notesInput.value },
-            'Notes saved'
+            t('toast_notes_saved')
           );
           if (res && res.success !== false) await load();
         });
@@ -2275,7 +2336,7 @@
     caseTags.addEventListener('change', async () => {
       const res = await callAction(
         { action: 'setCaseTags', id: c.id, tags: caseTags.value },
-        'Case tags saved'
+        t('toast_case_tags_saved')
       );
       if (res && res.success !== false) await load();
     });
@@ -2287,9 +2348,9 @@
         action: 'updateCase',
         id: c.id,
         patch: { notes: notes.value },
-        timelineEvent: 'Updated notes'
+        timelineEvent: t('timeline_updated_notes')
       });
-      showToast('Notes saved');
+      showToast(t('toast_notes_saved'));
       load();
     });
 
@@ -2314,8 +2375,8 @@
 
     root.querySelector('#case-back').addEventListener('click', () => go('overview'));
     root.querySelector('#case-delete').addEventListener('click', async () => {
-      if (!confirm('Delete case “' + c.name + '”? This cannot be undone.')) return;
-      const res = await callAction({ action: 'deleteCase', id: c.id }, 'Case deleted');
+      if (!confirm(t('case_delete_confirm', { name: c.name }))) return;
+      const res = await callAction({ action: 'deleteCase', id: c.id }, t('toast_case_deleted'));
       if (res && res.success !== false) {
         state.caseId = null;
         await load();
@@ -2330,7 +2391,7 @@
       };
       if (format === 'json') {
         downloadText(c.id + '-report.json', JSON.stringify(report, null, 2), 'application/json');
-        showToast('Exported JSON report');
+        showToast(t('toast_exported_json'));
         return;
       }
       if (format === 'md' || format === 'markdown') {
@@ -2338,59 +2399,59 @@
           '# ' +
           c.name +
           '\n\n' +
-          '**Case ID:** ' +
+          '**' + t('md_case_id') + ':** ' +
           c.id +
-          '\n**Verdict:** ' +
+          '\n**' + t('md_verdict') + ':** ' +
           c.verdict +
-          '\n\n## Indicators\n\n' +
+          '\n\n## ' + t('md_indicators') + '\n\n' +
           packText('markdown', indicators);
         downloadText(c.id + '-report.md', md, 'text/markdown');
-        showToast('Exported Markdown report');
+        showToast(t('toast_exported_md'));
         return;
       }
       downloadText(c.id + '-report.csv', packText('csv', indicators), 'text/csv');
-      showToast('Exported CSV report');
+      showToast(t('toast_exported_csv'));
     }
     root.querySelector('#case-export-json').addEventListener('click', () => exportCaseReport('json'));
     root.querySelector('#case-export-md').addEventListener('click', () => exportCaseReport('md'));
     root.querySelector('#case-export-csv').addEventListener('click', () => exportCaseReport('csv'));
     root.querySelector('#case-graph').addEventListener('click', () => {
       go('graph');
-      showToast('Graph for case indicators');
+      showToast(t('toast_graph_case'));
     });
   }
 
   function renderOnpageHelp() {
     screens['onpage-help'].innerHTML =
-      '<div class="screen-head"><div><h1>On-page detection</h1>' +
-      '<p>Enable IoC highlights from the popup Settings. Click any highlighted indicator to open the pivot card — local enrichment, verdicts, tools, playbooks, and cases. No network calls beyond opening OSINT tabs you choose.</p></div></div>' +
+      '<div class="screen-head"><div><h1>' + t('onpage_help_title') + '</h1>' +
+      '<p>' + t('onpage_help_sub') + '</p></div></div>' +
       '<div class="ap-panel" style="padding:20px">' +
-      '<p style="margin:0 0 12px;color:var(--text-muted);font-size:13px">Toggle <strong style="color:var(--text-2)">On-page IoC detect</strong> in the extension popup. Then visit any page (or <code>test/test-history.html</code> from the repo) to see dashed underlines on IPs, domains, hashes, URLs, emails, CVEs, and more.</p>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="help-overlay">Enable on-page detect now</button>' +
+      '<p style="margin:0 0 12px;color:var(--text-muted);font-size:13px">' + t('onpage_help_body') + '</p>' +
+      '<button type="button" class="ap-btn ap-btn-primary" id="help-overlay">' + t('onpage_help_enable') + '</button>' +
       '</div>';
     screens['onpage-help'].querySelector('#help-overlay').addEventListener('click', async () => {
       await sendMessage({ action: 'setOverlayEnabled', enabled: true });
-      showToast('On-page detect enabled');
+      showToast(t('toast_detect_on'));
     });
   }
 
   function openNewCaseModal() {
     openModal(
-      'New case',
+      t('case_new_title'),
       (body) => {
         const nameLab = document.createElement('label');
-        nameLab.textContent = 'Name';
+        nameLab.textContent = t('name');
         const name = document.createElement('input');
         name.id = 'm-name';
-        name.placeholder = 'Investigation name';
+        name.placeholder = t('case_name_placeholder');
         const verdLab = document.createElement('label');
-        verdLab.textContent = 'Verdict';
+        verdLab.textContent = t('verdict');
         const verd = document.createElement('select');
         verd.id = 'm-verdict';
         ['review', 'suspicious', 'malicious', 'benign', 'unknown'].forEach((v) => {
           const opt = document.createElement('option');
           opt.value = v;
-          opt.textContent = v;
+          opt.textContent = verdictLabel(v);
           verd.appendChild(opt);
         });
         body.appendChild(nameLab);
@@ -2399,11 +2460,11 @@
         body.appendChild(verd);
       },
       async () => {
-        const name = document.getElementById('m-name').value.trim() || 'Untitled case';
+        const name = document.getElementById('m-name').value.trim() || t('case_untitled');
         const verdict = document.getElementById('m-verdict').value;
         const res = await sendMessage({ action: 'createCase', name, verdict });
         if (res && res.success) {
-          showToast('Created ' + res.case.id);
+          showToast(t('toast_created_case', { id: res.case.id }));
           closeModal();
           await load();
           go('case', res.case.id);
@@ -2429,12 +2490,12 @@
     cancel.type = 'button';
     cancel.className = 'ap-btn ap-btn-secondary';
     cancel.id = 'm-cancel';
-    cancel.textContent = 'Cancel';
+    cancel.textContent = t('cancel');
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'ap-btn ap-btn-primary';
     ok.id = 'm-ok';
-    ok.textContent = 'Save';
+    ok.textContent = t('save');
     actions.appendChild(cancel);
     actions.appendChild(ok);
     modal.appendChild(h2);
@@ -2459,7 +2520,7 @@
     const data = await new Promise((resolve) => browserAPI.storage.local.get(key, resolve));
     if (data[key]) return;
     await new Promise((resolve) => browserAPI.storage.local.set({ [key]: true }, resolve));
-    showToast('Enjoying Aperture? Leave a store review when you can.');
+    showToast(t('toast_enjoy_review'));
   }
 
   document.querySelectorAll('.nav-btn[data-nav]').forEach((btn) => {
@@ -2475,22 +2536,22 @@
         sendMessage({ action: 'runPlaybook', ioc, playbookId: pb.id }).then((res) => {
           showToast(
             res && res.success
-              ? 'Ran ' + pb.name + ' — opened ' + (res.opened || 0) + ' tabs'
-              : (res && res.error) || 'Failed'
+              ? t('toast_ran_opened', { name: pb.name, n: res.opened || 0 })
+              : (res && res.error) || t('failed')
           );
           load();
         });
       const tools = (state.services || []).map((s) => ({
         icon: '◇',
         label: s,
-        meta: found ? found.ioc : 'paste an indicator',
+        meta: found ? found.ioc : t('palette_paste_meta'),
         onClick: () => {
           if (!found) {
-            showToast('Paste an indicator into the palette first');
+            showToast(t('toast_paste_indicator'));
             return;
           }
           sendMessage({ action: 'searchService', ioc: found.ioc, service: s }).then((res) => {
-            showToast(res && res.success ? 'Opened ' + s : (res && res.error) || 'Failed');
+            showToast(res && res.success ? t('toast_opened', { name: s }) : (res && res.error) || t('failed'));
             load();
           });
         }
@@ -2501,20 +2562,20 @@
         meta: pb.trigger,
         onClick: () => {
           if (!found) {
-            showToast('Paste an indicator into the palette first');
+            showToast(t('toast_paste_indicator'));
             return;
           }
           runPlaybookFor(pb, found.ioc);
         }
       }));
       const nav = [
-        { icon: '▤', label: 'Overview', meta: 'navigate', onClick: () => go('overview') },
-        { icon: '⧉', label: 'Bulk extract', meta: 'navigate', onClick: () => go('extract') },
-        { icon: '▷', label: 'Playbooks', meta: 'navigate', onClick: () => go('playbooks') },
-        { icon: '◈', label: 'Graph', meta: 'navigate', onClick: () => go('graph') },
-        { icon: '▣', label: 'Offline packs', meta: 'navigate', onClick: () => go('packs') },
-        { icon: '⚗', label: 'Labs', meta: 'coming soon', onClick: () => go('labs') },
-        { icon: '✎', label: 'Send feedback', meta: 'GitHub Discussions', onClick: openFeedbackDiscussion }
+        { icon: '▤', label: t('nav_overview'), meta: t('palette_nav_meta'), onClick: () => go('overview') },
+        { icon: '⧉', label: t('nav_extract'), meta: t('palette_nav_meta'), onClick: () => go('extract') },
+        { icon: '▷', label: t('nav_playbooks'), meta: t('palette_nav_meta'), onClick: () => go('playbooks') },
+        { icon: '◈', label: t('nav_graph'), meta: t('palette_nav_meta'), onClick: () => go('graph') },
+        { icon: '▣', label: t('nav_packs'), meta: t('palette_nav_meta'), onClick: () => go('packs') },
+        { icon: '⚗', label: t('nav_labs'), meta: t('palette_coming_soon'), onClick: () => go('labs') },
+        { icon: '✎', label: t('palette_send_feedback'), meta: t('palette_github'), onClick: openFeedbackDiscussion }
       ];
       const cases = state.cases.map((c) => ({
         icon: '◇',
@@ -2538,11 +2599,11 @@
         onClick: () => handleInboxRowClick(h)
       }));
       const groups = [
-        { label: 'Run OSINT tool', items: tools },
-        { label: 'Playbooks', items: plays },
-        { label: 'Navigate', items: nav },
-        { label: 'Cases', items: cases },
-        { label: 'History', items: recent }
+        { label: t('palette_run_tool'), items: tools },
+        { label: t('palette_group_playbooks'), items: plays },
+        { label: t('palette_group_navigate'), items: nav },
+        { label: t('palette_group_cases'), items: cases },
+        { label: t('palette_group_history'), items: recent }
       ];
       const first = ApertureUI.indicatorGroup(query, {
         playbooks: state.playbooks,
@@ -2645,6 +2706,6 @@
 
   load().catch((err) => {
     console.error(err);
-    showToast('Failed to load workbench');
+    showToast(t('toast_failed_load_workbench'));
   });
 })();

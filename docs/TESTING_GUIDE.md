@@ -1,4 +1,4 @@
-# Testing Guide — Aperture v4.3.1
+# Testing Guide — Aperture v4.4.0
 
 ## Load unpacked
 1. Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/`
@@ -15,6 +15,7 @@
 8. Enable on-page detect → open `test/test-history.html` → click highlight → pivot card
 9. ⌘K / Ctrl-K from popup and dashboard
 10. Open `test/test-ioc-utils.html` — all checks pass (includes disabled-domain matcher)
+11. Open `test/test-i18n.html` (or `node test/test-i18n.js`) — catalog mapping and key-match checks pass
 
 ## Disabled domains
 1. Popup → Settings → add `example.com` (or **Disable on this site** on a matching tab)
@@ -31,7 +32,15 @@
 5. Global on-page detect **off** still wins everywhere, even with an empty disabled list
 
 ## Upgrade path
-Install 4.2.x / 4.3.0 data then load 4.3.1 — history/cases/playbooks intact. Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads. A stored ThreatCrowd enable flag is ignored (no context-menu item).
+Install 4.2.x / 4.3.x data then load 4.4.0 — history/cases/playbooks intact. Language defaults to System (browser language mapped onto the seven catalogs; unknown → English). Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads. A stored ThreatCrowd enable flag is ignored (no context-menu item).
+
+## v4.4.0
+1. Settings → Appearance → Language — options are System plus native names (English, Español, Português, Français, Deutsch, Русский, 简体中文)
+2. Switch to Spanish — sidebar, Settings, empty states, and toasts localize without reloading the browser
+3. Popup and an open page (pivot / palette) pick up the same locale
+4. Switch to Russian and Simplified Chinese — glyphs render (system CJK/Cyrillic fallbacks, not tofu boxes)
+5. Context menu titles match the chosen language; playbook names and OSINT service names stay as stored
+6. `node test/test-i18n.js` — missing key falls back to English; `system` + `pt-BR` → `pt`; unknown browser locale → `en`
 
 ## v4.3.1
 1. Bare domain on `test/test-history.html` (e.g. `google.com`) and a workbench domain row — pivot shows **Open link**

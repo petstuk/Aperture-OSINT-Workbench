@@ -63,6 +63,10 @@
   }
 
   function labelFor(key) {
+    if (typeof ApertureI18n !== 'undefined' && typeof ApertureI18n.t === 'function') {
+      const translated = ApertureI18n.t('lab_' + key);
+      if (translated && translated !== 'lab_' + key) return translated;
+    }
     return (META[key] && META[key].label) || key;
   }
 
