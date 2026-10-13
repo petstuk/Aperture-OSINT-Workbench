@@ -1,5 +1,5 @@
 (function () {
-  const { sendMessage, showToast, createPalette, pillStyle } = ApertureUI;
+  const { sendMessage, showToast, createPalette, pillStyle, empty, dom } = ApertureUI;
 
   function t(key, vars) {
     return ApertureI18n.t(key, vars);
@@ -15,9 +15,98 @@
   }
 
   function applyShellChrome() {
-    document.querySelectorAll('[data-i18n]').forEach((el) => {
-      const key = el.getAttribute('data-i18n');
-      if (key) el.textContent = t(key);
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+      const key = node.getAttribute('data-i18n');
+      if (key) node.textContent = t(key);
+    });
+  }
+
+  function mount(root, children) {
+    empty(root);
+    (children || []).forEach((child) => {
+      if (child) root.appendChild(child);
+    });
+  }
+
+  function screenHead(title, sub, extras) {
+    const left = [dom('h1', { text: title })];
+    if (sub) left.push(dom('p', { text: sub }));
+    return dom('div', {
+      class: 'screen-head',
+      children: [dom('div', { children: left })].concat(extras || [])
+    });
+  }
+
+  function panelHead(title, meta) {
+    const kids = [dom('span', { class: 'panel-title', text: title })];
+    if (meta) kids.push(meta);
+    return dom('div', { class: 'panel-head', children: kids });
+  }
+
+  function apBtn(kind, text, extra) {
+    const cls =
+      kind === 'primary'
+        ? 'ap-btn ap-btn-primary'
+        : kind === 'primary-sm'
+          ? 'ap-btn ap-btn-primary ap-btn-sm'
+          : kind === 'secondary-sm'
+            ? 'ap-btn ap-btn-secondary ap-btn-sm'
+            : 'ap-btn ap-btn-secondary';
+    return dom('button', Object.assign({ type: 'button', class: cls, text: text }, extra || {}));
+  }
+
+  function emptyNote(text, glyph) {
+    const node = dom('div', { class: 'ap-empty' });
+    if (glyph) node.appendChild(dom('div', { class: 'ap-empty-glyph', text: glyph }));
+    node.appendChild(document.createTextNode(text));
+    return node;
+  }
+
+  function railHead(title) {
+    return dom('div', {
+      class: 'panel-head',
+      children: [
+        dom('span', { class: 'rail-title', text: title }),
+        dom('span', { class: 'panel-meta' })
+      ]
+    });
+  }
+
+  function fillRailRow(row) {
+    row.appendChild(
+      dom('div', {
+        class: 'rail-row-top',
+        children: [dom('span', { class: 'rail-row-value' }), dom('span', { class: 'ap-pill' })]
+      })
+    );
+    row.appendChild(dom('div', { class: 'rail-row-meta' }));
+    return row;
+  }
+
+  function setRow(label, control, extra) {
+    return dom(
+      'div',
+      Object.assign(
+        {
+          class: 'set-row',
+          children: [dom('span', { class: 'set-row-value', text: label }), control]
+        },
+        extra || {}
+      )
+    );
+  }
+
+  function settingsPanel(title, meta, bodyKids, bodyProps) {
+    const metaNode =
+      typeof meta === 'string'
+        ? dom('span', { class: 'panel-meta', text: meta })
+        : meta;
+    return dom('div', {
+      class: 'ap-panel',
+      children: [
+        panelHead(title, metaNode),
+        dom('div', Object.assign({ class: 'set-body', children: bodyKids || [] }, bodyProps || {}))
+      ]
     });
   }
 
@@ -487,7 +576,7 @@
     }
 
     function renderList(suggested) {
-      list.innerHTML = '';
+      empty(list);
       if (!chosen.length) {
         const empty = document.createElement('li');
         empty.className = 'pb-tool-empty';
@@ -557,7 +646,7 @@
       const taken = new Set(chosen);
       const rest = state.services.filter((s) => !taken.has(s) && !suggested.has(s));
       const pool = Array.from(suggested).filter((s) => !taken.has(s));
-      select.innerHTML = '';
+      empty(select);
       if (!pool.length && !rest.length) {
         const opt = document.createElement('option');
         opt.textContent = t('playbooks_every_service');
@@ -815,12 +904,14 @@
 
   function renderCaseNav() {
     const el = document.getElementById('case-nav-list');
-    el.innerHTML = '';
+    empty(el);
     if (!state.cases.length) {
-      el.innerHTML =
-        '<div style="padding:8px;font-size:12px;color:var(--text-faint)">' +
-        t('nav_no_cases') +
-        '</div>';
+      el.appendChild(
+        dom('div', {
+          style: 'padding:8px;font-size:12px;color:var(--text-faint)',
+          text: t('nav_no_cases')
+        })
+      );
       return;
     }
     state.cases.forEach((c) => {
@@ -852,20 +943,30 @@
 
   function renderOverview() {
     const root = screens.overview;
-    root.innerHTML =
-      '<div class="screen-head">' +
-      '<div><h1>' + t('overview_title') + '</h1>' +
-      '<p>' + t('overview_sub') + '</p></div>' +
-      '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="ov-extract">' + t('overview_bulk') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="ov-new-case">' + t('overview_new_case') + '</button>' +
-      '</div></div>' +
-      '<div class="metrics-rail" id="ov-metrics"></div>' +
-      '<div class="body-grid">' +
-      '<div class="ap-panel" id="ov-inbox"></div>' +
-      '<div><div class="ap-panel" id="ov-pinned"></div>' +
-      '<div class="ap-panel" id="ov-cases" style="margin-top:16px"></div></div>' +
-      '</div>';
+    mount(root, [
+      screenHead(t('overview_title'), t('overview_sub'), [
+        dom('div', {
+          class: 'head-actions',
+          children: [
+            apBtn('secondary', t('overview_bulk'), { id: 'ov-extract' }),
+            apBtn('primary', t('overview_new_case'), { id: 'ov-new-case' })
+          ]
+        })
+      ]),
+      dom('div', { class: 'metrics-rail', id: 'ov-metrics' }),
+      dom('div', {
+        class: 'body-grid',
+        children: [
+          dom('div', { class: 'ap-panel', id: 'ov-inbox' }),
+          dom('div', {
+            children: [
+              dom('div', { class: 'ap-panel', id: 'ov-pinned' }),
+              dom('div', { class: 'ap-panel', id: 'ov-cases', style: 'margin-top:16px' })
+            ]
+          })
+        ]
+      })
+    ]);
 
     renderMetricsRail(root.querySelector('#ov-metrics'));
     renderInbox(root.querySelector('#ov-inbox'));
@@ -875,12 +976,16 @@
     if (!state.feedbackPromptDismissed) {
       const banner = document.createElement('div');
       banner.className = 'feedback-banner';
-      banner.innerHTML =
-        '<span>' + t('overview_feedback') + '</span>' +
-        '<span class="feedback-banner-actions">' +
-        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback">' + t('overview_share_feedback') + '</button>' +
-        '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="ov-feedback-dismiss">' + t('overview_dismiss') + '</button>' +
-        '</span>';
+      banner.appendChild(dom('span', { text: t('overview_feedback') }));
+      banner.appendChild(
+        dom('span', {
+          class: 'feedback-banner-actions',
+          children: [
+            apBtn('secondary-sm', t('overview_share_feedback'), { id: 'ov-feedback' }),
+            apBtn('secondary-sm', t('overview_dismiss'), { id: 'ov-feedback-dismiss' })
+          ]
+        })
+      );
       root.insertBefore(banner, root.querySelector('.metrics-rail'));
       banner.querySelector('#ov-feedback').addEventListener('click', async () => {
         await dismissFeedbackPrompt();
@@ -917,7 +1022,7 @@
         'var(--review)'
       ]
     ];
-    rail.innerHTML = '';
+    empty(rail);
     metrics.forEach(([label, value, color], index) => {
       if (index) {
         const divider = document.createElement('span');
@@ -988,16 +1093,30 @@
 
   function renderInbox(inbox) {
     const filtered = filteredInboxHistory();
-    inbox.innerHTML =
-      '<div class="panel-head"><span class="panel-title">' + t('inbox_title') + '</span>' +
-      '<div style="display:flex;align-items:center;gap:10px">' +
-      '<span class="panel-meta" id="inbox-count"></span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="inbox-clear">' + t('inbox_clear') + '</button>' +
-      '</div></div>' +
-      '<div class="inbox-toolbar" id="inbox-toolbar"></div>' +
-      '<div class="col-head"><span>' + t('inbox_col_indicator') + '</span><span>' + t('inbox_col_enrichment') + '</span><span>' + t('inbox_col_verdict') + '</span>' +
-      '<span>' + t('inbox_col_seen') + '</span><span></span></div>' +
-      '<div id="ov-inbox-rows"></div>';
+    mount(inbox, [
+      panelHead(
+        t('inbox_title'),
+        dom('div', {
+          style: 'display:flex;align-items:center;gap:10px',
+          children: [
+            dom('span', { class: 'panel-meta', id: 'inbox-count' }),
+            apBtn('secondary-sm', t('inbox_clear'), { id: 'inbox-clear' })
+          ]
+        })
+      ),
+      dom('div', { class: 'inbox-toolbar', id: 'inbox-toolbar' }),
+      dom('div', {
+        class: 'col-head',
+        children: [
+          dom('span', { text: t('inbox_col_indicator') }),
+          dom('span', { text: t('inbox_col_enrichment') }),
+          dom('span', { text: t('inbox_col_verdict') }),
+          dom('span', { text: t('inbox_col_seen') }),
+          dom('span')
+        ]
+      }),
+      dom('div', { id: 'ov-inbox-rows' })
+    ]);
     inbox.querySelector('#inbox-count').textContent =
       t('inbox_count', { shown: filtered.length, total: state.history.length });
     inbox.querySelector('#inbox-clear').addEventListener('click', async () => {
@@ -1026,7 +1145,7 @@
   // One row: search, verdict chips with counts, and the Tags menu. Tag chips appear
   // below only once a tag or type filter is on.
   function renderInboxToolbar(toolbar) {
-    toolbar.innerHTML = '';
+    empty(toolbar);
     const search = document.createElement('input');
     search.type = 'search';
     search.className = 'inbox-search';
@@ -1234,15 +1353,38 @@
       const active = state.pivotIoc === h.ioc;
       const row = document.createElement('div');
       row.className = 'triage-row inbox-row' + (active ? ' pivoting' : '');
-      row.innerHTML =
-        '<div class="ioc-cell"><span class="ap-status-dot"></span><div style="min-width:0">' +
-        '<div class="ioc-val"></div><div class="ioc-meta"></div></div></div>' +
-        '<div class="triage-enrich"></div>' +
-        '<span class="ap-pill"></span>' +
-        '<div class="triage-seen"></div>' +
-        '<div class="triage-actions">' +
-        '<button type="button" class="icon-btn" data-act="copy" title="' + t('inbox_copy_title') + '">⧉</button>' +
-        '<button type="button" class="icon-btn" data-act="pivot" title="' + t('inbox_pivot_title') + '">⤢</button></div>';
+      row.appendChild(
+        dom('div', {
+          class: 'ioc-cell',
+          children: [
+            dom('span', { class: 'ap-status-dot' }),
+            dom('div', {
+              style: 'min-width:0',
+              children: [dom('div', { class: 'ioc-val' }), dom('div', { class: 'ioc-meta' })]
+            })
+          ]
+        })
+      );
+      row.appendChild(dom('div', { class: 'triage-enrich' }));
+      row.appendChild(dom('span', { class: 'ap-pill' }));
+      row.appendChild(dom('div', { class: 'triage-seen' }));
+      row.appendChild(
+        dom('div', {
+          class: 'triage-actions',
+          children: [
+            apBtn(null, '⧉', {
+              class: 'icon-btn',
+              dataset: { act: 'copy' },
+              title: t('inbox_copy_title')
+            }),
+            apBtn(null, '⤢', {
+              class: 'icon-btn',
+              dataset: { act: 'pivot' },
+              title: t('inbox_pivot_title')
+            })
+          ]
+        })
+      );
       row.querySelector('.ap-status-dot').style.cssText =
         'background:' + typeColor + ';box-shadow:0 0 ' + (active ? 7 : 6) + 'px ' + typeColor;
       const val = row.querySelector('.ioc-val');
@@ -1278,9 +1420,7 @@
   }
 
   function renderPinnedRail(panel) {
-    panel.innerHTML =
-      '<div class="panel-head"><span class="rail-title">' + t('pinned_title') + '</span>' +
-      '<span class="panel-meta"></span></div><div class="rail-rows"></div>';
+    mount(panel, [railHead(t('pinned_title')), dom('div', { class: 'rail-rows' })]);
     panel.querySelector('.panel-meta').textContent = String(state.favorites.length);
     const rows = panel.querySelector('.rail-rows');
     if (!state.favorites.length) {
@@ -1294,12 +1434,7 @@
       const entry = state.history.find((h) => h.ioc === ioc);
       const type = (entry && entry.type) || IOCUtils.detectIOCType(ioc);
       const verdict = IOCUtils.normalizeVerdict(entry && (entry.verdict || entry.status));
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'rail-row';
-      row.innerHTML =
-        '<div class="rail-row-top"><span class="rail-row-value"></span>' +
-        '<span class="ap-pill"></span></div><div class="rail-row-meta"></div>';
+      const row = fillRailRow(dom('button', { type: 'button', class: 'rail-row' }));
       const value = row.querySelector('.rail-row-value');
       value.textContent = ioc;
       value.title = ioc;
@@ -1314,9 +1449,7 @@
   }
 
   function renderCasesRail(panel) {
-    panel.innerHTML =
-      '<div class="panel-head"><span class="rail-title">' + t('cases_rail_title') + '</span>' +
-      '<span class="panel-meta"></span></div><div class="rail-rows"></div>';
+    mount(panel, [railHead(t('cases_rail_title')), dom('div', { class: 'rail-rows' })]);
     panel.querySelector('.panel-meta').textContent = String(state.cases.length);
     const rows = panel.querySelector('.rail-rows');
     if (!state.cases.length) {
@@ -1328,12 +1461,7 @@
     }
     state.cases.forEach((c) => {
       const verdict = IOCUtils.normalizeVerdict(c.verdict);
-      const row = document.createElement('button');
-      row.type = 'button';
-      row.className = 'rail-row';
-      row.innerHTML =
-        '<div class="rail-row-top"><span class="rail-row-value"></span>' +
-        '<span class="ap-pill"></span></div><div class="rail-row-meta"></div>';
+      const row = fillRailRow(dom('button', { type: 'button', class: 'rail-row' }));
       const value = row.querySelector('.rail-row-value');
       value.textContent = c.id;
       const pill = row.querySelector('.ap-pill');
@@ -1352,14 +1480,36 @@
 
   function renderGraph() {
     const root = screens.graph;
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('graph_title') + '</h1>' +
-      '<p>' + t('graph_sub') + '</p>' +
-      '<div class="panel-meta" id="graph-meta" style="margin-top:6px"></div></div>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="graph-refresh">' + t('refresh') + '</button></div>' +
-      '<div class="ap-panel" style="padding:12px">' +
-      '<div id="graph-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>' +
-      '<svg id="graph-svg" width="100%" height="480"></svg></div>';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('id', 'graph-svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '480');
+    mount(root, [
+      dom('div', {
+        class: 'screen-head',
+        children: [
+          dom('div', {
+            children: [
+              dom('h1', { text: t('graph_title') }),
+              dom('p', { text: t('graph_sub') }),
+              dom('div', { class: 'panel-meta', id: 'graph-meta', style: 'margin-top:6px' })
+            ]
+          }),
+          apBtn('primary', t('refresh'), { id: 'graph-refresh' })
+        ]
+      }),
+      dom('div', {
+        class: 'ap-panel',
+        style: 'padding:12px',
+        children: [
+          dom('div', {
+            id: 'graph-legend',
+            style: 'display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px'
+          }),
+          svg
+        ]
+      })
+    ]);
 
     async function paint() {
       const res = await sendMessage({ action: 'buildGraph' });
@@ -1370,7 +1520,7 @@
       root.querySelector('#graph-meta').textContent =
         t('graph_meta', { nodes: nodes.length, edges: edges.length });
       const legend = root.querySelector('#graph-legend');
-      legend.innerHTML = '';
+      empty(legend);
       const types = [...new Set(nodes.map((n) => n.type))].sort();
       types.forEach((t) => {
         const color = IOCUtils.typeVar(t);
@@ -1429,15 +1579,28 @@
 
   function renderPacks() {
     const root = screens.packs;
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('packs_title') + '</h1>' +
-      '<p>' + t('packs_sub') + '</p></div></div>' +
-      '<div class="pb-grid" id="packs-grid"></div>' +
-      '<div class="ap-panel" style="margin-top:16px;padding:14px">' +
-      '<label>' + t('packs_lookup') + '</label><select id="pack-id"></select>' +
-      '<input id="pack-q" placeholder="' + t('packs_query') + '" style="margin-top:8px;width:100%" />' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="pack-go" style="margin-top:8px">' + t('search') + '</button>' +
-      '<pre id="pack-out" style="margin-top:12px;max-height:240px;overflow:auto;font-size:11px"></pre></div>';
+    mount(root, [
+      screenHead(t('packs_title'), t('packs_sub')),
+      dom('div', { class: 'pb-grid', id: 'packs-grid' }),
+      dom('div', {
+        class: 'ap-panel',
+        style: 'margin-top:16px;padding:14px',
+        children: [
+          dom('label', { text: t('packs_lookup') }),
+          dom('select', { id: 'pack-id' }),
+          dom('input', {
+            id: 'pack-q',
+            placeholder: t('packs_query'),
+            style: 'margin-top:8px;width:100%'
+          }),
+          apBtn('primary-sm', t('search'), { id: 'pack-go', style: 'margin-top:8px' }),
+          dom('pre', {
+            id: 'pack-out',
+            style: 'margin-top:12px;max-height:240px;overflow:auto;font-size:11px'
+          })
+        ]
+      })
+    ]);
 
     const grid = root.querySelector('#packs-grid');
     const sel = root.querySelector('#pack-id');
@@ -1445,12 +1608,15 @@
       const card = document.createElement('div');
       card.className = 'pb-card';
       const installed = !!(state.installedPacks || {})[p.id];
-      card.innerHTML =
-        '<div style="font-weight:600"></div><div class="pb-prompt"></div>' +
-        '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm pack-install"></button>';
-      card.children[0].textContent = p.name;
-      card.children[1].textContent = t('packs_entries', { desc: p.description, n: p.entries });
-      const btn = card.querySelector('.pack-install');
+      card.appendChild(dom('div', { style: 'font-weight:600', text: p.name }));
+      card.appendChild(
+        dom('div', {
+          class: 'pb-prompt',
+          text: t('packs_entries', { desc: p.description, n: p.entries })
+        })
+      );
+      const btn = apBtn('primary-sm', '', { class: 'ap-btn ap-btn-primary ap-btn-sm pack-install' });
+      card.appendChild(btn);
       btn.textContent = installed ? t('installed') : t('install');
       btn.disabled = installed;
       btn.addEventListener('click', async () => {
@@ -1551,51 +1717,78 @@
   // Everything persistent lives here; the popup only owns the current tab.
   function renderSettings() {
     const root = screens.settings;
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('settings_title') + '</h1>' +
-      '<p>' + t('settings_sub') + '</p></div>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="set-playbooks">' + t('settings_default_playbooks') + '</button>' +
-      '</div>' +
-      '<div class="set-grid">' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_overlay_title') + '</span>' +
-      '<span class="panel-meta">' + t('settings_overlay_meta') + '</span></div>' +
-      '<div class="set-body"><div class="set-hint">' + t('settings_overlay_hint') + '</div>' +
-      '<div class="set-row"><span class="set-row-value">' + t('settings_overlay_row') + '</span>' +
-      '<button type="button" class="toggle" id="set-overlay" aria-label="' + t('settings_overlay_aria') + '"></button></div>' +
-      '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_sites_title') + '</span>' +
-      '<span class="panel-meta" id="set-domain-count"></span></div>' +
-      '<div class="set-body"><div class="set-hint">' + t('settings_sites_hint') + '</div>' +
-      '<div class="set-add"><input id="set-domain-input" type="text" placeholder="' + t('settings_sites_placeholder') + '" spellcheck="false" autocomplete="off" />' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-domain-add">' + t('add') + '</button></div>' +
-      '<div id="set-domain-list"></div></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_appearance_title') + '</span>' +
-      '<span class="panel-meta">' + t('settings_appearance_meta') + '</span></div>' +
-      '<div class="set-body"><div class="set-hint">' + t('settings_appearance_hint') + '</div>' +
-      '<div class="seg" id="set-theme" role="group" aria-label="' + t('theme_aria') + '"></div>' +
-      '<div class="set-row" style="margin-top:12px"><span class="set-row-value">' + t('locale_label') + '</span>' +
-      '<select id="set-locale" class="pb-default-select" style="flex:0 0 190px" aria-label="' + t('locale_aria') + '"></select></div>' +
-      '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_services_title') + '</span>' +
-      '<span class="panel-meta" id="set-service-count"></span></div>' +
-      '<div class="set-body set-services" id="set-services"></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_workspace_title') + '</span>' +
-      '<span class="panel-meta">' + t('settings_workspace_meta') + '</span></div>' +
-      '<div class="set-body"><div class="set-hint">' + t('settings_workspace_hint') + '</div>' +
-      '<div class="set-row"><span class="set-row-value">' + t('settings_export_row') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-export">' + t('settings_export_json') + '</button></div>' +
-      '<div class="set-row"><span class="set-row-value">' + t('settings_dedupe_row') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-dedupe">' + t('settings_dedupe') + '</button></div>' +
-      '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('settings_feedback_title') + '</span>' +
-      '<span class="panel-meta">' + t('settings_feedback_meta') + '</span></div>' +
-      '<div class="set-body"><div class="set-hint">' + t('settings_feedback_hint') + '</div>' +
-      '<div class="set-row"><span class="set-row-value">' + t('settings_ideas') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-feedback">' + t('settings_open_discussions') + '</button></div>' +
-      '<div class="set-row"><span class="set-row-value">' + t('settings_bugs') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="set-bug">' + t('settings_open_issue') + '</button></div>' +
-      '</div></div>' +
-      '</div>';
+    mount(root, [
+      screenHead(t('settings_title'), t('settings_sub'), [
+        apBtn('secondary', t('settings_default_playbooks'), { id: 'set-playbooks' })
+      ]),
+      dom('div', {
+        class: 'set-grid',
+        children: [
+          settingsPanel(t('settings_overlay_title'), t('settings_overlay_meta'), [
+            dom('div', { class: 'set-hint', text: t('settings_overlay_hint') }),
+            setRow(
+              t('settings_overlay_row'),
+              apBtn(null, '', {
+                class: 'toggle',
+                id: 'set-overlay',
+                ariaLabel: t('settings_overlay_aria')
+              })
+            )
+          ]),
+          settingsPanel(
+            t('settings_sites_title'),
+            dom('span', { class: 'panel-meta', id: 'set-domain-count' }),
+            [
+              dom('div', { class: 'set-hint', text: t('settings_sites_hint') }),
+              dom('div', {
+                class: 'set-add',
+                children: [
+                  dom('input', {
+                    id: 'set-domain-input',
+                    type: 'text',
+                    placeholder: t('settings_sites_placeholder'),
+                    spellcheck: false,
+                    autocomplete: 'off'
+                  }),
+                  apBtn('secondary-sm', t('add'), { id: 'set-domain-add' })
+                ]
+              }),
+              dom('div', { id: 'set-domain-list' })
+            ]
+          ),
+          settingsPanel(t('settings_appearance_title'), t('settings_appearance_meta'), [
+            dom('div', { class: 'set-hint', text: t('settings_appearance_hint') }),
+            dom('div', { class: 'seg', id: 'set-theme', role: 'group', ariaLabel: t('theme_aria') }),
+            setRow(
+              t('locale_label'),
+              dom('select', {
+                id: 'set-locale',
+                class: 'pb-default-select',
+                style: 'flex:0 0 190px',
+                ariaLabel: t('locale_aria')
+              }),
+              { style: 'margin-top:12px' }
+            )
+          ]),
+          settingsPanel(
+            t('settings_services_title'),
+            dom('span', { class: 'panel-meta', id: 'set-service-count' }),
+            [],
+            { class: 'set-body set-services', id: 'set-services' }
+          ),
+          settingsPanel(t('settings_workspace_title'), t('settings_workspace_meta'), [
+            dom('div', { class: 'set-hint', text: t('settings_workspace_hint') }),
+            setRow(t('settings_export_row'), apBtn('secondary-sm', t('settings_export_json'), { id: 'set-export' })),
+            setRow(t('settings_dedupe_row'), apBtn('secondary-sm', t('settings_dedupe'), { id: 'set-dedupe' }))
+          ]),
+          settingsPanel(t('settings_feedback_title'), t('settings_feedback_meta'), [
+            dom('div', { class: 'set-hint', text: t('settings_feedback_hint') }),
+            setRow(t('settings_ideas'), apBtn('secondary-sm', t('settings_open_discussions'), { id: 'set-feedback' })),
+            setRow(t('settings_bugs'), apBtn('secondary-sm', t('settings_open_issue'), { id: 'set-bug' }))
+          ])
+        ]
+      })
+    ]);
 
     const themeWrap = root.querySelector('#set-theme');
     [
@@ -1759,12 +1952,17 @@
     const features = typeof ApertureFeatures !== 'undefined' ? ApertureFeatures : null;
     const soonKeys = features ? features.COMING_SOON : [];
 
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('labs_title') + '</h1>' +
-      '<p>' + t('labs_sub') + '</p></div>' +
-      '<span class="ap-pill" style="align-self:flex-start;margin-top:4px">' + t('coming_soon') + '</span></div>' +
-      '<div class="labs-banner">' + t('labs_banner') + '</div>' +
-      '<div class="ap-panel" id="labs-flags" style="padding:14px"></div>';
+    mount(root, [
+      screenHead(t('labs_title'), t('labs_sub'), [
+        dom('span', {
+          class: 'ap-pill',
+          style: 'align-self:flex-start;margin-top:4px',
+          text: t('coming_soon')
+        })
+      ]),
+      dom('div', { class: 'labs-banner', text: t('labs_banner') }),
+      dom('div', { class: 'ap-panel', id: 'labs-flags', style: 'padding:14px' })
+    ]);
 
     const flagBox = root.querySelector('#labs-flags');
     const heading = document.createElement('div');
@@ -1794,32 +1992,79 @@
 
   function renderExtract() {
     const root = screens.extract;
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('extract_title') + '</h1>' +
-      '<p>' + t('extract_sub') + '</p></div></div>' +
-      '<div class="extract-grid">' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('extract_raw') + '</span>' +
-      '<span class="panel-meta">' + t('extract_raw_meta') + '</span></div>' +
-      '<div style="padding:14px"><textarea class="raw" id="extract-raw" placeholder="' + t('extract_placeholder') + '"></textarea></div>' +
-      '<div class="panel-foot">' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="btn-extract">' + t('extract_run') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="btn-clear">' + t('clear') + '</button>' +
-      '</div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('extract_extracted') + '</span>' +
-      '<span class="panel-meta" id="extract-count">' + t('extract_found', { n: 0 }) + '</span></div>' +
-      '<div id="extract-list" style="max-height:360px;overflow:auto"></div>' +
-      '<div class="panel-foot" style="flex-direction:column;align-items:stretch;gap:10px">' +
-      '<div class="copy-as-row"><span class="panel-meta" style="margin-right:4px">' + t('extract_copy_as') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="raw">' + t('format_raw') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="defang">' + t('format_defanged') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="markdown">' + t('format_markdown') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" data-copy="csv">' + t('format_csv') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="' + t('stix_soon_title') + '">' + t('stix_soon') + '</button></div>' +
-      '<div class="copy-as-row">' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-sel-all">' + t('extract_select_all') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="btn-add-case">' + t('extract_add_case') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="btn-run-pb">' + t('extract_run_pb') + '</button>' +
-      '</div></div></div></div>';
+    mount(root, [
+      screenHead(t('extract_title'), t('extract_sub')),
+      dom('div', {
+        class: 'extract-grid',
+        children: [
+          dom('div', {
+            class: 'ap-panel',
+            children: [
+              panelHead(t('extract_raw'), dom('span', { class: 'panel-meta', text: t('extract_raw_meta') })),
+              dom('div', {
+                style: 'padding:14px',
+                children: [
+                  dom('textarea', {
+                    class: 'raw',
+                    id: 'extract-raw',
+                    placeholder: t('extract_placeholder')
+                  })
+                ]
+              }),
+              dom('div', {
+                class: 'panel-foot',
+                children: [
+                  apBtn('primary', t('extract_run'), { id: 'btn-extract' }),
+                  apBtn('secondary', t('clear'), { id: 'btn-clear' })
+                ]
+              })
+            ]
+          }),
+          dom('div', {
+            class: 'ap-panel',
+            children: [
+              panelHead(
+                t('extract_extracted'),
+                dom('span', { class: 'panel-meta', id: 'extract-count', text: t('extract_found', { n: 0 }) })
+              ),
+              dom('div', { id: 'extract-list', style: 'max-height:360px;overflow:auto' }),
+              dom('div', {
+                class: 'panel-foot',
+                style: 'flex-direction:column;align-items:stretch;gap:10px',
+                children: [
+                  dom('div', {
+                    class: 'copy-as-row',
+                    children: [
+                      dom('span', {
+                        class: 'panel-meta',
+                        style: 'margin-right:4px',
+                        text: t('extract_copy_as')
+                      }),
+                      apBtn('secondary-sm', t('format_raw'), { dataset: { copy: 'raw' } }),
+                      apBtn('secondary-sm', t('format_defanged'), { dataset: { copy: 'defang' } }),
+                      apBtn('secondary-sm', t('format_markdown'), { dataset: { copy: 'markdown' } }),
+                      apBtn('secondary-sm', t('format_csv'), { dataset: { copy: 'csv' } }),
+                      apBtn('secondary-sm', t('stix_soon'), {
+                        disabled: true,
+                        title: t('stix_soon_title')
+                      })
+                    ]
+                  }),
+                  dom('div', {
+                    class: 'copy-as-row',
+                    children: [
+                      apBtn('secondary-sm', t('extract_select_all'), { id: 'btn-sel-all' }),
+                      apBtn('secondary-sm', t('extract_add_case'), { id: 'btn-add-case' }),
+                      apBtn('primary-sm', t('extract_run_pb'), { id: 'btn-run-pb' })
+                    ]
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    ]);
 
     const raw = root.querySelector('#extract-raw');
     const list = root.querySelector('#extract-list');
@@ -1827,20 +2072,23 @@
     function paintResults() {
       root.querySelector('#extract-count').textContent =
         t('extract_found', { n: state.extractResults.length });
-      list.innerHTML = '';
+      empty(list);
       if (!state.extractResults.length) {
-        list.innerHTML =
-          '<div class="ap-empty"><div class="ap-empty-glyph">⧉</div>' + t('extract_empty') + '</div>';
+        list.appendChild(emptyNote(t('extract_empty'), '⧉'));
         return;
       }
       state.extractResults.forEach((r, idx) => {
         const row = document.createElement('div');
         row.className = 'extract-row';
         const color = IOCUtils.typeVar(r.type);
-        row.innerHTML =
-          '<input type="checkbox" /><div style="flex:1;min-width:0">' +
-          '<div class="ioc-val"></div><div class="ioc-meta"></div></div>' +
-          '<span class="ap-pill"></span>';
+        row.appendChild(dom('input', { type: 'checkbox' }));
+        row.appendChild(
+          dom('div', {
+            style: 'flex:1;min-width:0',
+            children: [dom('div', { class: 'ioc-val' }), dom('div', { class: 'ioc-meta' })]
+          })
+        );
+        row.appendChild(dom('span', { class: 'ap-pill' }));
         const cb = row.querySelector('input');
         cb.checked = state.extractSelected.has(idx);
         cb.addEventListener('change', () => {
@@ -1980,38 +2228,63 @@
 
   function renderPlaybooks() {
     const root = screens.playbooks;
-    root.innerHTML =
-      '<div class="screen-head"><div><h1>' + t('playbooks_title') + '</h1>' +
-      '<p>' + t('playbooks_sub') + '</p></div>' +
-      '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="pb-import">' + t('playbooks_import') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="pb-new">' + t('playbooks_new') + '</button>' +
-      '</div></div>' +
-      '<div class="ap-panel pb-defaults" id="pb-defaults"></div>' +
-      '<div class="pb-grid" id="pb-grid"></div>';
+    mount(root, [
+      screenHead(t('playbooks_title'), t('playbooks_sub'), [
+        dom('div', {
+          class: 'head-actions',
+          children: [
+            apBtn('secondary', t('playbooks_import'), { id: 'pb-import' }),
+            apBtn('primary', t('playbooks_new'), { id: 'pb-new' })
+          ]
+        })
+      ]),
+      dom('div', { class: 'ap-panel pb-defaults', id: 'pb-defaults' }),
+      dom('div', { class: 'pb-grid', id: 'pb-grid' })
+    ]);
 
     renderPlaybookDefaults(root.querySelector('#pb-defaults'));
 
     const grid = root.querySelector('#pb-grid');
     if (!state.playbooks.length) {
-      grid.innerHTML = '<div class="ap-empty">' + t('playbooks_empty') + '</div>';
+      grid.appendChild(emptyNote(t('playbooks_empty')));
     } else {
       state.playbooks.forEach((pb, index) => {
         const card = document.createElement('div');
         card.className = 'pb-card';
         const trigColor = IOCUtils.typeVar(pb.trigger);
-        card.innerHTML =
-          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
-          '<div style="font-size:14px;font-weight:600;color:var(--text-hi)">▷ <span class="pb-name"></span></div>' +
-          '<span class="ap-pill pb-trig"></span></div>' +
-          '<div class="pb-chain"></div>' +
-          '<div class="pb-prompt"></div>' +
-          '<div style="display:flex;gap:8px">' +
-          '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm pb-run" style="flex:1"></button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-edit" title="' + t('playbooks_edit') + '">✎</button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-share" title="' + t('playbooks_share') + '">⇄</button>' +
-          '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm pb-delete" title="' + t('playbooks_delete') + '">✕</button>' +
-          '</div>';
+        const nameWrap = dom('div', {
+          style: 'font-size:14px;font-weight:600;color:var(--text-hi)'
+        });
+        nameWrap.appendChild(document.createTextNode('▷ '));
+        nameWrap.appendChild(dom('span', { class: 'pb-name' }));
+        card.appendChild(
+          dom('div', {
+            style: 'display:flex;justify-content:space-between;align-items:center;gap:8px',
+            children: [nameWrap, dom('span', { class: 'ap-pill pb-trig' })]
+          })
+        );
+        card.appendChild(dom('div', { class: 'pb-chain' }));
+        card.appendChild(dom('div', { class: 'pb-prompt' }));
+        card.appendChild(
+          dom('div', {
+            style: 'display:flex;gap:8px',
+            children: [
+              apBtn('primary-sm', '', { class: 'ap-btn ap-btn-primary ap-btn-sm pb-run', style: 'flex:1' }),
+              apBtn('secondary-sm', '✎', {
+                class: 'ap-btn ap-btn-secondary ap-btn-sm pb-edit',
+                title: t('playbooks_edit')
+              }),
+              apBtn('secondary-sm', '⇄', {
+                class: 'ap-btn ap-btn-secondary ap-btn-sm pb-share',
+                title: t('playbooks_share')
+              }),
+              apBtn('secondary-sm', '✕', {
+                class: 'ap-btn ap-btn-secondary ap-btn-sm pb-delete',
+                title: t('playbooks_delete')
+              })
+            ]
+          })
+        );
         card.querySelector('.pb-name').textContent = pb.name;
         const trig = card.querySelector('.pb-trig');
         trig.textContent = t('playbooks_on_type', { type: IOCUtils.typeLabel(pb.trigger) });
@@ -2117,10 +2390,13 @@
 
   // One explicit default per type — the pivot, ⌘K and the context menu all read this.
   function renderPlaybookDefaults(panel) {
-    panel.innerHTML =
-      '<div class="panel-head"><span class="panel-title">' + t('playbooks_defaults_title') + '</span>' +
-      '<span class="panel-meta">' + t('playbooks_defaults_meta') + '</span></div>' +
-      '<div class="pb-default-rows"></div>';
+    mount(panel, [
+      panelHead(
+        t('playbooks_defaults_title'),
+        dom('span', { class: 'panel-meta', text: t('playbooks_defaults_meta') })
+      ),
+      dom('div', { class: 'pb-default-rows' })
+    ]);
     const rows = panel.querySelector('.pb-default-rows');
     const types = PLAYBOOK_TRIGGER_TYPES.filter((type) =>
       state.playbooks.some((p) => p.trigger === type)
@@ -2183,42 +2459,92 @@
     const root = screens.case;
     const c = state.cases.find((x) => x.id === state.caseId);
     if (!c) {
-      root.innerHTML =
-        '<div class="ap-empty"><div class="ap-empty-glyph">◇</div>' + t('case_select') + '</div>';
+      mount(root, [emptyNote(t('case_select'), '◇')]);
       return;
     }
     const color = IOCUtils.verdictVar(c.verdict);
     const indicators = (c.indicators || [])
       .map((ioc) => state.history.find((h) => h.ioc === ioc) || { ioc, type: IOCUtils.detectIOCType(ioc), verdict: 'unknown' });
 
-    root.innerHTML =
-      '<button type="button" class="back-link" id="case-back">' + t('case_back') + '</button>' +
-      '<div class="screen-head"><div>' +
-      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">' +
-      '<span class="ap-mono" style="color:var(--text-dim);font-size:12px"></span>' +
-      '<span class="ap-pill" id="case-verdict"></span></div>' +
-      '<h1></h1>' +
-      '<p></p></div>' +
-      '<div class="head-actions">' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-run" disabled title="' + t('case_run_soon_title') + '">' + t('case_run_soon') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-graph">' + t('case_view_graph') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary" id="case-delete">' + t('case_delete') + '</button>' +
-      '</div></div>' +
-      '<div class="copy-as-row" style="margin-bottom:14px">' +
-      '<span class="panel-meta">' + t('export') + '</span>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-json">' + t('format_json') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-md">' + t('format_markdown') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-export-csv">' + t('format_csv') + '</button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" disabled title="' + t('stix_soon_title') + '">' + t('stix_soon') + '</button></div>' +
-      '<div class="ap-panel" id="case-session" style="padding:14px;margin-bottom:16px"></div>' +
-      '<div class="case-grid">' +
-      '<div><div class="ap-panel" id="case-iocs"></div>' +
-      '<div class="notes-box"><div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">' + t('case_tags') + '</div>' +
-      '<input type="text" id="case-tags" placeholder="' + t('case_tags_placeholder') + '" style="width:100%;height:34px;padding:0 10px;background:transparent;border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text);margin-bottom:14px" />' +
-      '<div class="ap-pivot-label" style="margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600">' + t('case_notes') + '</div>' +
-      '<textarea id="case-notes"></textarea></div></div>' +
-      '<div class="ap-panel"><div class="panel-head"><span class="panel-title">' + t('case_timeline') + '</span></div>' +
-      '<div class="timeline" id="case-tl"></div></div></div>';
+    const labelStyle =
+      'margin-bottom:8px;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--text-faint);font-weight:600';
+    mount(root, [
+      apBtn(null, t('case_back'), { class: 'back-link', id: 'case-back' }),
+      dom('div', {
+        class: 'screen-head',
+        children: [
+          dom('div', {
+            children: [
+              dom('div', {
+                style: 'display:flex;align-items:center;gap:10px;margin-bottom:6px',
+                children: [
+                  dom('span', { class: 'ap-mono', style: 'color:var(--text-dim);font-size:12px' }),
+                  dom('span', { class: 'ap-pill', id: 'case-verdict' })
+                ]
+              }),
+              dom('h1'),
+              dom('p')
+            ]
+          }),
+          dom('div', {
+            class: 'head-actions',
+            children: [
+              apBtn('secondary', t('case_run_soon'), {
+                id: 'case-run',
+                disabled: true,
+                title: t('case_run_soon_title')
+              }),
+              apBtn('secondary', t('case_view_graph'), { id: 'case-graph' }),
+              apBtn('secondary', t('case_delete'), { id: 'case-delete' })
+            ]
+          })
+        ]
+      }),
+      dom('div', {
+        class: 'copy-as-row',
+        style: 'margin-bottom:14px',
+        children: [
+          dom('span', { class: 'panel-meta', text: t('export') }),
+          apBtn('secondary-sm', t('format_json'), { id: 'case-export-json' }),
+          apBtn('secondary-sm', t('format_markdown'), { id: 'case-export-md' }),
+          apBtn('secondary-sm', t('format_csv'), { id: 'case-export-csv' }),
+          apBtn('secondary-sm', t('stix_soon'), { disabled: true, title: t('stix_soon_title') })
+        ]
+      }),
+      dom('div', { class: 'ap-panel', id: 'case-session', style: 'padding:14px;margin-bottom:16px' }),
+      dom('div', {
+        class: 'case-grid',
+        children: [
+          dom('div', {
+            children: [
+              dom('div', { class: 'ap-panel', id: 'case-iocs' }),
+              dom('div', {
+                class: 'notes-box',
+                children: [
+                  dom('div', { class: 'ap-pivot-label', style: labelStyle, text: t('case_tags') }),
+                  dom('input', {
+                    type: 'text',
+                    id: 'case-tags',
+                    placeholder: t('case_tags_placeholder'),
+                    style:
+                      'width:100%;height:34px;padding:0 10px;background:transparent;border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text);margin-bottom:14px'
+                  }),
+                  dom('div', { class: 'ap-pivot-label', style: labelStyle, text: t('case_notes') }),
+                  dom('textarea', { id: 'case-notes' })
+                ]
+              })
+            ]
+          }),
+          dom('div', {
+            class: 'ap-panel',
+            children: [
+              panelHead(t('case_timeline')),
+              dom('div', { class: 'timeline', id: 'case-tl' })
+            ]
+          })
+        ]
+      })
+    ]);
 
     root.querySelector('.ap-mono').textContent = c.id;
     const pill = root.querySelector('#case-verdict');
@@ -2233,15 +2559,28 @@
     const sessPanel = root.querySelector('#case-session');
     const sessActive = state.session && state.session.caseId === c.id;
     const exclude = ((state.session && state.session.excludeDomains) || []).join(', ');
-    sessPanel.innerHTML =
-      '<div class="panel-title" style="margin-bottom:8px">' + t('case_session') + '</div>' +
-      '<div style="font-size:12px;color:var(--text-muted);margin-bottom:10px" id="case-sess-state"></div>' +
-      '<label style="font-size:11px;color:var(--text-dim)">' + t('case_exclude') + '</label>' +
-      '<input type="text" id="case-sess-exclude" style="width:100%;height:34px;margin:6px 0 10px;padding:0 10px;background:var(--inset);border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text)" />' +
-      '<div class="copy-as-row">' +
-      '<button type="button" class="ap-btn ap-btn-primary ap-btn-sm" id="case-sess-start"></button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-pause"></button>' +
-      '<button type="button" class="ap-btn ap-btn-secondary ap-btn-sm" id="case-sess-clear">' + t('clear') + '</button></div>';
+    mount(sessPanel, [
+      dom('div', { class: 'panel-title', style: 'margin-bottom:8px', text: t('case_session') }),
+      dom('div', {
+        style: 'font-size:12px;color:var(--text-muted);margin-bottom:10px',
+        id: 'case-sess-state'
+      }),
+      dom('label', { style: 'font-size:11px;color:var(--text-dim)', text: t('case_exclude') }),
+      dom('input', {
+        type: 'text',
+        id: 'case-sess-exclude',
+        style:
+          'width:100%;height:34px;margin:6px 0 10px;padding:0 10px;background:var(--inset);border:1px solid var(--border-2);border-radius:var(--radius);color:var(--text)'
+      }),
+      dom('div', {
+        class: 'copy-as-row',
+        children: [
+          apBtn('primary-sm', '', { id: 'case-sess-start' }),
+          apBtn('secondary-sm', '', { id: 'case-sess-pause' }),
+          apBtn('secondary-sm', t('clear'), { id: 'case-sess-clear' })
+        ]
+      })
+    ]);
     sessPanel.querySelector('#case-sess-state').textContent = sessActive
       ? state.session.paused
         ? t('case_rec_paused')
@@ -2285,22 +2624,32 @@
     });
 
     const iocPanel = root.querySelector('#case-iocs');
-    iocPanel.innerHTML =
-      '<div class="panel-head"><span class="panel-title">' + t('case_indicators') + '</span></div><div id="case-ioc-rows"></div>';
+    mount(iocPanel, [
+      panelHead(t('case_indicators')),
+      dom('div', { id: 'case-ioc-rows' })
+    ]);
     const rows = iocPanel.querySelector('#case-ioc-rows');
     if (!indicators.length) {
-      rows.innerHTML = '<div class="ap-empty">' + t('case_no_indicators') + '</div>';
+      rows.appendChild(emptyNote(t('case_no_indicators')));
     } else {
       indicators.forEach((h) => {
         const typeColor = IOCUtils.typeVar(h.type);
         const v = IOCUtils.normalizeVerdict(h.verdict || h.status);
         const block = document.createElement('div');
         block.className = 'case-ioc-block';
-        block.innerHTML =
-          '<div class="extract-row">' +
-          '<span class="ap-pill"></span><div style="flex:1;min-width:0">' +
-          '<div class="ioc-val"></div><div class="ioc-meta"></div></div>' +
-          '<span class="ap-pill v"></span></div>';
+        block.appendChild(
+          dom('div', {
+            class: 'extract-row',
+            children: [
+              dom('span', { class: 'ap-pill' }),
+              dom('div', {
+                style: 'flex:1;min-width:0',
+                children: [dom('div', { class: 'ioc-val' }), dom('div', { class: 'ioc-meta' })]
+              }),
+              dom('span', { class: 'ap-pill v' })
+            ]
+          })
+        );
         const tp = block.querySelector('.ap-pill');
         tp.textContent = IOCUtils.typeLabel(h.type);
         tp.style.cssText = pillStyle(typeColor);
@@ -2422,13 +2771,20 @@
   }
 
   function renderOnpageHelp() {
-    screens['onpage-help'].innerHTML =
-      '<div class="screen-head"><div><h1>' + t('onpage_help_title') + '</h1>' +
-      '<p>' + t('onpage_help_sub') + '</p></div></div>' +
-      '<div class="ap-panel" style="padding:20px">' +
-      '<p style="margin:0 0 12px;color:var(--text-muted);font-size:13px">' + t('onpage_help_body') + '</p>' +
-      '<button type="button" class="ap-btn ap-btn-primary" id="help-overlay">' + t('onpage_help_enable') + '</button>' +
-      '</div>';
+    mount(screens['onpage-help'], [
+      screenHead(t('onpage_help_title'), t('onpage_help_sub')),
+      dom('div', {
+        class: 'ap-panel',
+        style: 'padding:20px',
+        children: [
+          dom('p', {
+            style: 'margin:0 0 12px;color:var(--text-muted);font-size:13px',
+            text: t('onpage_help_body')
+          }),
+          apBtn('primary', t('onpage_help_enable'), { id: 'help-overlay' })
+        ]
+      })
+    ]);
     screens['onpage-help'].querySelector('#help-overlay').addEventListener('click', async () => {
       await sendMessage({ action: 'setOverlayEnabled', enabled: true });
       showToast(t('toast_detect_on'));

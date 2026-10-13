@@ -1,5 +1,46 @@
 // Shared ⌘K command palette for popup + dashboard
 (function (global) {
+  function empty(node) {
+    while (node.firstChild) node.removeChild(node.firstChild);
+    return node;
+  }
+
+  function dom(tag, props) {
+    const node = document.createElement(tag);
+    if (!props) return node;
+    Object.keys(props).forEach((key) => {
+      const val = props[key];
+      if (val == null || val === false) return;
+      if (key === 'class') node.className = val;
+      else if (key === 'text') node.textContent = String(val);
+      else if (key === 'style') node.style.cssText = val;
+      else if (key === 'children') {
+        val.forEach((child) => {
+          if (child == null) return;
+          node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+        });
+      } else if (key === 'dataset') {
+        Object.keys(val).forEach((name) => {
+          node.dataset[name] = val[name];
+        });
+      } else if (key === 'disabled') node.disabled = !!val;
+      else if (key === 'checked') node.checked = !!val;
+      else if (key === 'selected') node.selected = !!val;
+      else if (key === 'value') node.value = val;
+      else if (key === 'type') node.type = val;
+      else if (key === 'placeholder') node.placeholder = val;
+      else if (key === 'spellcheck') node.spellcheck = !!val;
+      else if (key === 'autocomplete') node.autocomplete = val;
+      else if (key === 'id') node.id = val;
+      else if (key === 'title') node.title = val;
+      else if (key === 'role') node.setAttribute('role', val);
+      else if (key === 'href') node.setAttribute('href', val);
+      else if (key === 'ariaLabel') node.setAttribute('aria-label', val);
+      else node.setAttribute(key, val);
+    });
+    return node;
+  }
+
   function createPalette(options) {
     const {
       getGroups,
@@ -18,18 +59,30 @@
       return typeof ApertureI18n !== 'undefined' ? ApertureI18n.t(key, vars) : key;
     }
 
-    scrim.innerHTML =
-      '<div class="ap-palette" role="dialog" aria-label="Command palette">' +
-      '<div class="ap-palette-head">' +
-      '<span style="font-size:16px;color:var(--text-dim)">⌕</span>' +
-      '<input class="ap-palette-input" placeholder="Run a tool, playbook, or jump…" autocomplete="off" />' +
-      '<span class="ap-keycap">esc</span>' +
-      '</div>' +
-      '<div class="ap-palette-body"></div>' +
-      '<div class="ap-palette-foot"></div></div>';
+    const panel = dom('div', {
+      class: 'ap-palette',
+      role: 'dialog',
+      ariaLabel: 'Command palette',
+      children: [
+        dom('div', {
+          class: 'ap-palette-head',
+          children: [
+            dom('span', { style: 'font-size:16px;color:var(--text-dim)', text: '⌕' }),
+            dom('input', {
+              class: 'ap-palette-input',
+              placeholder: 'Run a tool, playbook, or jump…',
+              autocomplete: 'off'
+            }),
+            dom('span', { class: 'ap-keycap', text: 'esc' })
+          ]
+        }),
+        dom('div', { class: 'ap-palette-body' }),
+        dom('div', { class: 'ap-palette-foot' })
+      ]
+    });
+    scrim.appendChild(panel);
 
     root.appendChild(scrim);
-    const panel = scrim.querySelector('.ap-palette');
     const input = scrim.querySelector('.ap-palette-input');
     const body = scrim.querySelector('.ap-palette-body');
 
@@ -51,11 +104,18 @@
       dialog.setAttribute('aria-label', tt('palette_aria'));
       input.placeholder = tt('palette_placeholder');
       const foot = scrim.querySelector('.ap-palette-foot');
-      foot.innerHTML =
-        '<span><span class="ap-keycap">↑↓</span> ' + tt('palette_navigate') + '</span>' +
-        '<span><span class="ap-keycap">↵</span> ' + tt('palette_open') + '</span>' +
-        '<span><span class="ap-keycap">esc</span> ' + tt('palette_dismiss') + '</span>' +
-        '<span style="margin-left:auto;color:var(--text-faint)">' + tt('palette_foot') + '</span>';
+      empty(foot);
+      [
+        [tt('palette_navigate'), '↑↓', ''],
+        [tt('palette_open'), '↵', ''],
+        [tt('palette_dismiss'), 'esc', ''],
+        [tt('palette_foot'), '', 'margin-left:auto;color:var(--text-faint)']
+      ].forEach(([label, key, style]) => {
+        const wrap = dom('span', { style: style || null });
+        if (key) wrap.appendChild(dom('span', { class: 'ap-keycap', text: key }));
+        wrap.appendChild(document.createTextNode((key ? ' ' : '') + label));
+        foot.appendChild(wrap);
+      });
     }
 
     function render() {
@@ -258,7 +318,8 @@
     if (!el) {
       el = document.createElement('div');
       el.className = 'ap-toast';
-      el.innerHTML = '<span class="ap-toast-dot"></span><span class="ap-toast-msg"></span>';
+      el.appendChild(dom('span', { class: 'ap-toast-dot' }));
+      el.appendChild(dom('span', { class: 'ap-toast-msg' }));
       (root || document.body).appendChild(el);
     }
     el.querySelector('.ap-toast-msg').textContent = message;
@@ -347,6 +408,8 @@
     showToast,
     sendMessage,
     applyTheme,
-    resolveTheme
+    resolveTheme,
+    empty,
+    dom
   };
 })(typeof window !== 'undefined' ? window : self);
