@@ -1,0 +1,22 @@
+{
+  "extName": {
+    "message": "Aperture — OSINT 工作台",
+    "description": "Extension name shown in the store and browser chrome"
+  },
+  "extDesc": {
+    "message": "面向 SOC/DFIR 的本地优先 OSINT 工作台：IoC 透视、剧本、案件。默认无需 API 密钥。曾用名 SOC OSINT Search。",
+    "description": "Extension description shown in the store and about:addons / chrome://extensions"
+  },
+  "cmdPalette": {
+    "message": "打开 Aperture 命令面板",
+    "description": "Keyboard command: open command palette"
+  },
+  "cmdOverlay": {
+    "message": "开关页内 IoC 检测",
+    "description": "Keyboard command: toggle on-page IoC detect"
+  },
+  "actionTitle": {
+    "message": "Aperture",
+    "description": "Toolbar button tooltip"
+  }
+}

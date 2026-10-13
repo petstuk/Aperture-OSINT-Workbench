@@ -1,15 +1,17 @@
 // In-app catalogs. Chrome/Firefox _locales follow the browser language, not Settings.
 (function (global) {
-  const CATALOGS = ['en', 'es', 'pt', 'fr', 'de', 'ru', 'zh-Hans'];
+  const CATALOGS = ['en', 'es', 'pt', 'pt-BR', 'fr', 'de', 'ru', 'zh-Hans', 'zh-Hant'];
   const PREFS = ['system'].concat(CATALOGS);
   const HTML_LANG = {
     en: 'en',
     es: 'es',
     pt: 'pt',
+    'pt-BR': 'pt-BR',
     fr: 'fr',
     de: 'de',
     ru: 'ru',
-    'zh-Hans': 'zh-CN'
+    'zh-Hans': 'zh-CN',
+    'zh-Hant': 'zh-TW'
   };
 
   let pref = 'system';
@@ -49,7 +51,12 @@
     if (lower === 'zh' || lower.startsWith('zh-hans') || lower === 'zh-cn' || lower === 'zh-sg') {
       return 'zh-Hans';
     }
-    if (lower.startsWith('zh')) return 'en';
+    if (lower.startsWith('zh-hant') || lower === 'zh-tw' || lower === 'zh-hk' || lower === 'zh-mo') {
+      return 'zh-Hant';
+    }
+    if (lower.startsWith('zh')) return 'zh-Hans';
+    if (lower === 'pt-br' || lower.startsWith('pt-br')) return 'pt-BR';
+    if (lower === 'pt-pt' || lower.startsWith('pt-pt')) return 'pt';
     const base = lower.split('-')[0];
     if (CATALOGS.indexOf(base) >= 0) return base;
     return 'en';
@@ -156,11 +163,13 @@
         {
           en: 'English',
           es: 'Español',
-          pt: 'Português',
+          pt: 'Português (Portugal)',
+          'pt-BR': 'Português (Brasil)',
           fr: 'Français',
           de: 'Deutsch',
           ru: 'Русский',
-          'zh-Hans': '简体中文'
+          'zh-Hans': '简体中文',
+          'zh-Hant': '繁體中文'
         }[code] || code
       );
     }

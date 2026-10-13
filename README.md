@@ -10,7 +10,7 @@ Aperture detects indicators of compromise in the browser, orchestrates pivots to
 
 | | |
 |---|---|
-| **Version** | 4.4.0 (Manifest V3) |
+| **Version** | 4.5.0 (Manifest V3) |
 | **Browsers** | Firefox 140+ · Chrome / Chromium |
 | **Firefox Add-ons** | [addons.mozilla.org/…/soc-osint-extension](https://addons.mozilla.org/en-GB/firefox/addon/soc-osint-extension/) |
 | **Chrome Web Store** | [chromewebstore.google.com/…/hpbeikjdpgemejlekddlaphdlaemjhgb](https://chromewebstore.google.com/detail/aperture-%E2%80%94-osint-workbenc/hpbeikjdpgemejlekddlaphdlaemjhgb) |
@@ -48,6 +48,7 @@ Optional **Labs** features are a **Coming soon** roadmap and cannot be turned on
 - **Context menu** — right-click selection → playbooks and services
 - **Command palette** — ⌘/Ctrl+K on extension pages; Ctrl+Shift+K / Ctrl+Shift+O browser commands
 - **Themes** — System, Dark or Light for every Aperture surface; page highlights adapt to the site you are reading
+- **Language** — Settings → Appearance; System plus English, Spanish, Portuguese (Portugal / Brasil), French, German, Russian, Simplified and Traditional Chinese. Store name/description follow the **browser** language.
 
 ### Indicator types
 
@@ -116,7 +117,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 | Popup | [`extension/popup.html`](extension/popup.html) |
 | Dashboard | [`extension/dashboard.html`](extension/dashboard.html) |
 | On-page | [`extension/content.js`](extension/content.js), [`extension/content.css`](extension/content.css) |
-| Shared UI | [`extension/aperture.css`](extension/aperture.css), [`extension/indicator-card.js`](extension/indicator-card.js), [`extension/palette.js`](extension/palette.js), [`extension/i18n.js`](extension/i18n.js), `extension/locales/`, `extension/fonts/` |
+| Shared UI | [`extension/aperture.css`](extension/aperture.css), [`extension/indicator-card.js`](extension/indicator-card.js), [`extension/palette.js`](extension/palette.js), [`extension/i18n.js`](extension/i18n.js), `extension/locales/`, `extension/_locales/`, `extension/fonts/` |
 | Offline packs / flags / IDB | `extension/aperture-packs.js`, `aperture-features.js`, `aperture-store.js` |
 | DevTools (coming soon) | [`extension/devtools.html`](extension/devtools.html) |
 
@@ -125,7 +126,7 @@ Same steps as Chrome/Firefox “load unpacked / temporary add-on” above. Edit 
 ```bash
 ./scripts/package.sh
 # or: ./package-for-firefox.sh
-# → aperture-osint-v4.4.0.zip (extension runtime only)
+# → aperture-osint-v4.5.0.zip (extension runtime only)
 ```
 
 ### Tests & preview
@@ -163,6 +164,7 @@ Keep the privacy model: network only on explicit user action; keys never in `sto
 
 | Version | Notes |
 |---|---|
+| [4.5.0](docs/releases/RELEASE_NOTES_v4.5.0.md) | Store `_locales`; Traditional Chinese; Portuguese (Portugal / Brasil) |
 | [4.4.0](docs/releases/RELEASE_NOTES_v4.4.0.md) | In-app language settings (en, es, pt, fr, de, ru, zh-Hans) |
 | [4.3.1](docs/releases/RELEASE_NOTES_v4.3.1.md) | Open link on domain IoCs; CWE pivot; GreyNoise/RDAP URLs; ThreatCrowd removed |
 | [4.3.0](docs/releases/RELEASE_NOTES_v4.3.0.md) | Full offline pack indexes; Labs / STIX / case playbook / DevTools marked coming soon |

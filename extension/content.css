@@ -25,7 +25,7 @@
    Aperture theme: content.js adds .soc-ioc-onlight when the page reads as light. */
 .soc-ioc {
   --hl: #8b93a3;
-  font-family: 'IBM Plex Mono', 'Noto Sans Mono', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', ui-monospace, monospace;
+  font-family: 'IBM Plex Mono', 'Noto Sans Mono', 'Noto Sans SC', 'Noto Sans TC', 'PingFang SC', 'PingFang TC', 'Microsoft YaHei', 'Microsoft JhengHei', ui-monospace, monospace;
   font-size: inherit;
   color: var(--hl);
   background: color-mix(in srgb, var(--hl) 12%, transparent);
@@ -75,7 +75,7 @@
   border: 1px solid var(--border-3);
   border-radius: var(--radius);
   color: var(--text);
-  font-family: 'IBM Plex Sans', 'Noto Sans', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  font-family: 'IBM Plex Sans', 'Noto Sans', 'Noto Sans SC', 'Noto Sans TC', 'PingFang SC', 'PingFang TC', 'Microsoft YaHei', 'Microsoft JhengHei', 'Segoe UI', sans-serif;
   font-size: 12px;
   box-shadow: var(--shadow-float);
   display: none;

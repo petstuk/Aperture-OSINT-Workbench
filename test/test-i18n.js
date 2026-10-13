@@ -79,20 +79,32 @@
       catalogs['zh-Hans'].locale_label,
       catalogs['zh-Hans'].palette_placeholder
     ].join('  ·  ');
+    const hantEl = document.getElementById('glyph-zh-hant');
+    if (hantEl && catalogs['zh-Hant']) {
+      hantEl.textContent = [
+        catalogs['zh-Hant'].nav_overview,
+        catalogs['zh-Hant'].nav_settings,
+        catalogs['zh-Hant'].locale_label,
+        catalogs['zh-Hant'].palette_placeholder
+      ].join('  ·  ');
+    }
   }
 
   async function run() {
     const I = ApertureI18n;
     assert('normalize unknown → system', I.normalizeLocale('nope') === 'system');
     assert('normalize pt stays pt', I.normalizeLocale('pt') === 'pt');
+    assert('normalize pt-BR stays', I.normalizeLocale('pt-BR') === 'pt-BR');
     assert('normalize zh-Hans stays', I.normalizeLocale('zh-Hans') === 'zh-Hans');
+    assert('normalize zh-Hant stays', I.normalizeLocale('zh-Hant') === 'zh-Hant');
 
-    assert('system + pt-BR → pt', I.resolveCatalog('system', 'pt-BR') === 'pt');
+    assert('system + pt-BR → pt-BR', I.resolveCatalog('system', 'pt-BR') === 'pt-BR');
     assert('system + pt_PT → pt', I.resolveCatalog('system', 'pt_PT') === 'pt');
     assert('system + es-MX → es', I.resolveCatalog('system', 'es-MX') === 'es');
     assert('system + zh-CN → zh-Hans', I.resolveCatalog('system', 'zh-CN') === 'zh-Hans');
     assert('system + zh-Hans → zh-Hans', I.resolveCatalog('system', 'zh-Hans') === 'zh-Hans');
-    assert('system + zh-TW → en', I.resolveCatalog('system', 'zh-TW') === 'en');
+    assert('system + zh-TW → zh-Hant', I.resolveCatalog('system', 'zh-TW') === 'zh-Hant');
+    assert('system + zh-HK → zh-Hant', I.resolveCatalog('system', 'zh-HK') === 'zh-Hant');
     assert('system + xx → en', I.resolveCatalog('system', 'xx') === 'en');
     assert('explicit fr ignores browser', I.resolveCatalog('fr', 'de') === 'fr');
 
@@ -134,6 +146,12 @@
     assert('ru overview is Cyrillic', /[А-Яа-яЁё]/.test(I.t('nav_overview')), I.t('nav_overview'));
     await I.setLocale('zh-Hans');
     assert('zh-Hans overview is CJK', /[\u4e00-\u9fff]/.test(I.t('nav_overview')), I.t('nav_overview'));
+    await I.setLocale('zh-Hant');
+    assert('zh-Hant overview is CJK', /[\u4e00-\u9fff]/.test(I.t('nav_overview')), I.t('nav_overview'));
+    assert('zh-Hant differs from Hans', I.t('nav_settings') !== catalogs['zh-Hans'].nav_settings);
+    await I.setLocale('pt-BR');
+    assert('pt-BR settings is Brazilian', I.t('nav_settings') === catalogs['pt-BR'].nav_settings);
+    assert('pt-BR differs from pt', I.t('nav_settings') !== catalogs.pt.nav_settings);
     await I.setLocale('es');
     assert('es settings translated', I.t('nav_settings') !== catalogs.en.nav_settings);
 

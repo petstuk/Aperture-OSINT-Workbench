@@ -1,4 +1,4 @@
-# Testing Guide — Aperture v4.4.0
+# Testing Guide — Aperture v4.5.0
 
 ## Load unpacked
 1. Chrome: `chrome://extensions` → Developer mode → Load unpacked → `extension/`
@@ -32,7 +32,14 @@
 5. Global on-page detect **off** still wins everywhere, even with an empty disabled list
 
 ## Upgrade path
-Install 4.2.x / 4.3.x data then load 4.4.0 — history/cases/playbooks intact. Language defaults to System (browser language mapped onto the seven catalogs; unknown → English). Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads. A stored ThreatCrowd enable flag is ignored (no context-menu item).
+Install 4.2.x / 4.3.x / 4.4.0 data then load 4.5.0 — history/cases/playbooks intact. Language defaults to System (browser language mapped onto catalogs; unknown → English). Labs flags cannot be enabled. Offline packs show hundreds of entries; Install does not grow IndexedDB with pack payloads. A stored ThreatCrowd enable flag is ignored (no context-menu item).
+
+## v4.5.0
+1. Settings → Language includes **Português (Portugal)**, **Português (Brasil)**, **简体中文**, and **繁體中文**
+2. Browser UI language `pt-BR` + System → Brazilian strings (`Configurações`); `pt-PT` → European (`Definições`)
+3. Browser UI language `zh-TW` / `zh-HK` + System → Traditional Chinese; `zh-CN` → Simplified
+4. Chrome/Firefox extension name and description follow the **browser** language even if Settings is English
+5. `node test/test-i18n.js` — catalogs match English keys; `system` + `pt-BR` → `pt-BR`; `system` + `zh-TW` → `zh-Hant`
 
 ## v4.4.0
 1. Settings → Appearance → Language — options are System plus native names (English, Español, Português, Français, Deutsch, Русский, 简体中文)
@@ -40,7 +47,7 @@ Install 4.2.x / 4.3.x data then load 4.4.0 — history/cases/playbooks intact. L
 3. Popup and an open page (pivot / palette) pick up the same locale
 4. Switch to Russian and Simplified Chinese — glyphs render (system CJK/Cyrillic fallbacks, not tofu boxes)
 5. Context menu titles match the chosen language; playbook names and OSINT service names stay as stored
-6. `node test/test-i18n.js` — missing key falls back to English; `system` + `pt-BR` → `pt`; unknown browser locale → `en`
+6. `node test/test-i18n.js` — missing key falls back to English; unknown browser locale → `en`
 
 ## v4.3.1
 1. Bare domain on `test/test-history.html` (e.g. `google.com`) and a workbench domain row — pivot shows **Open link**

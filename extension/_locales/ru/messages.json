@@ -1,0 +1,22 @@
+{
+  "extName": {
+    "message": "Aperture — OSINT Workbench",
+    "description": "Extension name shown in the store and browser chrome"
+  },
+  "extDesc": {
+    "message": "Локальный OSINT-верстак для SOC/DFIR: IoC, плейбуки, дела. Без API-ключей по умолчанию. Ранее SOC OSINT Search.",
+    "description": "Extension description shown in the store and about:addons / chrome://extensions"
+  },
+  "cmdPalette": {
+    "message": "Открыть командную палитру Aperture",
+    "description": "Keyboard command: open command palette"
+  },
+  "cmdOverlay": {
+    "message": "Включить или выключить обнаружение IoC на странице",
+    "description": "Keyboard command: toggle on-page IoC detect"
+  },
+  "actionTitle": {
+    "message": "Aperture",
+    "description": "Toolbar button tooltip"
+  }
+}
